@@ -40,6 +40,8 @@ export interface Script {
   generatedThumbnail?: string; // base64
   coachFeedback?: string;
   versions?: ScriptVersion[];
+  seriesId?: string; // To group scripts into a series
+  seriesName?: string; // The name of the series concept
 }
 
 export interface RepurposedContent {
@@ -62,6 +64,7 @@ export interface EpisodeSuggestion {
 export interface SeriesGenerationProgress {
     episodeIndex: number;
     status: 'waiting' | 'generating_script' | 'generating_video' | 'complete' | 'error';
+    scriptId?: string;
 }
 
 export enum AppScreen {

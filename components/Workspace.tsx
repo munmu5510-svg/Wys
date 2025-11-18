@@ -9,6 +9,80 @@ import { Chat } from '@google/genai';
 import { APP_URL } from '../constants';
 import { jsPDF } from "jspdf";
 
+// --- Shared Utils ---
+
+const downloadScript = (script: Script, format: 'srt' | 'pdf') => {
+    if (format === 'srt') {
+        if (!script.srtFile) {
+            alert("Aucun fichier SRT disponible.");
+            return;
+        }
+        const blob = new Blob([script.srtFile], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fileName = script.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${fileName}.srt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    } else if (format === 'pdf') {
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.width;
+        const margin = 20;
+        let yPos = 20;
+
+        // Title
+        doc.setFontSize(22);
+        doc.setFont("helvetica", "bold");
+        doc.text(script.title, margin, yPos);
+        yPos += 15;
+
+        // Meta info
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Format: ${script.format} | Ton: ${script.tone}`, margin, yPos);
+        yPos += 10;
+
+        // YouTube Description
+        doc.setFontSize(14);
+        doc.setFont("helvetica", "bold");
+        doc.text("Description YouTube:", margin, yPos);
+        yPos += 7;
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const splitDesc = doc.splitTextToSize(script.youtubeDescription || "", pageWidth - 2 * margin);
+        doc.text(splitDesc, margin, yPos);
+        yPos += (splitDesc.length * 5) + 10;
+
+        // Sections
+        script.sections.forEach((section, index) => {
+            if (yPos > 270) { doc.addPage(); yPos = 20; } 
+            
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text(`${index + 1}. ${section.title} (${section.estimatedTime}s)`, margin, yPos);
+            yPos += 7;
+
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "italic");
+            doc.setTextColor(100);
+            doc.text(`Note Visuelle: ${section.visualNote}`, margin, yPos);
+            doc.setTextColor(0);
+            yPos += 7;
+
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            const splitContent = doc.splitTextToSize(section.content, pageWidth - 2 * margin);
+            doc.text(splitContent, margin, yPos);
+            yPos += (splitContent.length * 6) + 10;
+        });
+
+        doc.save(`${script.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+    }
+};
+
 const ShareModal: React.FC<{
     isOpen: boolean;
     onClose: () => void;
@@ -70,12 +144,29 @@ const DashboardScreen: React.FC<{
     onEdit: (script: Script) => void,
     onUpdateScripts: (scripts: Script[]) => void
 }> = ({ scripts, onCreateNew, onEdit, onUpdateScripts }) => {
+    const [viewMode, setViewMode] = useState<'scripts' | 'series'>('scripts');
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [selectionMode, setSelectionMode] = useState(false);
     const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
     const [scriptToShare, setScriptToShare] = useState<Script | null>(null);
     const menuRef = useRef<HTMLDivElement>(null);
+
+    // Group scripts by series
+    const seriesGroups = React.useMemo(() => {
+        const groups: { [key: string]: Script[] } = {};
+        scripts.filter(s => s.seriesId).forEach(s => {
+            if (!groups[s.seriesId!]) {
+                groups[s.seriesId!] = [];
+            }
+            groups[s.seriesId!].push(s);
+        });
+        return groups;
+    }, [scripts]);
+
+    const displayedScripts = viewMode === 'scripts' 
+        ? scripts.filter(s => !s.seriesId) 
+        : []; // For series view we render groups, not individual scripts
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -113,25 +204,23 @@ const DashboardScreen: React.FC<{
             setSelectedScriptIds(new Set());
         }
     };
+    
+    const handleDeleteSeries = (seriesId: string) => {
+        if (window.confirm(`Voulez-vous supprimer toute la série ?`)) {
+             const updatedScripts = scripts.filter(s => s.seriesId !== seriesId);
+             onUpdateScripts(updatedScripts);
+        }
+    }
 
     const handleShareSelected = () => {
-        // Since we can't batch email easily via mailto with multiple links in a clean way,
-        // we will just create a list of titles.
         const selectedScripts = scripts.filter(s => selectedScriptIds.has(s.id));
         const titles = selectedScripts.map(s => `- ${s.title}`).join('\n');
         const subject = encodeURIComponent("Mes Scripts WySlider");
         const body = encodeURIComponent(`Voici une liste de scripts que j'ai créés :\n\n${titles}\n\n(Ouvrez l'app pour les voir en détail)`);
-        
         window.location.href = `mailto:?subject=${subject}&body=${body}`;
-        
         setSelectionMode(false);
         setSelectedScriptIds(new Set());
     };
-
-    const handleExportSelected = () => {
-         // Mock export to email for batch
-        alert(`L'export par lot n'est pas encore disponible. Veuillez exporter les scripts individuellement.`);
-    }
 
     const handleEditSelected = () => {
         if (selectedScriptIds.size !== 1) return;
@@ -161,22 +250,43 @@ const DashboardScreen: React.FC<{
     return (
         <div className="p-4 sm:p-8 h-full flex flex-col relative">
             {scriptToShare && <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} script={scriptToShare} />}
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl sm:text-3xl font-bold">Mes Scripts</h1>
-                <div className="flex items-center space-x-2">
-                    <div className="relative" ref={menuRef}>
-                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-3 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition">
-                            <Bars3Icon className="h-6 w-6" />
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                <div className="flex items-center space-x-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold">Mon Espace</h1>
+                    <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-1">
+                        <button 
+                            onClick={() => setViewMode('scripts')} 
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${viewMode === 'scripts' ? 'bg-white dark:bg-gray-800 shadow text-brand-purple' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            Scripts
                         </button>
-                        {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
-                                <button onClick={toggleSelectionMode} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
-                                    <CheckIcon className="h-5 w-5 mr-2 text-brand-purple"/>
-                                    {selectionMode ? 'Quitter le mode sélection' : 'Gérer / Sélectionner'}
-                                </button>
-                            </div>
-                        )}
+                         <button 
+                            onClick={() => setViewMode('series')} 
+                            className={`px-4 py-1.5 rounded-md text-sm font-medium transition ${viewMode === 'series' ? 'bg-white dark:bg-gray-800 shadow text-brand-purple' : 'text-gray-500 dark:text-gray-400'}`}
+                        >
+                            Séries
+                        </button>
                     </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                     {viewMode === 'scripts' && (
+                        <div className="relative" ref={menuRef}>
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-3 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition">
+                                <Bars3Icon className="h-6 w-6" />
+                            </button>
+                            {isMenuOpen && (
+                                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
+                                    <button onClick={toggleSelectionMode} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                                        <CheckIcon className="h-5 w-5 mr-2 text-brand-purple"/>
+                                        {selectionMode ? 'Quitter le mode sélection' : 'Gérer / Sélectionner'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <Button onClick={onCreateNew}>
                         <PlusIcon className="h-5 w-5 sm:mr-2"/>
                         <span className="hidden sm:inline">Créer</span>
@@ -185,7 +295,7 @@ const DashboardScreen: React.FC<{
             </div>
 
             {/* Selection Actions Toolbar */}
-            {selectionMode && (
+            {selectionMode && viewMode === 'scripts' && (
                  <div className="mb-6 bg-brand-purple/10 border border-brand-purple/20 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4 animate-fade-in">
                     <span className="font-semibold text-brand-purple">{selectedScriptIds.size} sélectionné(s)</span>
                     <div className="flex space-x-2">
@@ -194,9 +304,6 @@ const DashboardScreen: React.FC<{
                         </button>
                         <button onClick={handleShareSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
                             <ShareIcon className="h-4 w-4 mr-1 sm:mr-2"/> Partager (Email)
-                        </button>
-                        <button onClick={handleExportSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
-                            <ArrowDownTrayIcon className="h-4 w-4 mr-1 sm:mr-2"/> Exporter
                         </button>
                         {selectedScriptIds.size === 1 && (
                             <button onClick={handleEditSelected} className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 transition text-sm">
@@ -207,46 +314,99 @@ const DashboardScreen: React.FC<{
                  </div>
             )}
 
-            {scripts.length === 0 ? (
-                <div className="flex-grow flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
-                    <p>Vous n'avez pas encore de script. <br/> Cliquez sur "Créer" pour commencer !</p>
-                </div>
-            ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
-                {scripts.map(script => (
-                    <div 
-                        key={script.id} 
-                        onClick={(e) => handleCardClick(script, e)} 
-                        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all group flex flex-col ${selectionMode && selectedScriptIds.has(script.id) ? 'ring-2 ring-brand-purple transform scale-95' : 'hover:-translate-y-1'}`}
-                    >
-                         {!selectionMode && (
-                            <button
-                                onClick={(e) => handleOpenShareModal(script, e)}
-                                className="absolute top-2 right-2 z-20 p-2 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/80 dark:hover:bg-gray-900/80"
-                                title="Partager le script"
-                            >
-                                <ShareIcon className="h-4 w-4 text-gray-800 dark:text-gray-200" />
-                            </button>
-                        )}
-                        {selectionMode && (
-                            <div className="absolute top-2 left-2 z-10">
-                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedScriptIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'bg-white/50 border-gray-400'}`}>
-                                    {selectedScriptIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white" />}
-                                </div>
-                            </div>
-                        )}
-                        <div className="aspect-video bg-gradient-to-br from-brand-purple to-brand-blue rounded-md mb-4 flex items-center justify-center overflow-hidden relative">
-                           {script.generatedThumbnail ? (
-                               <img src={`data:image/png;base64,${script.generatedThumbnail}`} alt="Thumbnail" className="w-full h-full object-cover" />
-                           ) : (
-                               <h3 className="text-white font-bold text-lg p-2 text-center select-none">{script.title}</h3>
-                           )}
+            {/* CONTENT - SCRIPTS VIEW */}
+            {viewMode === 'scripts' && (
+                <>
+                    {displayedScripts.length === 0 ? (
+                        <div className="flex-grow flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                            <p>Aucun script individuel. <br/> Les scripts créés via "Serial Prod" sont dans l'onglet Séries.</p>
                         </div>
-                        <p className="font-semibold truncate group-hover:text-brand-purple select-none">{script.title}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-auto pt-2 select-none">Créé le: {new Date(script.createdAt).toLocaleDateString()}</p>
-                    </div>
-                ))}
-            </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
+                            {displayedScripts.map(script => (
+                                <div 
+                                    key={script.id} 
+                                    onClick={(e) => handleCardClick(script, e)} 
+                                    className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all group flex flex-col ${selectionMode && selectedScriptIds.has(script.id) ? 'ring-2 ring-brand-purple transform scale-95' : 'hover:-translate-y-1'}`}
+                                >
+                                    {!selectionMode && (
+                                        <button
+                                            onClick={(e) => handleOpenShareModal(script, e)}
+                                            className="absolute top-2 right-2 z-20 p-2 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/80 dark:hover:bg-gray-900/80"
+                                            title="Partager le script"
+                                        >
+                                            <ShareIcon className="h-4 w-4 text-gray-800 dark:text-gray-200" />
+                                        </button>
+                                    )}
+                                    {selectionMode && (
+                                        <div className="absolute top-2 left-2 z-10">
+                                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedScriptIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'bg-white/50 border-gray-400'}`}>
+                                                {selectedScriptIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white" />}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="aspect-video bg-gradient-to-br from-brand-purple to-brand-blue rounded-md mb-4 flex items-center justify-center overflow-hidden relative">
+                                    {script.generatedThumbnail ? (
+                                        <img src={`data:image/png;base64,${script.generatedThumbnail}`} alt="Thumbnail" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <h3 className="text-white font-bold text-lg p-2 text-center select-none">{script.title}</h3>
+                                    )}
+                                    </div>
+                                    <p className="font-semibold truncate group-hover:text-brand-purple select-none">{script.title}</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-auto pt-2 select-none">Créé le: {new Date(script.createdAt).toLocaleDateString()}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* CONTENT - SERIES VIEW */}
+            {viewMode === 'series' && (
+                <>
+                    {Object.keys(seriesGroups).length === 0 ? (
+                        <div className="flex-grow flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                            <p>Aucune série sauvegardée. <br/> Utilisez l'outil "Serial Prod" pour en créer une.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-8">
+                            {Object.entries(seriesGroups).map(([seriesId, groupScripts]) => (
+                                <div key={seriesId} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                 <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-500 text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">Série</span>
+                                                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{groupScripts[0]?.seriesName || 'Série sans titre'}</h2>
+                                            </div>
+                                            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{groupScripts.length} Épisodes • Créée le {new Date(groupScripts[0]?.createdAt).toLocaleDateString()}</p>
+                                        </div>
+                                        <button onClick={() => handleDeleteSeries(seriesId)} className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-full transition">
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {groupScripts.map((script, idx) => (
+                                            <div 
+                                                key={script.id} 
+                                                onClick={() => onEdit(script)}
+                                                className="flex items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-brand-purple cursor-pointer transition group"
+                                            >
+                                                <div className="flex-shrink-0 h-10 w-10 bg-brand-purple/10 text-brand-purple rounded-full flex items-center justify-center font-bold mr-3">
+                                                    {idx + 1}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="font-medium truncate text-sm group-hover:text-brand-purple">{script.title}</p>
+                                                    <p className="text-xs text-gray-500">{script.format}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
@@ -657,7 +817,15 @@ const VideoGenerationModal: React.FC<{
 };
 
 // Serial Prod Screen
-const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, onNavigateAccount: () => void }> = ({ user, onUpdateUser, onNavigateAccount }) => {
+const SerialProdScreen: React.FC<{ 
+    user: User, 
+    onUpdateUser: (u: User) => void, 
+    onNavigateAccount: () => void, 
+    onAddScript: (s: Script) => void,
+    onNavigateToDashboard: () => void,
+    scripts: Script[],
+    onEditScript: (s: Script) => void
+}> = ({ user, onUpdateUser, onNavigateAccount, onAddScript, onNavigateToDashboard, scripts, onEditScript }) => {
     const [concept, setConcept] = useState('');
     const [episodeCount, setEpisodeCount] = useState(5);
     const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -676,9 +844,12 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
         setStep(2);
     };
 
-    const handleStartProduction = () => {
+    const handleStartProduction = async () => {
         if(selectedEpisodes.length === 0) return;
         
+        // Group Identifier
+        const seriesId = `series_${Date.now()}`;
+
         // Initialize progress for selected episodes
         const initialProgress: SeriesGenerationProgress[] = selectedEpisodes.map(idx => ({
             episodeIndex: idx,
@@ -687,22 +858,48 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
         setGenerationProgress(initialProgress);
         setStep(3);
 
-        // Simulate production process (In a real app, this would queue backend jobs)
-        initialProgress.forEach((p, i) => {
-            setTimeout(() => {
-                updateProgress(p.episodeIndex, 'generating_script');
-                setTimeout(() => {
-                    updateProgress(p.episodeIndex, 'generating_video');
-                     setTimeout(() => {
-                        updateProgress(p.episodeIndex, 'complete');
-                    }, 4000);
-                }, 3000);
-            }, i * 2000); // Stagger start times
-        });
+        for (let i = 0; i < initialProgress.length; i++) {
+            const progressItem = initialProgress[i];
+            const episode = suggestions[progressItem.episodeIndex];
+            
+            updateProgress(progressItem.episodeIndex, 'generating_script');
+            
+            try {
+                // Generate Real Script using AI
+                const result = await geminiService.generateScript(episode.title, 'Engaging', '8-15min', user.channelName || 'General Audience');
+                
+                if (result && result.sections) {
+                     const scriptId = `script_serial_${Date.now()}_${i}`;
+                     const newScript: Script = {
+                        id: scriptId,
+                        title: result.title || episode.title,
+                        topic: concept, // Use series concept as topic
+                        tone: 'Engaging',
+                        format: '8-15min',
+                        sections: result.sections || [],
+                        createdAt: new Date().toISOString(),
+                        youtubeDescription: result.youtubeDescription,
+                        srtFile: result.srtFile,
+                        seriesId: seriesId,
+                        seriesName: concept
+                    };
+                    onAddScript(newScript);
+                    updateProgress(progressItem.episodeIndex, 'generating_video');
+                    // Mock video generation time
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    updateProgress(progressItem.episodeIndex, 'complete', scriptId);
+                } else {
+                    updateProgress(progressItem.episodeIndex, 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                updateProgress(progressItem.episodeIndex, 'error');
+            }
+        }
     };
 
-    const updateProgress = (index: number, status: SeriesGenerationProgress['status']) => {
-        setGenerationProgress(prev => prev.map(p => p.episodeIndex === index ? { ...p, status } : p));
+    const updateProgress = (index: number, status: SeriesGenerationProgress['status'], scriptId?: string) => {
+        setGenerationProgress(prev => prev.map(p => p.episodeIndex === index ? { ...p, status, scriptId } : p));
     };
 
     const toggleEpisodeSelection = (index: number) => {
@@ -712,6 +909,20 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
             setSelectedEpisodes([...selectedEpisodes, index]);
         }
     };
+
+    const handleViewScript = (scriptId: string) => {
+        const script = scripts.find(s => s.id === scriptId);
+        if(script) {
+            onEditScript(script);
+        }
+    }
+
+    const handleDownloadAction = (scriptId: string, format: 'srt' | 'pdf') => {
+        const script = scripts.find(s => s.id === scriptId);
+        if(script) {
+            downloadScript(script, format);
+        }
+    }
 
     if (!user.isProPlus) {
         return (
@@ -729,6 +940,8 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
             </div>
         );
     }
+
+    const allComplete = generationProgress.length > 0 && generationProgress.every(p => p.status === 'complete' || p.status === 'error');
 
     return (
         <div className="p-4 sm:p-8 h-full overflow-y-auto max-w-5xl mx-auto">
@@ -824,14 +1037,14 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                          
                          switch(progress.status) {
                              case 'waiting': statusText = 'En attente...'; break;
-                             case 'generating_script': statusText = 'Écriture du script...'; statusColor = 'text-blue-500'; break;
-                             case 'generating_video': statusText = 'Tournage (Génération vidéo)...'; statusColor = 'text-purple-500'; break;
-                             case 'complete': statusText = 'Terminé !'; statusColor = 'text-green-500'; bgColor = 'bg-green-50 dark:bg-green-900/20 border border-green-200'; break;
+                             case 'generating_script': statusText = 'Écriture du script (IA)...'; statusColor = 'text-blue-500'; break;
+                             case 'generating_video': statusText = 'Finalisation...'; statusColor = 'text-purple-500'; break;
+                             case 'complete': statusText = 'Terminé'; statusColor = 'text-green-500'; bgColor = 'bg-green-50 dark:bg-green-900/20 border border-green-200'; break;
                              case 'error': statusText = 'Erreur'; statusColor = 'text-red-500'; break;
                          }
 
                          return (
-                            <div key={progress.episodeIndex} className={`p-4 rounded-xl shadow-sm flex items-center justify-between ${bgColor}`}>
+                            <div key={progress.episodeIndex} className={`p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${bgColor}`}>
                                 <div>
                                     <h4 className="font-bold text-lg">Épisode {progress.episodeIndex + 1}: {episode.title}</h4>
                                     <p className={`text-sm font-medium flex items-center ${statusColor}`}>
@@ -844,18 +1057,42 @@ const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                                         {statusText}
                                     </p>
                                 </div>
-                                {progress.status === 'complete' && (
+                                {progress.status === 'complete' && progress.scriptId && (
                                     <div className="flex space-x-2">
-                                        <button className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium shadow hover:bg-gray-50">Voir</button>
-                                        <button className="px-3 py-1.5 bg-brand-purple text-white rounded-lg text-sm font-medium shadow hover:bg-purple-700">Télécharger</button>
+                                        <button onClick={() => handleViewScript(progress.scriptId!)} title="Voir le script" className="p-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-brand-purple border border-gray-200 dark:border-gray-600 transition">
+                                            <ArrowDownTrayIcon className="h-5 w-5 rotate-180 transform"/> {/* Reuse ArrowDown as Eye/Open icon or similar since we lack EyeIcon */}
+                                        </button>
+                                        <div className="relative group">
+                                            <button className="flex items-center space-x-1 px-3 py-2 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600 transition text-sm font-medium">
+                                                <ArrowDownTrayIcon className="h-4 w-4"/>
+                                                <span>Télécharger</span>
+                                            </button>
+                                            <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-800 rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1 hidden group-hover:block z-10">
+                                                <button onClick={() => handleDownloadAction(progress.scriptId!, 'srt')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Format .SRT</button>
+                                                <button onClick={() => handleDownloadAction(progress.scriptId!, 'pdf')} className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Format .PDF</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                          );
                     })}
-                     <div className="text-center mt-8">
-                         <Button onClick={() => setStep(1)} variant="outline">Nouvelle série</Button>
-                     </div>
+                     
+                     {allComplete && (
+                        <div className="text-center mt-8 animate-fade-in">
+                            <p className="mb-4 text-green-600 dark:text-green-400 font-medium">Toute la série a été générée avec succès !</p>
+                            <Button onClick={onNavigateToDashboard} className="text-lg px-8 py-4">
+                                Sauvegarder ma série
+                            </Button>
+                            <p className="text-xs text-gray-500 mt-2">Retrouvez-la dans l'onglet "Séries" du Dashboard</p>
+                        </div>
+                     )}
+                     
+                     {!allComplete && (
+                        <div className="text-center mt-8">
+                             <Button onClick={() => setStep(1)} variant="outline" disabled>Production en cours...</Button>
+                        </div>
+                     )}
                 </div>
             )}
         </div>
@@ -1019,76 +1256,7 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
 
     const handleExport = () => {
         if (!activeScript) return;
-
-        if (exportFormat === 'srt') {
-             if (!activeScript.srtFile) {
-                alert("Aucun fichier SRT disponible. Générez d'abord le script.");
-                return;
-            }
-            const blob = new Blob([activeScript.srtFile], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            const fileName = activeScript.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            link.download = `${fileName}.srt`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        } else if (exportFormat === 'pdf') {
-            const doc = new jsPDF();
-            const pageWidth = doc.internal.pageSize.width;
-            const margin = 20;
-            let yPos = 20;
-
-            // Title
-            doc.setFontSize(22);
-            doc.setFont("helvetica", "bold");
-            doc.text(activeScript.title, margin, yPos);
-            yPos += 15;
-
-            // Meta info
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Format: ${activeScript.format} | Ton: ${activeScript.tone}`, margin, yPos);
-            yPos += 10;
-
-            // YouTube Description
-            doc.setFontSize(14);
-            doc.setFont("helvetica", "bold");
-            doc.text("Description YouTube:", margin, yPos);
-            yPos += 7;
-            doc.setFontSize(10);
-            doc.setFont("helvetica", "normal");
-            const splitDesc = doc.splitTextToSize(activeScript.youtubeDescription || "", pageWidth - 2 * margin);
-            doc.text(splitDesc, margin, yPos);
-            yPos += (splitDesc.length * 5) + 10;
-
-            // Sections
-            activeScript.sections.forEach((section, index) => {
-                if (yPos > 270) { doc.addPage(); yPos = 20; } // Simple page break check
-                
-                doc.setFontSize(14);
-                doc.setFont("helvetica", "bold");
-                doc.text(`${index + 1}. ${section.title} (${section.estimatedTime}s)`, margin, yPos);
-                yPos += 7;
-
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "italic");
-                doc.setTextColor(100);
-                doc.text(`Note Visuelle: ${section.visualNote}`, margin, yPos);
-                doc.setTextColor(0);
-                yPos += 7;
-
-                doc.setFontSize(12);
-                doc.setFont("helvetica", "normal");
-                const splitContent = doc.splitTextToSize(section.content, pageWidth - 2 * margin);
-                doc.text(splitContent, margin, yPos);
-                yPos += (splitContent.length * 6) + 10;
-            });
-
-            doc.save(`${activeScript.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
-        }
+        downloadScript(activeScript, exportFormat);
     };
 
     if (!activeScript) return <div className="p-8 text-center">Sélectionnez un script à optimiser.</div>;
@@ -1338,7 +1506,6 @@ export const Workspace: React.FC<{
         return JSON.parse(saved);
     } catch (error) {
         console.error("Failed to parse scripts from localStorage", error);
-        // Clear corrupted data
         localStorage.removeItem('wyslider_scripts');
         return [];
     }
@@ -1364,9 +1531,13 @@ export const Workspace: React.FC<{
     }
   }, [activeScreen]);
 
+  const handleAddScript = useCallback((newScript: Script) => {
+      setScripts(prev => [newScript, ...prev]);
+  }, []);
+
   useEffect(() => {
     if (scrollContainerRef.current) {
-        scrollContainerRef.current.style.scrollBehavior = 'auto'; // Disable smooth scroll for immediate switch
+        scrollContainerRef.current.style.scrollBehavior = 'auto'; 
         scrollContainerRef.current.scrollLeft = scrollContainerRef.current.offsetWidth * activeScreen;
         scrollContainerRef.current.style.scrollBehavior = 'smooth';
     }
@@ -1394,7 +1565,6 @@ export const Workspace: React.FC<{
 
   const handleUpdateScripts = (newScripts: Script[]) => {
       setScripts(newScripts);
-      // If the active script was deleted, reset it
       if (activeScript && !newScripts.find(s => s.id === activeScript.id)) {
           setActiveScript(null);
       }
@@ -1421,7 +1591,15 @@ export const Workspace: React.FC<{
                 <OptimizerScreen activeScript={activeScript} onUpdateScript={handleUpdateScript} user={user} onNavigateAccount={onNavigateAccount} />
             </div>
             <div className="w-full flex-shrink-0 h-full overflow-y-auto">
-                <SerialProdScreen user={user} onUpdateUser={onUpdateUser} onNavigateAccount={onNavigateAccount} />
+                <SerialProdScreen 
+                    user={user} 
+                    onUpdateUser={onUpdateUser} 
+                    onNavigateAccount={onNavigateAccount} 
+                    onAddScript={handleAddScript} 
+                    onNavigateToDashboard={() => setActiveScreen(AppScreen.Dashboard)}
+                    scripts={scripts}
+                    onEditScript={handleEditScript}
+                />
             </div>
         </div>
     </div>
