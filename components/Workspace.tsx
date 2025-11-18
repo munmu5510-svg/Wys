@@ -1,0 +1,1137 @@
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage } from '../types';
+import { Button } from './Button';
+import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon } from './icons';
+import { Modal } from './Modal';
+import * as geminiService from '../services/geminiService';
+import { Chat } from '@google/genai';
+import { APP_URL } from '../constants';
+
+
+const ShareModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    script: Script;
+}> = ({ isOpen, onClose, script }) => {
+    const [copyButtonText, setCopyButtonText] = useState('Copier le lien');
+    const shareUrl = `${APP_URL}/view-script?id=${script.id}`;
+
+    useEffect(() => {
+        if (isOpen) {
+            setCopyButtonText('Copier le lien');
+        }
+    }, [isOpen]);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            setCopyButtonText('Copié !');
+            setTimeout(() => setCopyButtonText('Copier le lien'), 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            alert('Erreur lors de la copie du lien.');
+        });
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Partager votre script">
+            <div className="space-y-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Toute personne disposant de ce lien pourra consulter une version en lecture seule de votre script.</p>
+                <div className="flex items-center space-x-2">
+                    <input 
+                        type="text" 
+                        value={shareUrl} 
+                        readOnly 
+                        className="flex-grow px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 text-sm focus:outline-none focus:ring-2 focus:ring-brand-purple"
+                    />
+                    <Button onClick={handleCopy} variant="secondary" className="!px-4 !py-2">
+                        {copyButtonText}
+                    </Button>
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
+
+// Dashboard Screen
+const DashboardScreen: React.FC<{ 
+    scripts: Script[], 
+    onCreateNew: () => void, 
+    onEdit: (script: Script) => void,
+    onUpdateScripts: (scripts: Script[]) => void
+}> = ({ scripts, onCreateNew, onEdit, onUpdateScripts }) => {
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedScriptIds, setSelectedScriptIds] = useState<Set<string>>(new Set());
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [scriptToShare, setScriptToShare] = useState<Script | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const toggleSelection = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const newSelection = new Set(selectedScriptIds);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        setSelectedScriptIds(newSelection);
+    };
+
+    const toggleSelectionMode = () => {
+        setSelectionMode(!selectionMode);
+        setSelectedScriptIds(new Set());
+        setIsMenuOpen(false);
+    };
+
+    const handleDeleteSelected = () => {
+        if (window.confirm(`Voulez-vous vraiment supprimer ${selectedScriptIds.size} script(s) ?`)) {
+            const updatedScripts = scripts.filter(s => !selectedScriptIds.has(s.id));
+            onUpdateScripts(updatedScripts);
+            setSelectionMode(false);
+            setSelectedScriptIds(new Set());
+        }
+    };
+
+    const handleShareSelected = () => {
+        const email = prompt("Entrez l'adresse e-mail pour partager les scripts :");
+        if (email) {
+            alert(`Les ${selectedScriptIds.size} scripts ont été partagés avec ${email} ! (Simulation)`);
+            setSelectionMode(false);
+            setSelectedScriptIds(new Set());
+        }
+    };
+
+    const handleExportSelected = () => {
+         const email = prompt("Entrez votre adresse e-mail pour recevoir les fichiers (Scripts, Notes de montage, Visuels) :");
+        if (email) {
+            alert(`L'export complet (PDFs, Images, Notes) a été envoyé à ${email}. (Simulation)`);
+            setSelectionMode(false);
+            setSelectedScriptIds(new Set());
+        }
+    }
+
+    const handleEditSelected = () => {
+        if (selectedScriptIds.size !== 1) return;
+        const scriptId = Array.from(selectedScriptIds)[0];
+        const script = scripts.find(s => s.id === scriptId);
+        if (script) {
+            onEdit(script);
+            setSelectionMode(false);
+            setSelectedScriptIds(new Set());
+        }
+    }
+
+    const handleCardClick = (script: Script, e: React.MouseEvent) => {
+        if (selectionMode) {
+            toggleSelection(script.id, e);
+        } else {
+            onEdit(script);
+        }
+    };
+    
+    const handleOpenShareModal = (script: Script, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setScriptToShare(script);
+        setIsShareModalOpen(true);
+    };
+
+    return (
+        <div className="p-4 sm:p-8 h-full flex flex-col relative">
+            {scriptToShare && <ShareModal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} script={scriptToShare} />}
+            <div className="flex justify-between items-center mb-6">
+                <h1 className="text-2xl sm:text-3xl font-bold">Mes Scripts</h1>
+                <div className="flex items-center space-x-2">
+                    <div className="relative" ref={menuRef}>
+                        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-3 bg-white dark:bg-gray-700 rounded-lg shadow hover:bg-gray-50 dark:hover:bg-gray-600 transition">
+                            <Bars3Icon className="h-6 w-6" />
+                        </button>
+                        {isMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden animate-fade-in">
+                                <button onClick={toggleSelectionMode} className="w-full text-left px-4 py-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center">
+                                    <CheckIcon className="h-5 w-5 mr-2 text-brand-purple"/>
+                                    {selectionMode ? 'Quitter le mode sélection' : 'Gérer / Sélectionner'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <Button onClick={onCreateNew}>
+                        <PlusIcon className="h-5 w-5 sm:mr-2"/>
+                        <span className="hidden sm:inline">Créer</span>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Selection Actions Toolbar */}
+            {selectionMode && (
+                 <div className="mb-6 bg-brand-purple/10 border border-brand-purple/20 p-4 rounded-lg flex flex-wrap items-center justify-between gap-4 animate-fade-in">
+                    <span className="font-semibold text-brand-purple">{selectedScriptIds.size} sélectionné(s)</span>
+                    <div className="flex space-x-2">
+                        <button onClick={handleDeleteSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
+                            <TrashIcon className="h-4 w-4 mr-1 sm:mr-2"/> Supprimer
+                        </button>
+                        <button onClick={handleShareSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
+                            <ShareIcon className="h-4 w-4 mr-1 sm:mr-2"/> Partager
+                        </button>
+                        <button onClick={handleExportSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
+                            <ArrowDownTrayIcon className="h-4 w-4 mr-1 sm:mr-2"/> Exporter
+                        </button>
+                        {selectedScriptIds.size === 1 && (
+                            <button onClick={handleEditSelected} className="flex items-center px-3 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-800 transition text-sm">
+                                <PencilSquareIcon className="h-4 w-4 mr-1 sm:mr-2"/> Modifier
+                            </button>
+                        )}
+                    </div>
+                 </div>
+            )}
+
+            {scripts.length === 0 ? (
+                <div className="flex-grow flex items-center justify-center text-center text-gray-500 dark:text-gray-400">
+                    <p>Vous n'avez pas encore de script. <br/> Cliquez sur "Créer" pour commencer !</p>
+                </div>
+            ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
+                {scripts.map(script => (
+                    <div 
+                        key={script.id} 
+                        onClick={(e) => handleCardClick(script, e)} 
+                        className={`relative bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all group flex flex-col ${selectionMode && selectedScriptIds.has(script.id) ? 'ring-2 ring-brand-purple transform scale-95' : 'hover:-translate-y-1'}`}
+                    >
+                         {!selectionMode && (
+                            <button
+                                onClick={(e) => handleOpenShareModal(script, e)}
+                                className="absolute top-2 right-2 z-20 p-2 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/80 dark:hover:bg-gray-900/80"
+                                title="Partager le script"
+                            >
+                                <ShareIcon className="h-4 w-4 text-gray-800 dark:text-gray-200" />
+                            </button>
+                        )}
+                        {selectionMode && (
+                            <div className="absolute top-2 left-2 z-10">
+                                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedScriptIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'bg-white/50 border-gray-400'}`}>
+                                    {selectedScriptIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white" />}
+                                </div>
+                            </div>
+                        )}
+                        <div className="aspect-video bg-gradient-to-br from-brand-purple to-brand-blue rounded-md mb-4 flex items-center justify-center overflow-hidden relative">
+                           {script.generatedThumbnail ? (
+                               <img src={`data:image/png;base64,${script.generatedThumbnail}`} alt="Thumbnail" className="w-full h-full object-cover" />
+                           ) : (
+                               <h3 className="text-white font-bold text-lg p-2 text-center select-none">{script.title}</h3>
+                           )}
+                        </div>
+                        <p className="font-semibold truncate group-hover:text-brand-purple select-none">{script.title}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-auto pt-2 select-none">Créé le: {new Date(script.createdAt).toLocaleDateString()}</p>
+                    </div>
+                ))}
+            </div>
+            )}
+        </div>
+    );
+};
+
+// Generator Screen
+const GeneratorScreen: React.FC<{ 
+    activeScript: Script | null, 
+    onUpdateScript: (s: Script, navigate?: boolean) => void, 
+    user: User, 
+    onUpdateUser: (u: User) => void
+}> = ({ activeScript, onUpdateScript, user, onUpdateUser }) => {
+    const [topic, setTopic] = useState('');
+    const [tone, setTone] = useState('Engaging');
+    const [format, setFormat] = useState<'<60s' | '3-5min' | '8-15min'>('3-5min');
+    const [isLoading, setIsLoading] = useState(false);
+
+    // State for the manual section form
+    const [newSectionTitle, setNewSectionTitle] = useState('');
+    const [newSectionContent, setNewSectionContent] = useState('');
+    const [newSectionVisualNote, setNewSectionVisualNote] = useState('');
+    const [newSectionTime, setNewSectionTime] = useState(30);
+    const [newSectionRhythm, setNewSectionRhythm] = useState<'normal' | 'slow' | 'intense'>('normal');
+
+    useEffect(() => {
+      if (activeScript) {
+        setTopic(activeScript.topic);
+        setTone(activeScript.tone);
+        setFormat(activeScript.format);
+      }
+    }, [activeScript]);
+
+
+    const handleGenerate = async () => {
+        if (!topic || user.generationsLeft <= 0) {
+            alert(user.generationsLeft <= 0 ? "Vous n'avez plus de générations. Rechargez via la page Compte." : "Veuillez entrer un sujet.");
+            return;
+        }
+
+        setIsLoading(true);
+        const result = await geminiService.generateScript(topic, tone, format, user.youtubeUrl);
+        setIsLoading(false);
+
+        if (result) {
+            const newScript: Script = {
+                ...activeScript!,
+                id: activeScript?.id || `script_${Date.now()}`,
+                title: result.title || topic,
+                topic,
+                tone,
+                format,
+                sections: result.sections || [],
+                createdAt: activeScript?.createdAt || new Date().toISOString(),
+                youtubeDescription: result.youtubeDescription,
+                srtFile: result.srtFile
+            };
+            onUpdateScript(newScript, true);
+            onUpdateUser({ ...user, generationsLeft: user.generationsLeft - 1 });
+        } else {
+            alert("La génération du script a échoué. Veuillez réessayer.");
+        }
+    };
+
+    const handleAddSection = () => {
+        if (!activeScript) {
+            alert("Veuillez d'abord générer ou sélectionner un script.");
+            return;
+        }
+
+        if (!newSectionTitle || !newSectionContent) {
+            alert("Le titre et le contenu de la section sont obligatoires.");
+            return;
+        }
+
+        const newSection: ScriptSection = {
+            id: `section_${Date.now()}`,
+            title: newSectionTitle,
+            content: newSectionContent,
+            visualNote: newSectionVisualNote,
+            estimatedTime: newSectionTime,
+            rhythm: newSectionRhythm,
+        };
+
+        const updatedScript = {
+            ...activeScript,
+            sections: [...activeScript.sections, newSection],
+        };
+
+        onUpdateScript(updatedScript);
+
+        // Reset form fields
+        setNewSectionTitle('');
+        setNewSectionContent('');
+        setNewSectionVisualNote('');
+        setNewSectionTime(30);
+        setNewSectionRhythm('normal');
+    };
+    
+    const handleSectionChange = (sectionId: string, field: keyof Omit<ScriptSection, 'id' | 'generatedImage'>, value: string | number) => {
+        if (!activeScript) return;
+
+        const updatedSections = activeScript.sections.map(section => {
+            if (section.id === sectionId) {
+                const updatedValue = field === 'estimatedTime' ? parseInt(String(value), 10) || 0 : value;
+                return { ...section, [field]: updatedValue };
+            }
+            return section;
+        });
+
+        onUpdateScript({ ...activeScript, sections: updatedSections });
+    };
+
+    const handleDeleteSection = (sectionId: string) => {
+        if (!activeScript) return;
+
+        const updatedSections = activeScript.sections.filter(section => section.id !== sectionId);
+        onUpdateScript({ ...activeScript, sections: updatedSections });
+    };
+
+    const handleSaveVersion = () => {
+        if (!activeScript) return;
+
+        const newVersion: ScriptVersion = {
+            timestamp: new Date().toISOString(),
+            sections: JSON.parse(JSON.stringify(activeScript.sections)), // Deep copy
+            title: activeScript.title,
+            youtubeDescription: activeScript.youtubeDescription,
+            srtFile: activeScript.srtFile,
+        };
+
+        const updatedScript = {
+            ...activeScript,
+            versions: [...(activeScript.versions || []), newVersion],
+        };
+        onUpdateScript(updatedScript);
+        alert("Version sauvegardée !");
+    };
+
+    const handleRestoreVersion = (version: ScriptVersion) => {
+        if (!activeScript || !window.confirm("Restaurer cette version écrasera les modifications actuelles. Continuer ?")) return;
+
+        const updatedScript = {
+            ...activeScript,
+            title: version.title,
+            sections: version.sections,
+            youtubeDescription: version.youtubeDescription,
+            srtFile: version.srtFile,
+        };
+        onUpdateScript(updatedScript);
+        alert("Version restaurée !");
+    };
+    
+    if (!activeScript) return <div className="p-8 text-center">Sélectionnez ou créez un script pour commencer.</div>;
+
+    return (
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+            {/* Left Sidebar */}
+            <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-lg p-4 flex flex-col overflow-y-auto">
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold">Configuration Créative</h2>
+                    <div>
+                        <label className="font-semibold text-sm">Sujet de la vidéo</label>
+                        <input type="text" value={topic} onChange={e => setTopic(e.target.value)} placeholder="Ex: Les secrets de l'algorithme YouTube" className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm"/>
+                    </div>
+                    <div>
+                        <label className="font-semibold text-sm">Ton</label>
+                        <select value={tone} onChange={e => setTone(e.target.value)} className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
+                            <option>Humoristique</option>
+                            <option>Sérieux</option>
+                            <option>Énergique</option>
+                            <option>Éducatif</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="font-semibold text-sm">Format</label>
+                         <select value={format} onChange={e => setFormat(e.target.value as any)} className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
+                            <option value="<60s">Short / Reel (&lt;60s)</option>
+                            <option value="3-5min">Vidéo courte (3-5min)</option>
+                            <option value="8-15min">Vidéo standard (8-15min)</option>
+                        </select>
+                    </div>
+                     <Button onClick={handleGenerate} isLoading={isLoading}>Générer le Script</Button>
+                </div>
+
+                <hr className="border-gray-200 dark:border-gray-600 my-6" />
+                
+                {/* Version History */}
+                <div className="space-y-4">
+                    <h3 className="text-lg font-bold">Historique des versions</h3>
+                     <Button onClick={handleSaveVersion} variant="secondary">Sauvegarder la version actuelle</Button>
+                     <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {(activeScript.versions || []).slice().reverse().map(version => (
+                            <div key={version.timestamp} className="text-sm p-2 bg-gray-100 dark:bg-gray-700 rounded-md flex justify-between items-center">
+                                <span>{new Date(version.timestamp).toLocaleString()}</span>
+                                <button onClick={() => handleRestoreVersion(version)} className="text-xs font-semibold text-brand-blue hover:underline">Restaurer</button>
+                            </div>
+                        ))}
+                     </div>
+                </div>
+
+                <hr className="border-gray-200 dark:border-gray-600 my-6" />
+
+                <div className="space-y-4">
+                    <h3 className="text-lg font-bold">Ajouter une section manuellement</h3>
+                    <div>
+                        <label className="font-semibold text-sm">Titre</label>
+                        <input type="text" value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} placeholder="Titre de la section" className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm"/>
+                    </div>
+                     <div>
+                        <label className="font-semibold text-sm">Contenu</label>
+                        <textarea value={newSectionContent} onChange={e => setNewSectionContent(e.target.value)} placeholder="Contenu parlé..." rows={4} className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm"/>
+                    </div>
+                     <div>
+                        <label className="font-semibold text-sm">Note visuelle</label>
+                        <input type="text" value={newSectionVisualNote} onChange={e => setNewSectionVisualNote(e.target.value)} placeholder="Description B-roll..." className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm"/>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="font-semibold text-sm">Durée (sec)</label>
+                            <input type="number" value={newSectionTime} onChange={e => setNewSectionTime(Number(e.target.value))} className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm"/>
+                        </div>
+                        <div>
+                            <label className="font-semibold text-sm">Rythme</label>
+                            <select value={newSectionRhythm} onChange={e => setNewSectionRhythm(e.target.value as any)} className="w-full mt-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm">
+                                <option value="normal">Normal</option>
+                                <option value="slow">Lent</option>
+                                <option value="intense">Intense</option>
+                            </select>
+                        </div>
+                    </div>
+                    <Button onClick={handleAddSection} variant="secondary" disabled={!activeScript}>
+                        Ajouter la section
+                    </Button>
+                </div>
+            </div>
+            
+            {/* Center Editor */}
+            <div className="lg:col-span-9 bg-white dark:bg-gray-800 rounded-lg p-4 flex flex-col overflow-y-auto">
+                <input 
+                    type="text"
+                    value={activeScript.title}
+                    onChange={(e) => onUpdateScript({...activeScript, title: e.target.value})}
+                    className="text-2xl font-bold mb-4 w-full bg-transparent focus:bg-gray-100 dark:focus:bg-gray-700 rounded-md p-2 -ml-2"
+                />
+                 {activeScript.sections.map((section) => (
+                    <div key={section.id} className="mb-6 p-4 border rounded-lg border-gray-200 dark:border-gray-700 space-y-3 animate-fade-in">
+                        <div className="flex justify-between items-center">
+                            <input
+                                type="text"
+                                value={section.title}
+                                onChange={(e) => handleSectionChange(section.id, 'title', e.target.value)}
+                                className="text-xl font-bold bg-gray-100 dark:bg-gray-700 rounded-md p-2 w-full focus:ring-2 focus:ring-brand-purple focus:outline-none"
+                                placeholder="Titre de la section"
+                            />
+                            <button onClick={() => handleDeleteSection(section.id)} className="ml-4 text-gray-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-500/10" title="Supprimer la section">
+                                <XMarkIcon className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-semibold text-gray-500 dark:text-gray-400">Contenu</label>
+                            <textarea
+                                value={section.content}
+                                onChange={(e) => handleSectionChange(section.id, 'content', e.target.value)}
+                                rows={6}
+                                className="w-full mt-1 bg-gray-100 dark:bg-gray-700 rounded-md p-2 text-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-brand-purple focus:outline-none"
+                                placeholder="Contenu parlé..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-semibold text-gray-500 dark:text-gray-400">Note visuelle</label>
+                            <input
+                                type="text"
+                                value={section.visualNote}
+                                onChange={(e) => handleSectionChange(section.id, 'visualNote', e.target.value)}
+                                className="w-full mt-1 bg-gray-100 dark:bg-gray-700 rounded-md p-2 text-sm italic focus:ring-2 focus:ring-brand-purple focus:outline-none"
+                                placeholder="Description B-roll..."
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm pt-2">
+                            <div>
+                                <label className="font-semibold text-gray-500 dark:text-gray-400">Durée (sec)</label>
+                                <input
+                                    type="number"
+                                    value={section.estimatedTime}
+                                    onChange={(e) => handleSectionChange(section.id, 'estimatedTime', e.target.value)}
+                                    className="w-24 mt-1 bg-gray-100 dark:bg-gray-700 rounded-md p-2 focus:ring-2 focus:ring-brand-purple focus:outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="font-semibold text-gray-500 dark:text-gray-400">Rythme</label>
+                                <select
+                                    value={section.rhythm}
+                                    onChange={(e) => handleSectionChange(section.id, 'rhythm', e.target.value as any)}
+                                    className="w-32 mt-1 bg-gray-100 dark:bg-gray-700 rounded-md p-2 border-transparent focus:ring-2 focus:ring-brand-purple focus:outline-none"
+                                >
+                                    <option value="normal">Normal</option>
+                                    <option value="slow">Lent</option>
+                                    <option value="intense">Intense</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
+const VideoGenerationModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    script: Script;
+}> = ({ isOpen, onClose, script }) => {
+    const [apiKeyReady, setApiKeyReady] = useState(false);
+    const [generationState, setGenerationState] = useState<{status: 'idle' | 'generating' | 'success' | 'error', message: string, url?: string}>({status: 'idle', message: ''});
+
+    useEffect(() => {
+        if (isOpen) {
+            (async () => {
+                const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
+                setApiKeyReady(hasKey);
+            })();
+        } else {
+            // Reset state on close
+            setGenerationState({status: 'idle', message: ''});
+        }
+    }, [isOpen]);
+
+    const handleSelectKey = async () => {
+        await (window as any).aistudio?.openSelectKey();
+        // Assume key selection is successful and trigger a re-check/re-render
+        const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
+        setApiKeyReady(hasKey);
+    };
+
+    const handleGenerate = async () => {
+        const prompt = `A dynamic and engaging YouTube video about "${script.topic}", with the title "${script.title}".`;
+        
+        try {
+            setGenerationState({ status: 'generating', message: 'Starting...' });
+            const videoUrl = await geminiService.generateVideo(prompt, (message) => {
+                setGenerationState(prev => ({ ...prev, message }));
+            });
+
+            if (videoUrl) {
+                setGenerationState({ status: 'success', message: 'Video generated successfully!', url: videoUrl });
+            } else {
+                throw new Error("Video generation failed to return a URL.");
+            }
+        } catch (error: any) {
+            let message = error.message;
+            if (message.includes("Requested entity was not found")) {
+                message = "API Key error. Please re-select your API key and ensure billing is enabled.";
+                setApiKeyReady(false); // Force re-selection
+            }
+            setGenerationState({ status: 'error', message });
+        }
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Génération Vidéo IA (PRO+)">
+            <div className="space-y-4">
+                {generationState.status === 'success' && generationState.url ? (
+                    <div>
+                        <p className="mb-4 text-green-600 dark:text-green-400">{generationState.message}</p>
+                        <video controls src={generationState.url} className="w-full rounded-lg"></video>
+                    </div>
+                ) : generationState.status === 'generating' ? (
+                     <div className="text-center p-8 space-y-4">
+                        <div className="flex items-center justify-center">
+                            <svg className="animate-spin h-8 w-8 text-brand-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </div>
+                        <p className="font-semibold text-lg">Génération en cours...</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{generationState.message}</p>
+                     </div>
+                ) : (
+                    <>
+                        {!apiKeyReady ? (
+                             <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-lg space-y-3">
+                                <h4 className="font-bold">Action Requise</h4>
+                                <p className="text-sm">Pour générer des vidéos avec le modèle Veo, vous devez sélectionner un projet avec la facturation activée.</p>
+                                <p className="text-xs">Pour plus d'informations, consultez la <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noopener noreferrer" className="underline">documentation sur la facturation</a>.</p>
+                                <Button onClick={handleSelectKey}>Sélectionner une Clé API</Button>
+                            </div>
+                        ) : (
+                            <div className="text-center space-y-4">
+                                <p>Prêt à transformer votre script en vidéo ?</p>
+                                <Button onClick={handleGenerate}>Lancer la génération</Button>
+                            </div>
+                        )}
+                        {generationState.status === 'error' && (
+                             <p className="mt-4 text-red-600 dark:text-red-400 text-sm p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                <strong>Erreur:</strong> {generationState.message}
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
+        </Modal>
+    );
+};
+
+
+// Optimizer Screen
+const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (s: Script) => void, user: User, onNavigateAccount: () => void }> = ({ activeScript, onUpdateScript, user, onNavigateAccount }) => {
+    const [currentSection, setCurrentSection] = useState<ScriptSection | null>(null);
+    const [isLoadingImage, setIsLoadingImage] = useState(false);
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const [fontSize, setFontSize] = useState(16); // in pixels
+    const [selectedVoice, setSelectedVoice] = useState('Kore');
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+    // Pro+ States
+    const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+    const [isRepurposing, setIsRepurposing] = useState(false);
+    const [repurposedContent, setRepurposedContent] = useState<RepurposedContent | null>(null);
+    const [activeProTab, setActiveProTab] = useState<'assistant' | 'repurpose'>('assistant');
+    
+    // AI Chat Assistant States
+    const [chatInstance, setChatInstance] = useState<Chat | null>(null);
+    const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+    const [currentMessage, setCurrentMessage] = useState('');
+    const [isChatLoading, setIsChatLoading] = useState(false);
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+
+
+    const handleZoomIn = () => setFontSize(prev => Math.min(prev + 2, 32));
+    const handleZoomOut = () => setFontSize(prev => Math.max(prev - 2, 12));
+    
+    useEffect(() => {
+        if(activeScript && activeScript.sections.length > 0) {
+            if (!currentSection || !activeScript.sections.some(s => s.id === currentSection.id)) {
+                 setCurrentSection(activeScript.sections[0]);
+            }
+        } else {
+            setCurrentSection(null);
+        }
+    }, [activeScript, currentSection]);
+    
+    // Initialize or re-initialize chat when activeScript changes
+    useEffect(() => {
+        if (activeScript && user.isProPlus) {
+            const scriptContext = `Titre: ${activeScript.title}\nSujet: ${activeScript.topic}\nContenu: ${activeScript.sections.map(s => s.content).join('\n').substring(0, 2000)}...`;
+            const chat = geminiService.startChatSession(scriptContext);
+            setChatInstance(chat);
+            setChatHistory([{
+                role: 'model',
+                content: "Bonjour ! Je suis votre assistant WySlider. Comment puis-je vous aider à brainstormer, répondre à vos questions ou améliorer votre script ?"
+            }]);
+        }
+    }, [activeScript, user.isProPlus]);
+    
+     // Auto-scroll chat to bottom
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [chatHistory]);
+
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!currentMessage.trim() || !chatInstance || isChatLoading) return;
+
+        const userMessage: ChatMessage = { role: 'user', content: currentMessage };
+        setChatHistory(prev => [...prev, userMessage]);
+        setCurrentMessage('');
+        setIsChatLoading(true);
+
+        const response = await geminiService.sendMessageToChat(chatInstance, currentMessage);
+        
+        const modelMessage: ChatMessage = { role: 'model', content: response };
+        setChatHistory(prev => [...prev, modelMessage]);
+        setIsChatLoading(false);
+    };
+
+    const handleGenerateImage = async () => {
+        if (!currentSection || !activeScript) return;
+        setIsLoadingImage(true);
+        const imageB64 = await geminiService.generateImageForSection(currentSection.visualNote);
+        setIsLoadingImage(false);
+        if (imageB64) {
+            const updatedSection = { ...currentSection, generatedImage: imageB64 };
+            const updatedSections = activeScript.sections.map(s => 
+                s.id === currentSection.id ? updatedSection : s
+            );
+            onUpdateScript({ ...activeScript, sections: updatedSections });
+            setCurrentSection(updatedSection);
+        }
+    };
+
+    const handleGenerateThumbnail = async () => {
+        if (!user.isProPlus) {
+            if(confirm("Générer une miniature est une fonctionnalité PRO+. Voulez-vous voir les offres ?")) onNavigateAccount();
+            return;
+        }
+        if (!activeScript) return;
+        setIsGeneratingThumbnail(true);
+        const thumb = await geminiService.generateThumbnail(activeScript.title, activeScript.topic);
+        if (thumb) {
+            onUpdateScript({ ...activeScript, generatedThumbnail: thumb });
+        }
+        setIsGeneratingThumbnail(false);
+    }
+
+    const handleRepurpose = async () => {
+        if (!user.isProPlus) {
+            if(confirm("Le pack '1 script = 5 formats' est une fonctionnalité PRO+. Voulez-vous voir les offres ?")) onNavigateAccount();
+            return;
+        }
+        if (!activeScript) return;
+        setIsRepurposing(true);
+        const fullScriptText = activeScript.sections.map(s => s.content).join(" ");
+        const content = await geminiService.repurposeContent(fullScriptText);
+        setRepurposedContent(content);
+        setIsRepurposing(false);
+    }
+    
+    const playAudio = async (text: string) => {
+        setIsPlayingAudio(true);
+        try {
+            const audioB64 = await geminiService.generateSpeech(text, selectedVoice);
+            if (audioB64) {
+                const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const binaryString = window.atob(audioB64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                const audioBuffer = await audioContext.decodeAudioData(bytes.buffer);
+                
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start();
+                source.onended = () => setIsPlayingAudio(false);
+            } else {
+                setIsPlayingAudio(false);
+            }
+        } catch (e) {
+            console.error("Audio playback error:", e);
+            alert("Could not play audio. The generated data might be invalid.");
+            setIsPlayingAudio(false);
+        }
+    }
+
+
+    const handleVideoGen = () => {
+        if (!user.isProPlus) {
+            if(confirm("La génération vidéo complète est une fonctionnalité PRO+. Voir les offres ?")) onNavigateAccount();
+        } else {
+            setIsVideoModalOpen(true);
+        }
+    }
+
+    const handleExportSRT = () => {
+        if (!activeScript || !activeScript.srtFile) {
+            alert("Aucun fichier SRT disponible pour ce script. Essayez de le régénérer si besoin.");
+            return;
+        }
+
+        const blob = new Blob([activeScript.srtFile], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fileName = activeScript.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${fileName || 'script'}.srt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    if (!activeScript) return <div className="p-8 text-center">Sélectionnez un script à optimiser.</div>;
+
+    const totalTime = activeScript.sections.reduce((acc, section) => acc + section.estimatedTime, 0);
+
+    const rhythmClasses = (rhythm: 'normal' | 'slow' | 'intense') => {
+        switch (rhythm) {
+            case 'intense': return 'bg-red-500 hover:bg-red-600';
+            case 'slow': return 'bg-orange-500 hover:bg-orange-600';
+            case 'normal':
+            default: return 'bg-green-500 hover:bg-green-600';
+        }
+    };
+
+    return (
+        <div className="p-4 h-full flex flex-col">
+             {activeScript && <VideoGenerationModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} script={activeScript} />}
+            <div className="flex justify-between items-center mb-4 flex-shrink-0 flex-wrap gap-4">
+                <h1 className="text-2xl font-bold truncate">{activeScript.title} - Optimisation</h1>
+                 <div className="flex items-center space-x-2 flex-wrap gap-2">
+                    <Button onClick={handleExportSRT} variant="outline" className="text-sm !py-2 !px-3">
+                        <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                        Exporter SRT
+                    </Button>
+                    <select
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        className="px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-md text-sm font-semibold border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"
+                    >
+                        {['Kore', 'Puck', 'Charon', 'Zephyr', 'Fenrir'].map(voice => (
+                            <option key={voice} value={voice}>{voice}</option>
+                        ))}
+                    </select>
+                    <Button onClick={() => playAudio(currentSection?.content || '')} disabled={isPlayingAudio} className="!py-2 !px-3">
+                        <PlayIcon className="h-5 w-5 mr-2" />
+                        {isPlayingAudio ? 'Lecture...' : 'Lecture IA'}
+                    </Button>
+                </div>
+            </div>
+            <div className="flex-grow grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
+                
+                {/* Main Script Reader */}
+                <div className="lg:col-span-6 flex flex-col bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm min-h-[500px] lg:min-h-0">
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-xl font-semibold truncate pr-4">{currentSection?.title}</h2>
+                        <div className="flex items-center space-x-1 flex-shrink-0">
+                            <button onClick={handleZoomOut} disabled={fontSize <= 12} className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                <MinusIcon className="h-4 w-4" />
+                            </button>
+                            <span className="text-sm text-gray-500 w-12 text-center">{Math.round(fontSize / 16 * 100)}%</span>
+                            <button onClick={handleZoomIn} disabled={fontSize >= 32} className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-50">
+                                <PlusIcon className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Ligne de Temps du Rythme</h3>
+                        <div className="flex w-full h-6 rounded-full overflow-hidden shadow-inner bg-gray-200 dark:bg-gray-700">
+                            {totalTime > 0 && activeScript.sections.map(sec => (
+                                <button
+                                    key={sec.id}
+                                    onClick={() => setCurrentSection(sec)}
+                                    className={`h-full transition-all duration-300 ${rhythmClasses(sec.rhythm)} ${currentSection?.id === sec.id ? 'ring-2 ring-offset-2 ring-brand-purple ring-offset-white dark:ring-offset-gray-800' : ''}`}
+                                    style={{ width: `${(sec.estimatedTime / totalTime) * 100}%` }}
+                                    title={`${sec.title} (~${sec.estimatedTime}s)`}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="overflow-y-auto mb-4 flex-grow prose dark:prose-invert max-w-none">
+                      <p style={{ fontSize: `${fontSize}px`, lineHeight: '1.6' }}>{currentSection?.content}</p>
+                    </div>
+                    <div className="flex-shrink-0 flex overflow-x-auto pb-2 space-x-2">
+                        {activeScript.sections.map((sec, i) => (
+                           <button key={i} onClick={() => setCurrentSection(sec)} className={`flex-shrink-0 px-3 py-1 rounded-full text-sm whitespace-nowrap ${currentSection?.id === sec.id ? 'bg-brand-purple text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{sec.title}</button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Visuals Column */}
+                <div className="lg:col-span-3 flex flex-col space-y-4 overflow-y-auto">
+                    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm">
+                        <h3 className="font-semibold mb-2">Notes de Montage & Visuels</h3>
+                        <p className="text-sm italic text-gray-600 dark:text-gray-400 mb-4">{currentSection?.visualNote}</p>
+                        <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center mb-4 overflow-hidden">
+                            {isLoadingImage ? <div className="text-sm animate-pulse">Génération en cours...</div> : (
+                                currentSection?.generatedImage ? 
+                                <img src={`data:image/png;base64,${currentSection.generatedImage}`} alt="Generated visual" className="w-full h-full object-cover"/>
+                                : <div className="text-center p-4"><PhotoIcon className="h-8 w-8 mx-auto text-gray-400 mb-2"/><p className="text-sm text-gray-500">Aucune image</p></div>
+                            )}
+                        </div>
+                        <Button onClick={handleGenerateImage} isLoading={isLoadingImage} variant="secondary" className="w-full text-sm">
+                            <PhotoIcon className="h-4 w-4 mr-2"/>
+                            Générer visuel IA
+                        </Button>
+                    </div>
+                    
+                    {/* Thumbnail Generator (Pro+) */}
+                    <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow-sm border border-transparent relative overflow-hidden">
+                        {!user.isProPlus && <div className="absolute top-0 right-0 bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-bl-md">PRO+</div>}
+                        <h3 className="font-semibold mb-2 flex items-center">Miniature YouTube</h3>
+                        <div className="aspect-video bg-gray-200 dark:bg-gray-700 rounded-md flex items-center justify-center mb-4 overflow-hidden">
+                             {isGeneratingThumbnail ? <div className="text-sm animate-pulse">Création...</div> : (
+                                activeScript.generatedThumbnail ? 
+                                <img src={`data:image/png;base64,${activeScript.generatedThumbnail}`} alt="Generated Thumbnail" className="w-full h-full object-cover"/>
+                                : <div className="text-center p-4"><PhotoIcon className="h-8 w-8 mx-auto text-gray-400 mb-2"/><p className="text-sm text-gray-500">Pas de miniature</p></div>
+                            )}
+                        </div>
+                        <Button onClick={handleGenerateThumbnail} isLoading={isGeneratingThumbnail} variant="outline" className={`w-full text-sm ${!user.isProPlus ? 'opacity-60' : ''}`}>
+                            <DiamondIcon className="h-4 w-4 mr-2"/>
+                            Générer Miniature
+                        </Button>
+                    </div>
+                </div>
+
+                {/* PRO+ Tools Column */}
+                <div className="lg:col-span-3 flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border-2 border-amber-500/20">
+                    <div className="bg-gradient-to-r from-amber-400/10 to-orange-500/10 p-3 border-b border-amber-500/20 flex justify-between items-center">
+                         <h2 className="font-bold text-amber-600 dark:text-amber-500 flex items-center"><DiamondIcon className="h-5 w-5 mr-2"/>Outils PRO+</h2>
+                         {!user.isProPlus && <button onClick={onNavigateAccount} className="text-xs bg-amber-500 text-white px-2 py-1 rounded hover:bg-amber-600">Upgrade</button>}
+                    </div>
+                    
+                    {/* Tabs */}
+                    <div className="flex border-b border-gray-200 dark:border-gray-700">
+                        <button 
+                            onClick={() => setActiveProTab('assistant')} 
+                            className={`flex-1 py-2 text-sm font-medium ${activeProTab === 'assistant' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        >
+                            AI Assistant
+                        </button>
+                        <button 
+                            onClick={() => setActiveProTab('repurpose')} 
+                            className={`flex-1 py-2 text-sm font-medium ${activeProTab === 'repurpose' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                        >
+                            Repurpose
+                        </button>
+                    </div>
+
+                    <div className="p-1 flex-grow flex flex-col overflow-hidden">
+                        {activeProTab === 'assistant' && (
+                            <div className="flex-grow flex flex-col h-full">
+                                <div ref={chatContainerRef} className="flex-grow overflow-y-auto p-3 space-y-4">
+                                    {chatHistory.map((msg, index) => (
+                                        <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-xs lg:max-w-sm rounded-lg px-3 py-2 ${msg.role === 'user' ? 'bg-brand-blue text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>
+                                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isChatLoading && (
+                                         <div className="flex justify-start">
+                                            <div className="max-w-xs lg:max-w-sm rounded-lg px-3 py-2 bg-gray-200 dark:bg-gray-700">
+                                                 <div className="flex items-center space-x-1">
+                                                    <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
+                                                    <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
+                                                    <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 dark:border-gray-700 flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        value={currentMessage}
+                                        onChange={(e) => setCurrentMessage(e.target.value)}
+                                        placeholder="Posez une question..."
+                                        className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-brand-purple focus:outline-none border-transparent"
+                                        disabled={!user.isProPlus || isChatLoading}
+                                    />
+                                    <button type="submit" className="p-2 rounded-full bg-brand-purple text-white hover:bg-purple-700 transition disabled:opacity-50" disabled={!user.isProPlus || isChatLoading}>
+                                        <PaperAirplaneIcon className="h-5 w-5"/>
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {activeProTab === 'repurpose' && (
+                            <div className="space-y-4 p-3 overflow-y-auto">
+                                <p className="text-xs text-gray-500">Transformez ce script en 5 formats instantanément.</p>
+                                {repurposedContent ? (
+                                    <div className="space-y-3">
+                                        <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
+                                            <h5 className="font-bold text-xs uppercase text-gray-500 mb-1">TikTok / Reel</h5>
+                                            <p className="text-xs line-clamp-3">{repurposedContent.tiktokScript}</p>
+                                        </div>
+                                        <div className="bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
+                                            <h5 className="font-bold text-xs uppercase text-gray-500 mb-1">Tweet</h5>
+                                            <p className="text-xs line-clamp-3">{repurposedContent.twitterThread[0]}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <RefreshIcon className="h-10 w-10 mx-auto mb-2 opacity-50"/>
+                                        <p>Générez du contenu multi-plateforme.</p>
+                                    </div>
+                                )}
+                                <Button onClick={handleRepurpose} isLoading={isRepurposing} className={`w-full ${!user.isProPlus ? 'opacity-60' : ''}`}>
+                                    <RefreshIcon className="h-4 w-4 mr-2"/>
+                                    Générer Pack
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                    
+                     <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+                         <Button onClick={handleVideoGen} variant="secondary" className={`w-full text-sm ${!user.isProPlus ? 'opacity-60' : ''}`}>
+                             <VideoIcon className="h-4 w-4 mr-2"/>
+                             Générer Vidéo (Avatar)
+                         </Button>
+                     </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+
+
+export const Workspace: React.FC<{
+    user: User;
+    onUpdateUser: (u: User) => void;
+    onNavigateAccount: () => void;
+}> = ({ user, onUpdateUser, onNavigateAccount }) => {
+  const [activeScreen, setActiveScreen] = useState<AppScreen>(AppScreen.Dashboard);
+  const [scripts, setScripts] = useState<Script[]>(() => {
+    const saved = localStorage.getItem('wyslider_scripts');
+    if (!saved) {
+        return [];
+    }
+    try {
+        return JSON.parse(saved);
+    } catch (error) {
+        console.error("Failed to parse scripts from localStorage", error);
+        // Clear corrupted data
+        localStorage.removeItem('wyslider_scripts');
+        return [];
+    }
+  });
+  const [activeScript, setActiveScript] = useState<Script | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    localStorage.setItem('wyslider_scripts', JSON.stringify(scripts));
+  }, [scripts]);
+
+  const handleUpdateScript = useCallback((updatedScript: Script, navigate: boolean = false) => {
+    setScripts(prev => {
+        const exists = prev.some(s => s.id === updatedScript.id);
+        if (exists) {
+            return prev.map(s => s.id === updatedScript.id ? updatedScript : s);
+        }
+        return [...prev, updatedScript];
+    });
+    setActiveScript(updatedScript);
+    if(navigate && activeScreen === AppScreen.Generator) {
+        setActiveScreen(AppScreen.Optimizer);
+    }
+  }, [activeScreen]);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+        scrollContainerRef.current.style.scrollBehavior = 'auto'; // Disable smooth scroll for immediate switch
+        scrollContainerRef.current.scrollLeft = scrollContainerRef.current.offsetWidth * activeScreen;
+        scrollContainerRef.current.style.scrollBehavior = 'smooth';
+    }
+  }, [activeScreen]);
+
+  const handleCreateNew = () => {
+    const newScript: Script = {
+      id: `script_${Date.now()}`,
+      title: 'Nouveau Script Sans Titre',
+      topic: '',
+      tone: 'Engaging',
+      format: '3-5min',
+      sections: [],
+      createdAt: new Date().toISOString(),
+      versions: [],
+    };
+    setActiveScript(newScript);
+    setActiveScreen(AppScreen.Generator);
+  };
+
+  const handleEditScript = (script: Script) => {
+      setActiveScript(script);
+      setActiveScreen(AppScreen.Optimizer);
+  };
+
+  const handleUpdateScripts = (newScripts: Script[]) => {
+      setScripts(newScripts);
+      // If the active script was deleted, reset it
+      if (activeScript && !newScripts.find(s => s.id === activeScript.id)) {
+          setActiveScript(null);
+      }
+  }
+
+  return (
+    <div className="h-full flex flex-col">
+       <nav className="flex-shrink-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+            <div className="container mx-auto px-4 sm:px-8 flex justify-center space-x-2 sm:space-x-8">
+                <button onClick={() => setActiveScreen(AppScreen.Dashboard)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Dashboard ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Dashboard</button>
+                <button onClick={() => setActiveScreen(AppScreen.Generator)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Generator ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Générateur</button>
+                <button onClick={() => setActiveScreen(AppScreen.Optimizer)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Optimizer ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Optimiseur</button>
+            </div>
+        </nav>
+        <div ref={scrollContainerRef} className="flex-grow overflow-x-hidden flex no-scrollbar">
+            <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                 <DashboardScreen scripts={scripts} onCreateNew={handleCreateNew} onEdit={handleEditScript} onUpdateScripts={handleUpdateScripts} />
+            </div>
+             <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                 <GeneratorScreen activeScript={activeScript} onUpdateScript={handleUpdateScript} user={user} onUpdateUser={onUpdateUser} />
+            </div>
+             <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                <OptimizerScreen activeScript={activeScript} onUpdateScript={handleUpdateScript} user={user} onNavigateAccount={onNavigateAccount} />
+            </div>
+        </div>
+    </div>
+  );
+};
