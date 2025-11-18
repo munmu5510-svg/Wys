@@ -5,6 +5,7 @@ export interface User {
   youtubeUrl: string;
   generationsLeft: number;
   isProPlus?: boolean;
+  profilePicture?: string; // Base64 string
 }
 
 export interface ScriptSection {
@@ -53,10 +54,21 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface EpisodeSuggestion {
+    title: string;
+    summary: string;
+}
+
+export interface SeriesGenerationProgress {
+    episodeIndex: number;
+    status: 'waiting' | 'generating_script' | 'generating_video' | 'complete' | 'error';
+}
+
 export enum AppScreen {
   Dashboard,
   Generator,
   Optimizer,
+  SerialProd
 }
 
 export enum AuthScreen {

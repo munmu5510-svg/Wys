@@ -1,12 +1,13 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage } from '../types';
+import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage, EpisodeSuggestion, SeriesGenerationProgress } from '../types';
 import { Button } from './Button';
 import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon } from './icons';
 import { Modal } from './Modal';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
 import { APP_URL } from '../constants';
-
+import { jsPDF } from "jspdf";
 
 const ShareModal: React.FC<{
     isOpen: boolean;
@@ -32,10 +33,16 @@ const ShareModal: React.FC<{
         });
     };
 
+    const handleEmailShare = () => {
+        const subject = encodeURIComponent(`Script WySlider: ${script.title}`);
+        const body = encodeURIComponent(`Regarde ce script que j'ai créé avec WySlider :\n\n${shareUrl}\n\nSujet: ${script.topic}`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    };
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Partager votre script">
             <div className="space-y-4">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Toute personne disposant de ce lien pourra consulter une version en lecture seule de votre script.</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Partagez un lien lecture seule ou envoyez-le par email.</p>
                 <div className="flex items-center space-x-2">
                     <input 
                         type="text" 
@@ -47,6 +54,9 @@ const ShareModal: React.FC<{
                         {copyButtonText}
                     </Button>
                 </div>
+                 <Button onClick={handleEmailShare} className="w-full">
+                    Envoyer par Email
+                </Button>
             </div>
         </Modal>
     );
@@ -105,21 +115,22 @@ const DashboardScreen: React.FC<{
     };
 
     const handleShareSelected = () => {
-        const email = prompt("Entrez l'adresse e-mail pour partager les scripts :");
-        if (email) {
-            alert(`Les ${selectedScriptIds.size} scripts ont été partagés avec ${email} ! (Simulation)`);
-            setSelectionMode(false);
-            setSelectedScriptIds(new Set());
-        }
+        // Since we can't batch email easily via mailto with multiple links in a clean way,
+        // we will just create a list of titles.
+        const selectedScripts = scripts.filter(s => selectedScriptIds.has(s.id));
+        const titles = selectedScripts.map(s => `- ${s.title}`).join('\n');
+        const subject = encodeURIComponent("Mes Scripts WySlider");
+        const body = encodeURIComponent(`Voici une liste de scripts que j'ai créés :\n\n${titles}\n\n(Ouvrez l'app pour les voir en détail)`);
+        
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        
+        setSelectionMode(false);
+        setSelectedScriptIds(new Set());
     };
 
     const handleExportSelected = () => {
-         const email = prompt("Entrez votre adresse e-mail pour recevoir les fichiers (Scripts, Notes de montage, Visuels) :");
-        if (email) {
-            alert(`L'export complet (PDFs, Images, Notes) a été envoyé à ${email}. (Simulation)`);
-            setSelectionMode(false);
-            setSelectedScriptIds(new Set());
-        }
+         // Mock export to email for batch
+        alert(`L'export par lot n'est pas encore disponible. Veuillez exporter les scripts individuellement.`);
     }
 
     const handleEditSelected = () => {
@@ -182,7 +193,7 @@ const DashboardScreen: React.FC<{
                             <TrashIcon className="h-4 w-4 mr-1 sm:mr-2"/> Supprimer
                         </button>
                         <button onClick={handleShareSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
-                            <ShareIcon className="h-4 w-4 mr-1 sm:mr-2"/> Partager
+                            <ShareIcon className="h-4 w-4 mr-1 sm:mr-2"/> Partager (Email)
                         </button>
                         <button onClick={handleExportSelected} disabled={selectedScriptIds.size === 0} className="flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition text-sm">
                             <ArrowDownTrayIcon className="h-4 w-4 mr-1 sm:mr-2"/> Exporter
@@ -645,6 +656,212 @@ const VideoGenerationModal: React.FC<{
     );
 };
 
+// Serial Prod Screen
+const SerialProdScreen: React.FC<{ user: User, onUpdateUser: (u: User) => void, onNavigateAccount: () => void }> = ({ user, onUpdateUser, onNavigateAccount }) => {
+    const [concept, setConcept] = useState('');
+    const [episodeCount, setEpisodeCount] = useState(5);
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [suggestions, setSuggestions] = useState<EpisodeSuggestion[]>([]);
+    const [selectedEpisodes, setSelectedEpisodes] = useState<number[]>([]);
+    const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+    const [generationProgress, setGenerationProgress] = useState<SeriesGenerationProgress[]>([]);
+
+    const handleGenerateSuggestions = async () => {
+        if (!concept) return;
+        setIsGeneratingSuggestions(true);
+        const results = await geminiService.generateEpisodeSuggestions(concept, episodeCount);
+        setSuggestions(results);
+        setSelectedEpisodes(results.map((_, i) => i)); // Select all by default
+        setIsGeneratingSuggestions(false);
+        setStep(2);
+    };
+
+    const handleStartProduction = () => {
+        if(selectedEpisodes.length === 0) return;
+        
+        // Initialize progress for selected episodes
+        const initialProgress: SeriesGenerationProgress[] = selectedEpisodes.map(idx => ({
+            episodeIndex: idx,
+            status: 'waiting'
+        }));
+        setGenerationProgress(initialProgress);
+        setStep(3);
+
+        // Simulate production process (In a real app, this would queue backend jobs)
+        initialProgress.forEach((p, i) => {
+            setTimeout(() => {
+                updateProgress(p.episodeIndex, 'generating_script');
+                setTimeout(() => {
+                    updateProgress(p.episodeIndex, 'generating_video');
+                     setTimeout(() => {
+                        updateProgress(p.episodeIndex, 'complete');
+                    }, 4000);
+                }, 3000);
+            }, i * 2000); // Stagger start times
+        });
+    };
+
+    const updateProgress = (index: number, status: SeriesGenerationProgress['status']) => {
+        setGenerationProgress(prev => prev.map(p => p.episodeIndex === index ? { ...p, status } : p));
+    };
+
+    const toggleEpisodeSelection = (index: number) => {
+        if (selectedEpisodes.includes(index)) {
+            setSelectedEpisodes(selectedEpisodes.filter(i => i !== index));
+        } else {
+            setSelectedEpisodes([...selectedEpisodes, index]);
+        }
+    };
+
+    if (!user.isProPlus) {
+        return (
+            <div className="h-full flex items-center justify-center p-8 text-center">
+                <div className="max-w-md">
+                    <div className="mb-6 inline-block p-4 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                         <VideoIcon className="h-12 w-12 text-amber-600" />
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2">Fonctionnalité PRO+</h2>
+                    <p className="text-gray-600 dark:text-gray-400 mb-6">
+                        Serial Prod permet de générer automatiquement des séries entières de vidéos à partir d'un simple concept.
+                    </p>
+                    <Button onClick={onNavigateAccount}>Débloquer avec PRO+</Button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="p-4 sm:p-8 h-full overflow-y-auto max-w-5xl mx-auto">
+            <h1 className="text-3xl font-bold mb-2 flex items-center"><VideoIcon className="h-8 w-8 mr-3 text-brand-purple"/> Serial Prod</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8">De l'idée à la série complète, automatiquement.</p>
+
+            {/* Stepper */}
+            <div className="flex items-center mb-8 text-sm font-medium text-gray-500 dark:text-gray-400">
+                <div className={`flex items-center ${step >= 1 ? 'text-brand-purple' : ''}`}>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center border-2 mr-2 ${step >= 1 ? 'border-brand-purple bg-brand-purple text-white' : 'border-gray-300'}`}>1</span>
+                    Concept
+                </div>
+                <div className="flex-grow h-0.5 bg-gray-300 mx-4"></div>
+                <div className={`flex items-center ${step >= 2 ? 'text-brand-purple' : ''}`}>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center border-2 mr-2 ${step >= 2 ? 'border-brand-purple bg-brand-purple text-white' : 'border-gray-300'}`}>2</span>
+                    Sélection
+                </div>
+                <div className="flex-grow h-0.5 bg-gray-300 mx-4"></div>
+                <div className={`flex items-center ${step >= 3 ? 'text-brand-purple' : ''}`}>
+                    <span className={`w-8 h-8 rounded-full flex items-center justify-center border-2 mr-2 ${step >= 3 ? 'border-brand-purple bg-brand-purple text-white' : 'border-gray-300'}`}>3</span>
+                    Production
+                </div>
+            </div>
+
+            {/* Step 1: Concept */}
+            {step === 1 && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm animate-fade-in">
+                    <div className="mb-6">
+                        <label className="block text-lg font-semibold mb-2">Quel est le concept de votre série ?</label>
+                        <input 
+                            type="text" 
+                            value={concept} 
+                            onChange={e => setConcept(e.target.value)} 
+                            placeholder="Ex: Apprendre le développement web en 7 jours, La face cachée de l'Histoire..."
+                            className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-purple focus:outline-none text-lg"
+                        />
+                    </div>
+                    <div className="mb-8">
+                        <label className="block text-lg font-semibold mb-2">Nombre d'épisodes</label>
+                        <input 
+                            type="range" 
+                            min="3" 
+                            max="15" 
+                            value={episodeCount} 
+                            onChange={e => setEpisodeCount(Number(e.target.value))} 
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-brand-purple"
+                        />
+                        <div className="text-center mt-2 font-bold text-brand-purple text-xl">{episodeCount} épisodes</div>
+                    </div>
+                    <Button onClick={handleGenerateSuggestions} isLoading={isGeneratingSuggestions} className="w-full text-lg py-4">
+                        Proposer des épisodes
+                    </Button>
+                </div>
+            )}
+
+            {/* Step 2: Selection */}
+            {step === 2 && (
+                <div className="animate-fade-in">
+                    <div className="grid gap-4 mb-8">
+                        {suggestions.map((episode, index) => (
+                            <div 
+                                key={index} 
+                                onClick={() => toggleEpisodeSelection(index)}
+                                className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedEpisodes.includes(index) ? 'border-brand-purple bg-brand-purple/5' : 'border-transparent bg-white dark:bg-gray-800 hover:border-gray-300'}`}
+                            >
+                                <div className="flex items-start">
+                                    <div className={`w-6 h-6 rounded-full border-2 mr-4 flex-shrink-0 flex items-center justify-center ${selectedEpisodes.includes(index) ? 'bg-brand-purple border-brand-purple' : 'border-gray-400'}`}>
+                                        {selectedEpisodes.includes(index) && <CheckIcon className="h-4 w-4 text-white" />}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-lg">Épisode {index + 1}: {episode.title}</h3>
+                                        <p className="text-gray-600 dark:text-gray-400 mt-1">{episode.summary}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="flex space-x-4">
+                        <Button onClick={() => setStep(1)} variant="secondary">Retour</Button>
+                        <Button onClick={handleStartProduction} className="flex-grow">Lancer la production ({selectedEpisodes.length} vidéos)</Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Step 3: Production */}
+            {step === 3 && (
+                <div className="animate-fade-in space-y-6">
+                    {generationProgress.map((progress) => {
+                         const episode = suggestions[progress.episodeIndex];
+                         let statusText = '';
+                         let statusColor = 'text-gray-500';
+                         let bgColor = 'bg-gray-100 dark:bg-gray-700';
+                         
+                         switch(progress.status) {
+                             case 'waiting': statusText = 'En attente...'; break;
+                             case 'generating_script': statusText = 'Écriture du script...'; statusColor = 'text-blue-500'; break;
+                             case 'generating_video': statusText = 'Tournage (Génération vidéo)...'; statusColor = 'text-purple-500'; break;
+                             case 'complete': statusText = 'Terminé !'; statusColor = 'text-green-500'; bgColor = 'bg-green-50 dark:bg-green-900/20 border border-green-200'; break;
+                             case 'error': statusText = 'Erreur'; statusColor = 'text-red-500'; break;
+                         }
+
+                         return (
+                            <div key={progress.episodeIndex} className={`p-4 rounded-xl shadow-sm flex items-center justify-between ${bgColor}`}>
+                                <div>
+                                    <h4 className="font-bold text-lg">Épisode {progress.episodeIndex + 1}: {episode.title}</h4>
+                                    <p className={`text-sm font-medium flex items-center ${statusColor}`}>
+                                        {['generating_script', 'generating_video'].includes(progress.status) && (
+                                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        )}
+                                        {statusText}
+                                    </p>
+                                </div>
+                                {progress.status === 'complete' && (
+                                    <div className="flex space-x-2">
+                                        <button className="px-3 py-1.5 bg-white dark:bg-gray-800 rounded-lg text-sm font-medium shadow hover:bg-gray-50">Voir</button>
+                                        <button className="px-3 py-1.5 bg-brand-purple text-white rounded-lg text-sm font-medium shadow hover:bg-purple-700">Télécharger</button>
+                                    </div>
+                                )}
+                            </div>
+                         );
+                    })}
+                     <div className="text-center mt-8">
+                         <Button onClick={() => setStep(1)} variant="outline">Nouvelle série</Button>
+                     </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 
 // Optimizer Screen
 const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (s: Script) => void, user: User, onNavigateAccount: () => void }> = ({ activeScript, onUpdateScript, user, onNavigateAccount }) => {
@@ -654,6 +871,7 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
     const [fontSize, setFontSize] = useState(16); // in pixels
     const [selectedVoice, setSelectedVoice] = useState('Kore');
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'srt' | 'pdf'>('srt');
 
     // Pro+ States
     const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
@@ -799,22 +1017,78 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
         }
     }
 
-    const handleExportSRT = () => {
-        if (!activeScript || !activeScript.srtFile) {
-            alert("Aucun fichier SRT disponible pour ce script. Essayez de le régénérer si besoin.");
-            return;
-        }
+    const handleExport = () => {
+        if (!activeScript) return;
 
-        const blob = new Blob([activeScript.srtFile], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        const fileName = activeScript.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-        link.download = `${fileName || 'script'}.srt`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        if (exportFormat === 'srt') {
+             if (!activeScript.srtFile) {
+                alert("Aucun fichier SRT disponible. Générez d'abord le script.");
+                return;
+            }
+            const blob = new Blob([activeScript.srtFile], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const fileName = activeScript.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            link.download = `${fileName}.srt`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } else if (exportFormat === 'pdf') {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 20;
+            let yPos = 20;
+
+            // Title
+            doc.setFontSize(22);
+            doc.setFont("helvetica", "bold");
+            doc.text(activeScript.title, margin, yPos);
+            yPos += 15;
+
+            // Meta info
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Format: ${activeScript.format} | Ton: ${activeScript.tone}`, margin, yPos);
+            yPos += 10;
+
+            // YouTube Description
+            doc.setFontSize(14);
+            doc.setFont("helvetica", "bold");
+            doc.text("Description YouTube:", margin, yPos);
+            yPos += 7;
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            const splitDesc = doc.splitTextToSize(activeScript.youtubeDescription || "", pageWidth - 2 * margin);
+            doc.text(splitDesc, margin, yPos);
+            yPos += (splitDesc.length * 5) + 10;
+
+            // Sections
+            activeScript.sections.forEach((section, index) => {
+                if (yPos > 270) { doc.addPage(); yPos = 20; } // Simple page break check
+                
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${index + 1}. ${section.title} (${section.estimatedTime}s)`, margin, yPos);
+                yPos += 7;
+
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "italic");
+                doc.setTextColor(100);
+                doc.text(`Note Visuelle: ${section.visualNote}`, margin, yPos);
+                doc.setTextColor(0);
+                yPos += 7;
+
+                doc.setFontSize(12);
+                doc.setFont("helvetica", "normal");
+                const splitContent = doc.splitTextToSize(section.content, pageWidth - 2 * margin);
+                doc.text(splitContent, margin, yPos);
+                yPos += (splitContent.length * 6) + 10;
+            });
+
+            doc.save(`${activeScript.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);
+        }
     };
 
     if (!activeScript) return <div className="p-8 text-center">Sélectionnez un script à optimiser.</div>;
@@ -836,9 +1110,23 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
             <div className="flex justify-between items-center mb-4 flex-shrink-0 flex-wrap gap-4">
                 <h1 className="text-2xl font-bold truncate">{activeScript.title} - Optimisation</h1>
                  <div className="flex items-center space-x-2 flex-wrap gap-2">
-                    <Button onClick={handleExportSRT} variant="outline" className="text-sm !py-2 !px-3">
+                    <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                        <button 
+                            onClick={() => setExportFormat('srt')}
+                            className={`px-3 py-2 text-sm font-medium transition ${exportFormat === 'srt' ? 'bg-brand-purple text-white' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+                        >
+                            SRT
+                        </button>
+                        <button 
+                            onClick={() => setExportFormat('pdf')}
+                            className={`px-3 py-2 text-sm font-medium transition ${exportFormat === 'pdf' ? 'bg-brand-purple text-white' : 'bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
+                        >
+                            PDF
+                        </button>
+                    </div>
+                    <Button onClick={handleExport} variant="outline" className="text-sm !py-2 !px-3">
                         <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
-                        Exporter SRT
+                        Exporter
                     </Button>
                     <select
                         value={selectedVoice}
@@ -1119,6 +1407,7 @@ export const Workspace: React.FC<{
                 <button onClick={() => setActiveScreen(AppScreen.Dashboard)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Dashboard ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Dashboard</button>
                 <button onClick={() => setActiveScreen(AppScreen.Generator)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Generator ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Générateur</button>
                 <button onClick={() => setActiveScreen(AppScreen.Optimizer)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Optimizer ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Optimiseur</button>
+                <button onClick={() => setActiveScreen(AppScreen.SerialProd)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.SerialProd ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Serial Prod</button>
             </div>
         </nav>
         <div ref={scrollContainerRef} className="flex-grow overflow-x-hidden flex no-scrollbar">
@@ -1130,6 +1419,9 @@ export const Workspace: React.FC<{
             </div>
              <div className="w-full flex-shrink-0 h-full overflow-y-auto">
                 <OptimizerScreen activeScript={activeScript} onUpdateScript={handleUpdateScript} user={user} onNavigateAccount={onNavigateAccount} />
+            </div>
+            <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                <SerialProdScreen user={user} onUpdateUser={onUpdateUser} onNavigateAccount={onNavigateAccount} />
             </div>
         </div>
     </div>

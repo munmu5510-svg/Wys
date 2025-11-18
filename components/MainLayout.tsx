@@ -43,7 +43,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, onNaviga
       <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md z-20">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center cursor-pointer" onClick={onNavigateToAccount}>
               <LogoIcon className="h-8 w-auto" />
             </div>
             <div className="flex items-center space-x-2 sm:space-x-4">
@@ -58,8 +58,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, onNaviga
                     <span>{user?.generationsLeft ?? 0}<span className="hidden sm:inline">&nbsp;générations</span></span>
                 </div>
                 <ThemeToggle />
-              <button onClick={onNavigateToAccount} title="Mon Compte" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                <UserIcon className="h-6 w-6" />
+              <button onClick={onNavigateToAccount} title="Mon Compte" className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors relative">
+                {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="Profile" className="h-8 w-8 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+                ) : (
+                    <UserIcon className="h-6 w-6" />
+                )}
               </button>
               <button onClick={onLogout} title="Se déconnecter" className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                 <LogoutIcon className="h-6 w-6" />

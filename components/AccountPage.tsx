@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, AccountSubPage } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, APP_URL, CORP_USE_REWARD, POST_USE_REWARD, INITIAL_FREE_GENERATIONS } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { CheckIcon, DiamondIcon, VideoIcon, RobotIcon, PhotoIcon, RefreshIcon, SparklesIcon, PayPalIcon } from './icons';
+import { CheckIcon, DiamondIcon, VideoIcon, RobotIcon, PhotoIcon, RefreshIcon, SparklesIcon, PayPalIcon, UserIcon, PencilSquareIcon } from './icons';
 
 interface AccountPageProps {
   user: User;
@@ -16,6 +16,7 @@ const ProfileSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
     const [channelName, setChannelName] = useState(user.channelName);
     const [youtubeUrl, setYoutubeUrl] = useState(user.youtubeUrl);
     const [promoCode, setPromoCode] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const handleSave = () => {
         onUpdateUser({ ...user, channelName, youtubeUrl });
@@ -32,9 +33,54 @@ const ProfileSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
         }
     };
 
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result as string;
+                onUpdateUser({ ...user, profilePicture: base64String });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     return (
         <div>
             <h3 className="text-xl font-semibold mb-4">Profil Professionnel</h3>
+            
+            <div className="flex items-center mb-6 space-x-4">
+                <div className="relative group h-24 w-24 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600">
+                    {user.profilePicture ? (
+                        <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                        <UserIcon className="h-full w-full p-4 text-gray-400" />
+                    )}
+                    <div 
+                        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <PencilSquareIcon className="h-8 w-8 text-white" />
+                    </div>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleImageUpload} 
+                        accept="image/*" 
+                        className="hidden" 
+                    />
+                </div>
+                <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Photo de profil</p>
+                    <button 
+                        onClick={() => fileInputRef.current?.click()} 
+                        className="text-brand-purple hover:underline text-sm font-medium"
+                    >
+                        Modifier
+                    </button>
+                </div>
+            </div>
+
             <div className="space-y-4">
                 <input type="text" value={channelName} onChange={e => setChannelName(e.target.value)} placeholder="Nom de chaîne" className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
                 <input type="url" value={youtubeUrl} onChange={e => setYoutubeUrl(e.target.value)} placeholder="Lien YouTube" className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
@@ -116,6 +162,13 @@ const ProPlusSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
                              <p className="text-sm text-gray-500 dark:text-gray-400">Optimisation et déclinaison automatique.</p>
                         </div>
                      </div>
+                     <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg flex items-start space-x-3">
+                        <VideoIcon className="h-6 w-6 text-green-500 mt-1"/>
+                        <div>
+                             <h4 className="font-bold">Serial Prod</h4>
+                             <p className="text-sm text-gray-500 dark:text-gray-400">Créez des séries complètes automatiquement.</p>
+                        </div>
+                     </div>
                 </div>
 
                 <Button onClick={handleCancel} variant="outline" className="text-red-500 border-red-500 hover:bg-red-500/10">Gérer / Annuler l'abonnement</Button>
@@ -151,7 +204,7 @@ const ProPlusSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
                 {/* Free Tier */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-2xl p-6 flex flex-col opacity-75 md:scale-95">
                     <h3 className="text-xl font-bold mb-2">Freemium</h3>
-                    <p className="text-3xl font-extrabold mb-4">0€</p>
+                    <p className="text-3xl font-extrabold mb-4">$0</p>
                     <ul className="space-y-3 mb-8 flex-grow text-sm">
                         <li className="flex items-center"><CheckIcon className="h-5 w-5 text-green-500 mr-2"/>5 générations offertes</li>
                         <li className="flex items-center"><CheckIcon className="h-5 w-5 text-green-500 mr-2"/>Scripts simples</li>
@@ -171,10 +224,11 @@ const ProPlusSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
                     {billingCycle === 'yearly' && <p className="text-xs text-green-600 font-semibold mb-4">2 mois offerts !</p>}
                     
                     <div className="space-y-4 mb-8 flex-grow text-sm">
-                        <div className="flex items-start"><VideoIcon className="h-5 w-5 text-brand-purple mr-2 mt-0.5 flex-shrink-0"/><span><strong>Avatar Vidéo IA :</strong> Ton avatar parle avec ton script (Custom)</span></div>
+                        <div className="flex items-start"><VideoIcon className="h-5 w-5 text-brand-purple mr-2 mt-0.5 flex-shrink-0"/><span><strong>Serial Prod :</strong> Séries YouTube automatiques</span></div>
+                        <div className="flex items-start"><VideoIcon className="h-5 w-5 text-brand-purple mr-2 mt-0.5 flex-shrink-0"/><span><strong>Avatar Vidéo IA :</strong> Ton avatar parle avec ton script</span></div>
                         <div className="flex items-start"><SparklesIcon className="h-5 w-5 text-brand-blue mr-2 mt-0.5 flex-shrink-0"/><span><strong>Clone Vocal :</strong> Voix réaliste multi-langues</span></div>
                         <div className="flex items-start"><PhotoIcon className="h-5 w-5 text-pink-500 mr-2 mt-0.5 flex-shrink-0"/><span><strong>Miniature Auto :</strong> Générée à partir du sujet</span></div>
-                        <div className="flex items-start"><RefreshIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"/><span><strong>Pack "1 script = 5 formats" :</strong> TikTok, Tweet, Newsletter...</span></div>
+                        <div className="flex items-start"><RefreshIcon className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0"/><span><strong>Pack "1 script = 5 formats" :</strong> TikTok, Tweet...</span></div>
                         <div className="flex items-start"><RobotIcon className="h-5 w-5 text-indigo-500 mr-2 mt-0.5 flex-shrink-0"/><span><strong>IA Coach :</strong> Analyse & conseils en temps réel</span></div>
                     </div>
                     <Button onClick={handleSubscribe} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 border-none text-white">
@@ -200,46 +254,45 @@ const ProPlusSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
 };
 
 const CorpUseSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> = ({ user, onUpdateUser }) => {
-    const [email1, setEmail1] = useState('');
-    const [email2, setEmail2] = useState('');
-
-    const handleSubmit = () => {
-        if (email1 && email2) {
-            alert(`Invitations envoyées à ${email1} et ${email2}. Vous recevrez vos générations lorsque vos amis s'inscriront.`);
-            onUpdateUser({ ...user, generationsLeft: user.generationsLeft + CORP_USE_REWARD });
-            setEmail1('');
-            setEmail2('');
-        }
+    const handleInvite = () => {
+        const subject = encodeURIComponent("Rejoins-moi sur WySlider !");
+        const body = encodeURIComponent(`Salut,\n\nJ'utilise WySlider pour créer mes scripts YouTube et c'est incroyable. Rejoins la bêta ici : ${APP_URL}\n\nÀ bientôt !`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        
+        // Simulate reward after action
+        setTimeout(() => {
+             onUpdateUser({ ...user, generationsLeft: user.generationsLeft + CORP_USE_REWARD });
+             alert(`Invitations envoyées ! (Simulation de validation) ${CORP_USE_REWARD} générations ajoutées.`);
+        }, 1000);
     };
 
     return (
         <div>
             <h3 className="text-xl font-semibold mb-2">Offre Corp Use</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">Obtenez {CORP_USE_REWARD} générations gratuites en invitant deux créateurs.</p>
-            <div className="space-y-4">
-                <input type="email" value={email1} onChange={e => setEmail1(e.target.value)} placeholder="Email de votre ami #1" className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
-                <input type="email" value={email2} onChange={e => setEmail2(e.target.value)} placeholder="Email de votre ami #2" className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
-                <Button onClick={handleSubmit}>Envoyer les invitations</Button>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Obtenez {CORP_USE_REWARD} générations gratuites en invitant des créateurs.</p>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
+                <p className="mb-4">Cliquez ci-dessous pour ouvrir votre client mail et inviter vos amis.</p>
+                <Button onClick={handleInvite}>Envoyer des invitations par Email</Button>
             </div>
         </div>
     );
 };
 
 const PostUseSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> = ({ user, onUpdateUser }) => {
-    const [postContent, setPostContent] = useState('');
+    const [postUrl, setPostUrl] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async () => {
-        if (!postContent) return;
+        if (!postUrl) return;
         setIsLoading(true);
-        const isValid = await geminiService.analyzeSocialPost(postContent);
+        const isValid = await geminiService.analyzeSocialPost(postUrl);
         setIsLoading(false);
         if (isValid) {
             onUpdateUser({ ...user, generationsLeft: user.generationsLeft + POST_USE_REWARD });
             alert(`Merci pour votre partage ! ${POST_USE_REWARD} générations ont été ajoutées à votre compte.`);
-            setPostContent('');
+            setPostUrl('');
         } else {
-            alert("L'analyse IA n'a pas pu confirmer la validité de votre post.");
+            alert("L'analyse IA n'a pas pu confirmer qu'il s'agit d'un lien valide vers un post social (X, LinkedIn, etc). Assurez-vous que le lien est correct.");
         }
     };
 
@@ -248,8 +301,9 @@ const PostUseSection: React.FC<{ user: User, onUpdateUser: (u: User) => void }> 
             <h3 className="text-xl font-semibold mb-2">Offre Post Use</h3>
             <p className="text-gray-600 dark:text-gray-400 mb-4">Obtenez {POST_USE_REWARD} générations en partageant WySlider sur les réseaux sociaux.</p>
             <div className="space-y-4">
-                <textarea value={postContent} onChange={e => setPostContent(e.target.value)} placeholder="Collez ici le contenu de votre post..." rows={5} className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
-                <Button onClick={handleSubmit} isLoading={isLoading}>Vérifier et réclamer</Button>
+                <p className="text-sm text-gray-500">Collez le lien direct vers votre post (LinkedIn, Twitter/X, Facebook, etc.) parlant de WySlider.</p>
+                <input type="url" value={postUrl} onChange={e => setPostUrl(e.target.value)} placeholder="https://linkedin.com/posts/..." className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-brand-blue focus:outline-none"/>
+                <Button onClick={handleSubmit} isLoading={isLoading}>Vérifier le lien et réclamer</Button>
             </div>
         </div>
     );
@@ -268,7 +322,7 @@ const FeedbackSection: React.FC = () => {
         const mailtoLink = `mailto:${FEEDBACK_EMAIL}?subject=WySlider Feedback&body=${encodeURIComponent(feedback)}\n\n--- AI Suggestion ---\n${encodeURIComponent(aiSuggestion)}`;
         window.location.href = mailtoLink;
         setIsLoading(false);
-        alert("Votre formulaire de feedback a été ouvert.");
+        alert("Votre formulaire de feedback a été ouvert dans votre client mail.");
     };
 
     return (

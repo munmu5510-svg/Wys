@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality, Chat } from "@google/genai";
-import { Script, RepurposedContent } from '../types';
+import { Script, RepurposedContent, EpisodeSuggestion } from '../types';
 import { APP_URL } from '../constants';
 
 // IMPORTANT: This key is managed externally by the environment. Do not change this line.
@@ -51,6 +51,22 @@ const repurposedSchema = {
     required: ['tiktokScript', 'twitterThread', 'newsletterTeaser', 'linkedinPost']
 };
 
+const seriesSchema = {
+    type: Type.OBJECT,
+    properties: {
+        episodes: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    summary: { type: Type.STRING }
+                }
+            }
+        }
+    }
+}
+
 
 export const generateScript = async (topic: string, tone: string, format: string, channelInfo: string): Promise<Partial<Script> | null> => {
   try {
@@ -76,15 +92,16 @@ export const generateScript = async (topic: string, tone: string, format: string
   }
 };
 
-export const analyzeSocialPost = async (postContent: string): Promise<boolean> => {
+export const analyzeSocialPost = async (postUrl: string): Promise<boolean> => {
   try {
     const response = await ai.models.generateContent({
         model,
-        contents: `Analyze the following social media post content. 
-        Does it positively mention 'WySlider' and include a link to '${APP_URL}'? 
+        contents: `Analyze the following URL or link text. 
+        Does it look like a valid URL for a social media post (like X/Twitter, LinkedIn, Facebook, Instagram, YouTube) that could contain a mention of 'WySlider'?
+        We cannot browse the live web, so just verify if the format looks like a valid social media post link.
         Respond with only the single word 'YES' or 'NO'.
         
-        Post Content: "${postContent}"`
+        URL: "${postUrl}"`
     });
     return response.text.trim().toUpperCase() === 'YES';
   } catch (error) {
@@ -241,7 +258,6 @@ export const repurposeContent = async (scriptContent: string): Promise<Repurpose
 }
 
 export const generateVideo = async (prompt: string, onProgress: (message: string) => void): Promise<string | null> => {
-    // Per Veo guidelines, create a new instance right before the call
     const videoAI = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
     try {
@@ -271,15 +287,34 @@ export const generateVideo = async (prompt: string, onProgress: (message: string
             throw new Error("Video URI not found in response.");
         }
         
-        // The guidelines state the API key must be appended to fetch the video
         const videoUrl = `${downloadLink}&key=${process.env.API_KEY}`;
-        
-        // We don't fetch the bytes here, we return the URL for the video player
         return videoUrl;
 
     } catch (error) {
         console.error("Error generating video:", error);
         onProgress(`Error: ${error instanceof Error ? error.message : "An unknown error occurred"}`);
         return null;
+    }
+};
+
+export const generateEpisodeSuggestions = async (concept: string, count: number): Promise<EpisodeSuggestion[]> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Based on the concept "${concept}", generate a coherent YouTube series outline with exactly ${count} episodes.
+            For each episode, provide a catchy Title and a short Summary (2-3 sentences).
+            The episodes should follow a logical progression (e.g., Beginner to Advanced, or Chronological).`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: seriesSchema,
+            }
+        });
+
+        const text = response.text.trim();
+        const data = JSON.parse(text);
+        return data.episodes || [];
+    } catch (error) {
+        console.error("Error generating episodes:", error);
+        return [];
     }
 };
