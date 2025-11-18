@@ -28,7 +28,7 @@ const scriptSchema = {
           id: { type: Type.STRING, description: "A unique string identifier for the section, e.g., 'section_1'." },
           title: { type: Type.STRING, description: "The title of the section (e.g., 'Hook', 'Introduction', 'Main Point 1')." },
           content: { type: Type.STRING, description: "The spoken content for this section of the script." },
-          visualNote: { type: Type.STRING, description: "A detailed description of the visuals (B-roll, on-screen text, graphics) for this section." },
+          visualNote: { type: Type.STRING, description: "A VERY detailed description of the visuals. Include specific B-roll ideas (e.g., 'Slow motion shot of coffee pouring'), on-screen text suggestions (e.g., 'Text overlay: 50% Increase'), and camera direction." },
           estimatedTime: { type: Type.INTEGER, description: "The estimated time in seconds this section will take to present." },
           rhythm: { type: Type.STRING, description: "The pacing or rhythm of this section. Can be 'normal', 'slow', or 'intense'." }
         },
@@ -63,6 +63,17 @@ const seriesSchema = {
                     summary: { type: Type.STRING }
                 }
             }
+        }
+    }
+}
+
+const titleVariationsSchema = {
+    type: Type.OBJECT,
+    properties: {
+        variations: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING },
+            description: "A list of 3 optimized video titles."
         }
     }
 }
@@ -318,3 +329,42 @@ export const generateEpisodeSuggestions = async (concept: string, count: number)
         return [];
     }
 };
+
+export const generateTitleVariations = async (topic: string, currentTitle: string): Promise<string[]> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `For a YouTube video about "${topic}" (currently titled "${currentTitle}"), generate 3 alternative titles optimized for high Click-Through Rate (CTR).
+            1. Viral/Clickbait style (but honest).
+            2. SEO optimized (searchable keywords).
+            3. Storytelling/Intriguing style.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: titleVariationsSchema,
+            }
+        });
+        const text = response.text.trim();
+        const data = JSON.parse(text);
+        return data.variations || [];
+    } catch (error) {
+        console.error("Error generating titles:", error);
+        return [];
+    }
+}
+
+export const rewriteContent = async (content: string, nuance: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Rewrite the following script section text to be ${nuance}. Keep the core meaning but change the style/tone.
+            
+            Text: "${content}"
+            
+            Return only the rewritten text.`,
+        });
+        return response.text.trim();
+    } catch (error) {
+        console.error("Error rewriting content:", error);
+        return content;
+    }
+}

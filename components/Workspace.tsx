@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage, EpisodeSuggestion, SeriesGenerationProgress } from '../types';
 import { Button } from './Button';
-import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon } from './icons';
+import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon, SparklesIcon } from './icons';
 import { Modal } from './Modal';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
@@ -135,6 +135,65 @@ const ShareModal: React.FC<{
         </Modal>
     );
 };
+
+const TitleOptimizerModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+    script: Script;
+    onUpdateTitle: (newTitle: string) => void;
+}> = ({ isOpen, onClose, script, onUpdateTitle }) => {
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && suggestions.length === 0) {
+            fetchSuggestions();
+        }
+    }, [isOpen]);
+
+    const fetchSuggestions = async () => {
+        setIsLoading(true);
+        const titles = await geminiService.generateTitleVariations(script.topic, script.title);
+        setSuggestions(titles);
+        setIsLoading(false);
+    }
+
+    const handleSelect = (title: string) => {
+        onUpdateTitle(title);
+        onClose();
+    }
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Optimiseur de Titre (SEO & CTR)">
+            <div className="space-y-4">
+                <p className="text-sm text-gray-500">Voici des suggestions pour maximiser vos vues :</p>
+                {isLoading ? (
+                    <div className="flex justify-center py-8">
+                        <svg className="animate-spin h-8 w-8 text-brand-purple" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {suggestions.map((title, idx) => (
+                            <button 
+                                key={idx}
+                                onClick={() => handleSelect(title)}
+                                className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-purple hover:bg-brand-purple/5 transition font-medium"
+                            >
+                                {title}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <Button onClick={fetchSuggestions} variant="secondary" className="w-full mt-2">
+                    Générer d'autres idées
+                </Button>
+            </div>
+        </Modal>
+    );
+}
 
 
 // Dashboard Screen
@@ -1109,6 +1168,9 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
     const [selectedVoice, setSelectedVoice] = useState('Kore');
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [exportFormat, setExportFormat] = useState<'srt' | 'pdf'>('srt');
+    
+    const [isTitleModalOpen, setIsTitleModalOpen] = useState(false);
+    const [rewritingSectionId, setRewritingSectionId] = useState<string | null>(null);
 
     // Pro+ States
     const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
@@ -1216,6 +1278,21 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
         setIsRepurposing(false);
     }
     
+    const handleRewrite = async (sectionId: string, nuance: string) => {
+        if (!activeScript) return;
+        const section = activeScript.sections.find(s => s.id === sectionId);
+        if (!section) return;
+
+        setRewritingSectionId(sectionId);
+        const rewrittenText = await geminiService.rewriteContent(section.content, nuance);
+        
+        const updatedSections = activeScript.sections.map(s => 
+            s.id === sectionId ? { ...s, content: rewrittenText } : s
+        );
+        onUpdateScript({ ...activeScript, sections: updatedSections });
+        setRewritingSectionId(null);
+    }
+
     const playAudio = async (text: string) => {
         setIsPlayingAudio(true);
         try {
@@ -1275,6 +1352,8 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
     return (
         <div className="p-4 h-full flex flex-col">
              {activeScript && <VideoGenerationModal isOpen={isVideoModalOpen} onClose={() => setIsVideoModalOpen(false)} script={activeScript} />}
+             {activeScript && <TitleOptimizerModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} script={activeScript} onUpdateTitle={(t) => onUpdateScript({...activeScript, title: t})}/>}
+            
             <div className="flex justify-between items-center mb-4 flex-shrink-0 flex-wrap gap-4">
                 <h1 className="text-2xl font-bold truncate">{activeScript.title} - Optimisation</h1>
                  <div className="flex items-center space-x-2 flex-wrap gap-2">
