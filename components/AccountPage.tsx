@@ -4,7 +4,7 @@ import { User, AccountSubPage } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, APP_URL, CORP_USE_REWARD, POST_USE_REWARD, INITIAL_FREE_GENERATIONS } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { CheckIcon, DiamondIcon, VideoIcon, RobotIcon, PhotoIcon, RefreshIcon, SparklesIcon, PayPalIcon, UserIcon, PencilSquareIcon } from './icons';
+import { CheckIcon, DiamondIcon, VideoIcon, RobotIcon, PhotoIcon, RefreshIcon, SparklesIcon, PayPalIcon, UserIcon, PencilSquareIcon, ArrowDownTrayIcon } from './icons';
 
 interface AccountPageProps {
   user: User;
@@ -337,6 +337,57 @@ const FeedbackSection: React.FC = () => {
     );
 }
 
+const SyncSection: React.FC<{ user: User }> = ({ user }) => {
+    const [backupKey, setBackupKey] = useState('');
+    const [copyStatus, setCopyStatus] = useState('Copier la clé');
+
+    const generateBackupKey = () => {
+        const scripts = localStorage.getItem('wyslider_scripts');
+        const data = {
+            user: user,
+            scripts: scripts ? JSON.parse(scripts) : []
+        };
+        // Simple base64 encoding for this demo. 
+        const encoded = btoa(JSON.stringify(data));
+        setBackupKey(encoded);
+    };
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(backupKey).then(() => {
+            setCopyStatus('Copié !');
+            setTimeout(() => setCopyStatus('Copier la clé'), 2000);
+        });
+    };
+
+    return (
+        <div>
+            <h3 className="text-xl font-semibold mb-2 flex items-center"><ArrowDownTrayIcon className="h-6 w-6 mr-2"/>Synchronisation Multi-Appareils</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Puisque WySlider fonctionne sans base de données centrale pour le moment, utilisez cette clé pour transférer votre compte (profil + scripts) vers votre mobile ou un autre ordinateur.
+            </p>
+            
+            <div className="space-y-4">
+                {!backupKey ? (
+                    <div className="text-center p-6 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <Button onClick={generateBackupKey}>Générer ma clé de sauvegarde</Button>
+                    </div>
+                ) : (
+                    <div className="space-y-3 animate-fade-in">
+                        <p className="text-sm font-bold text-brand-purple">Votre clé unique :</p>
+                        <textarea 
+                            readOnly 
+                            value={backupKey} 
+                            className="w-full h-32 p-3 bg-gray-100 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-mono break-all"
+                        />
+                        <Button onClick={handleCopy} variant="secondary" className="w-full">{copyStatus}</Button>
+                        <p className="text-xs text-gray-500 italic mt-2">Instructions : Copiez cette clé, ouvrez WySlider sur votre autre appareil, cliquez sur "Importer" à l'écran de connexion et collez-la.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack }) => {
     const [activePage, setActivePage] = useState<AccountSubPage>(AccountSubPage.Profile);
 
@@ -352,6 +403,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return <PostUseSection user={user} onUpdateUser={onUpdateUser} />;
             case AccountSubPage.Feedback:
                 return <FeedbackSection />;
+            case AccountSubPage.Sync:
+                return <SyncSection user={user} />;
             default:
                 return <ProfileSection user={user} onUpdateUser={onUpdateUser} />;
         }
@@ -360,6 +413,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     const menuItems = [
         { id: AccountSubPage.Profile, label: 'Profil' },
         { id: AccountSubPage.Premium, label: user.isProPlus ? 'Mon Abonnement PRO+' : 'Passer Premium / PRO+' },
+        { id: AccountSubPage.Sync, label: 'Synchronisation' },
         { id: AccountSubPage.CorpUse, label: 'Offre Corp Use' },
         { id: AccountSubPage.PostUse, label: 'Offre Post Use' },
         { id: AccountSubPage.Feedback, label: 'Feedback' },

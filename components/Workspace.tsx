@@ -30,53 +30,78 @@ const downloadScript = (script: Script, format: 'srt' | 'pdf') => {
     } else if (format === 'pdf') {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.width;
+        const pageHeight = doc.internal.pageSize.height;
         const margin = 20;
         let yPos = 20;
+
+        const checkPageBreak = (heightNeeded: number) => {
+            if (yPos + heightNeeded > pageHeight - margin) {
+                doc.addPage();
+                yPos = 20;
+            }
+        };
+
+        const printTextLines = (text: string | string[], lineHeight: number) => {
+            const lines = Array.isArray(text) ? text : [text];
+            lines.forEach(line => {
+                checkPageBreak(lineHeight);
+                doc.text(line, margin, yPos);
+                yPos += lineHeight;
+            });
+        };
 
         // Title
         doc.setFontSize(22);
         doc.setFont("helvetica", "bold");
-        doc.text(script.title, margin, yPos);
-        yPos += 15;
+        const splitTitle = doc.splitTextToSize(script.title, pageWidth - 2 * margin);
+        printTextLines(splitTitle, 10);
+        yPos += 5;
 
         // Meta info
         doc.setFontSize(12);
         doc.setFont("helvetica", "normal");
-        doc.text(`Format: ${script.format} | Ton: ${script.tone}`, margin, yPos);
-        yPos += 10;
+        printTextLines(`Format: ${script.format} | Ton: ${script.tone}`, 7);
+        yPos += 5;
 
         // YouTube Description
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.text("Description YouTube:", margin, yPos);
-        yPos += 7;
+        printTextLines("Description YouTube:", 8);
+        
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         const splitDesc = doc.splitTextToSize(script.youtubeDescription || "", pageWidth - 2 * margin);
-        doc.text(splitDesc, margin, yPos);
-        yPos += (splitDesc.length * 5) + 10;
+        printTextLines(splitDesc, 5);
+        yPos += 10;
 
         // Sections
         script.sections.forEach((section, index) => {
-            if (yPos > 270) { doc.addPage(); yPos = 20; } 
+            // Ensure space for section header
+            checkPageBreak(15);
             
+            // Title
             doc.setFontSize(14);
             doc.setFont("helvetica", "bold");
-            doc.text(`${index + 1}. ${section.title} (${section.estimatedTime}s)`, margin, yPos);
-            yPos += 7;
+            const titleLine = `${index + 1}. ${section.title} (${section.estimatedTime}s)`;
+            printTextLines(titleLine, 8);
 
+            // Visual Note
             doc.setFontSize(11);
             doc.setFont("helvetica", "italic");
             doc.setTextColor(100);
-            doc.text(`Note Visuelle: ${section.visualNote}`, margin, yPos);
+            const splitVisual = doc.splitTextToSize(`Note Visuelle: ${section.visualNote}`, pageWidth - 2 * margin);
+            printTextLines(splitVisual, 5);
+            
             doc.setTextColor(0);
-            yPos += 7;
+            yPos += 2;
 
+            // Content
             doc.setFontSize(12);
             doc.setFont("helvetica", "normal");
             const splitContent = doc.splitTextToSize(section.content, pageWidth - 2 * margin);
-            doc.text(splitContent, margin, yPos);
-            yPos += (splitContent.length * 6) + 10;
+            printTextLines(splitContent, 6);
+            
+            yPos += 8; // Spacing after section
         });
 
         doc.save(`${script.title.replace(/[^a-z0-9]/gi, '_')}.pdf`);

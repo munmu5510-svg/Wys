@@ -89,6 +89,7 @@ export enum AppScreen {
 export enum AuthScreen {
   Login,
   SignUp,
+  Import
 }
 
 export enum AccountSubPage {
@@ -96,5 +97,6 @@ export enum AccountSubPage {
   Premium, // Used for Pro+ now
   CorpUse,
   PostUse,
-  Feedback
+  Feedback,
+  Sync
 }

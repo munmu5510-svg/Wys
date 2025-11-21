@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { MainLayout } from './components/MainLayout';
@@ -74,6 +75,25 @@ const App: React.FC = () => {
         handleUpdateUser(newUser);
         setPage(Page.Workspace);
     };
+    
+    const handleImportUser = (importData: string) => {
+        try {
+            const decoded = atob(importData);
+            const data = JSON.parse(decoded);
+            
+            if (data.user && data.scripts) {
+                handleUpdateUser(data.user);
+                localStorage.setItem('wyslider_scripts', JSON.stringify(data.scripts));
+                setPage(Page.Workspace);
+                alert("Compte et scripts restaurés avec succès !");
+            } else {
+                throw new Error("Format invalide");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Clé de sauvegarde invalide. Veuillez vérifier et réessayer.");
+        }
+    };
 
     const handleLogout = () => {
         setUser(null);
@@ -84,7 +104,7 @@ const App: React.FC = () => {
     if (!user) {
         switch (page) {
             case Page.Auth:
-                return <AuthPage onLogin={handleLogin} onSignUp={handleSignUp} onBack={() => setPage(Page.Landing)} />;
+                return <AuthPage onLogin={handleLogin} onSignUp={handleSignUp} onImport={handleImportUser} onBack={() => setPage(Page.Landing)} />;
             case Page.Landing:
             default:
                 return <LandingPage onNavigateToAuth={() => setPage(Page.Auth)} />;
