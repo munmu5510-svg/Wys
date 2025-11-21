@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage, EpisodeSuggestion, SeriesGenerationProgress } from '../types';
+import { AppScreen, Script, User, ScriptSection, RepurposedContent, ScriptVersion, ChatMessage, EpisodeSuggestion, SeriesGenerationProgress, SponsorshipDeal } from '../types';
 import { Button } from './Button';
-import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon, SparklesIcon } from './icons';
+import { PlusIcon, PlayIcon, MinusIcon, XMarkIcon, DiamondIcon, RobotIcon, RefreshIcon, PhotoIcon, VideoIcon, Bars3Icon, TrashIcon, ShareIcon, ArrowDownTrayIcon, PencilSquareIcon, CheckIcon, PaperAirplaneIcon, SparklesIcon, ChartBarIcon, BriefcaseIcon, CalendarIcon, FireIcon, BoltIcon } from './icons';
 import { Modal } from './Modal';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
@@ -195,6 +195,203 @@ const TitleOptimizerModal: React.FC<{
     );
 }
 
+// --- NEW SCREENS ---
+
+const GrowthScreen: React.FC<{ scripts: Script[], user: User }> = ({ scripts, user }) => {
+    const [seoUrl, setSeoUrl] = useState('');
+    const [seoResult, setSeoResult] = useState<{score: number, feedback: string[]} | null>(null);
+    const [isLoadingSeo, setIsLoadingSeo] = useState(false);
+    const [trends, setTrends] = useState<string[]>([]);
+    const [isLoadingTrends, setIsLoadingTrends] = useState(false);
+    const [selectedScriptForSEO, setSelectedScriptForSEO] = useState<Script | null>(scripts.length > 0 ? scripts[0] : null);
+
+
+    const handleSeoAnalyze = async () => {
+        if(!selectedScriptForSEO) return;
+        setIsLoadingSeo(true);
+        const result = await geminiService.analyzeSEO(selectedScriptForSEO.title, selectedScriptForSEO.youtubeDescription || "No description");
+        setSeoResult({score: result.score, feedback: result.feedback});
+        setIsLoadingSeo(false);
+    };
+
+    const handleGetTrends = async () => {
+        setIsLoadingTrends(true);
+        const results = await geminiService.getTrendIdeas(user.channelName || 'General');
+        setTrends(results);
+        setIsLoadingTrends(false);
+    };
+
+    return (
+        <div className="p-4 sm:p-8 h-full overflow-y-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* SEO Studio */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold mb-4 flex items-center"><ChartBarIcon className="h-6 w-6 mr-2 text-brand-blue"/>SEO Studio</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Analysez vos scripts existants pour optimiser leur portée.</p>
+                
+                <div className="space-y-4">
+                    <div>
+                         <label className="block text-sm font-semibold mb-1">Sélectionner un script</label>
+                         <select 
+                            className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
+                            onChange={(e) => setSelectedScriptForSEO(scripts.find(s => s.id === e.target.value) || null)}
+                            value={selectedScriptForSEO?.id || ''}
+                         >
+                             {scripts.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                         </select>
+                    </div>
+                    <Button onClick={handleSeoAnalyze} isLoading={isLoadingSeo} className="w-full">Analyser le potentiel SEO</Button>
+                </div>
+
+                {seoResult && (
+                    <div className="mt-6 animate-fade-in">
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="font-bold text-lg">Score SEO</span>
+                            <span className={`text-2xl font-extrabold ${seoResult.score > 70 ? 'text-green-500' : seoResult.score > 40 ? 'text-orange-500' : 'text-red-500'}`}>{seoResult.score}/100</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                            <div className={`bg-brand-blue h-2.5 rounded-full`} style={{width: `${seoResult.score}%`}}></div>
+                        </div>
+                        <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg">
+                            <h4 className="font-semibold mb-2">Conseils d'amélioration :</h4>
+                            <ul className="list-disc pl-5 space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                                {seoResult.feedback.map((tip, i) => <li key={i}>{tip}</li>)}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Trend Hunter */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                 <h2 className="text-2xl font-bold mb-4 flex items-center"><FireIcon className="h-6 w-6 mr-2 text-orange-500"/>Trend Hunter</h2>
+                 <p className="text-gray-500 dark:text-gray-400 mb-4">L'IA scanne votre niche pour trouver des sujets viraux.</p>
+                 
+                 <Button onClick={handleGetTrends} isLoading={isLoadingTrends} variant="secondary" className="w-full mb-6">
+                    <RefreshIcon className="h-5 w-5 mr-2"/> Scanner les tendances
+                 </Button>
+
+                 <div className="space-y-3">
+                     {trends.map((trend, idx) => (
+                         <div key={idx} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-orange-500 flex items-start">
+                             <span className="font-bold text-orange-500 mr-3">#{idx+1}</span>
+                             <p className="font-medium">{trend}</p>
+                         </div>
+                     ))}
+                     {!isLoadingTrends && trends.length === 0 && <p className="text-center text-gray-400 italic">Cliquez pour scanner...</p>}
+                 </div>
+            </div>
+
+            {/* Editorial Calendar */}
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                 <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold flex items-center"><CalendarIcon className="h-6 w-6 mr-2 text-brand-purple"/>Calendrier Éditorial</h2>
+                    <button className="text-sm text-brand-purple font-semibold hover:underline">Synchroniser Notion</button>
+                 </div>
+                 
+                 <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                     {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map(day => (
+                         <div key={day} className="text-center font-bold text-gray-400 uppercase text-xs mb-2">{day}</div>
+                     ))}
+                     {Array.from({length: 30}).map((_, i) => (
+                         <div key={i} className={`h-24 border border-gray-100 dark:border-gray-700 rounded-lg p-2 ${i === 12 ? 'bg-brand-purple/10 ring-1 ring-brand-purple' : ''}`}>
+                             <span className="text-xs text-gray-400">{i+1}</span>
+                             {i === 12 && (
+                                 <div className="mt-1 p-1 bg-brand-purple text-white text-[10px] rounded truncate">
+                                     Lancement Série...
+                                 </div>
+                             )}
+                             {i === 15 && (
+                                 <div className="mt-1 p-1 bg-blue-500 text-white text-[10px] rounded truncate">
+                                     Vlog IA #2
+                                 </div>
+                             )}
+                         </div>
+                     ))}
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+const BusinessScreen: React.FC<{ user: User }> = ({ user }) => {
+    const [deals, setDeals] = useState<SponsorshipDeal[]>([
+        { id: '1', brandName: 'NordVPN', status: 'contacted', amount: 500 },
+        { id: '2', brandName: 'Skillshare', status: 'negotiating', amount: 750 },
+    ]);
+    const [pitchBrand, setPitchBrand] = useState('');
+    const [pitchResult, setPitchResult] = useState('');
+    const [isLoadingPitch, setIsLoadingPitch] = useState(false);
+
+    const moveDeal = (id: string, status: SponsorshipDeal['status']) => {
+        setDeals(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+    };
+
+    const handleGeneratePitch = async () => {
+        if(!pitchBrand) return;
+        setIsLoadingPitch(true);
+        const email = await geminiService.generatePitchEmail(pitchBrand, user.channelName, "Tech/Lifestyle");
+        setPitchResult(email);
+        setIsLoadingPitch(false);
+    };
+
+    const Columns = {
+        contacted: 'Contacté',
+        negotiating: 'En Négociation',
+        closed: 'Signé',
+    };
+
+    return (
+        <div className="p-4 sm:p-8 h-full overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+             {/* Sponsorship Tracker */}
+             <div className="lg:col-span-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+                <h2 className="text-2xl font-bold mb-6 flex items-center"><BriefcaseIcon className="h-6 w-6 mr-2 text-green-600"/>Sponsorship Tracker</h2>
+                
+                <div className="grid grid-cols-3 gap-4 h-[400px]">
+                    {(Object.keys(Columns) as Array<keyof typeof Columns>).map(status => (
+                        <div key={status} className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-3 flex flex-col">
+                            <h3 className="font-bold text-sm uppercase text-gray-500 mb-3">{Columns[status]}</h3>
+                            <div className="space-y-2 flex-grow overflow-y-auto">
+                                {deals.filter(d => d.status === status).map(deal => (
+                                    <div key={deal.id} className="bg-white dark:bg-gray-800 p-3 rounded shadow-sm border border-gray-200 dark:border-gray-600 cursor-grab">
+                                        <p className="font-bold">{deal.brandName}</p>
+                                        <p className="text-sm text-gray-500">${deal.amount}</p>
+                                        <div className="mt-2 flex justify-end space-x-1">
+                                            {status !== 'contacted' && <button onClick={() => moveDeal(deal.id, 'contacted')} className="text-xs px-1 bg-gray-200 rounded">←</button>}
+                                            {status !== 'closed' && <button onClick={() => moveDeal(deal.id, status === 'contacted' ? 'negotiating' : 'closed')} className="text-xs px-1 bg-gray-200 rounded">→</button>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                             <button className="mt-2 text-sm text-center text-gray-400 hover:text-gray-600">+ Ajouter</button>
+                        </div>
+                    ))}
+                </div>
+             </div>
+
+             {/* Pitch Generator */}
+             <div className="lg:col-span-4 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 flex flex-col">
+                <h2 className="text-2xl font-bold mb-4 flex items-center"><BoltIcon className="h-6 w-6 mr-2 text-yellow-500"/>Pitch Generator</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-4 text-sm">Générez un email de démarchage personnalisé.</p>
+                
+                <div className="space-y-3 mb-4">
+                    <input 
+                        type="text" 
+                        value={pitchBrand} 
+                        onChange={e => setPitchBrand(e.target.value)} 
+                        placeholder="Nom de la marque (ex: Nike)" 
+                        className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg"
+                    />
+                    <Button onClick={handleGeneratePitch} isLoading={isLoadingPitch} className="w-full">Générer Pitch</Button>
+                </div>
+
+                <div className="flex-grow bg-gray-100 dark:bg-gray-700 rounded-lg p-3 overflow-y-auto text-xs whitespace-pre-wrap font-mono">
+                    {pitchResult || "// Le résultat apparaîtra ici..."}
+                </div>
+             </div>
+        </div>
+    );
+};
+
 
 // Dashboard Screen
 const DashboardScreen: React.FC<{ 
@@ -223,7 +420,7 @@ const DashboardScreen: React.FC<{
         return groups;
     }, [scripts]);
 
-    const displayedScripts = viewMode === 'scripts' 
+    const displayedScripts: Script[] = viewMode === 'scripts' 
         ? scripts.filter(s => !s.seriesId) 
         : []; // For series view we render groups, not individual scripts
 
@@ -1176,7 +1373,7 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
     const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
     const [isRepurposing, setIsRepurposing] = useState(false);
     const [repurposedContent, setRepurposedContent] = useState<RepurposedContent | null>(null);
-    const [activeProTab, setActiveProTab] = useState<'assistant' | 'repurpose'>('assistant');
+    const [activeProTab, setActiveProTab] = useState<'assistant' | 'repurpose' | 'integrations'>('assistant');
     
     // AI Chat Assistant States
     const [chatInstance, setChatInstance] = useState<Chat | null>(null);
@@ -1355,7 +1552,12 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
              {activeScript && <TitleOptimizerModal isOpen={isTitleModalOpen} onClose={() => setIsTitleModalOpen(false)} script={activeScript} onUpdateTitle={(t) => onUpdateScript({...activeScript, title: t})}/>}
             
             <div className="flex justify-between items-center mb-4 flex-shrink-0 flex-wrap gap-4">
-                <h1 className="text-2xl font-bold truncate">{activeScript.title} - Optimisation</h1>
+                <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold truncate">{activeScript.title}</h1>
+                    <button onClick={() => setIsTitleModalOpen(true)} className="p-1 bg-purple-100 dark:bg-purple-900/30 rounded hover:bg-purple-200 dark:hover:bg-purple-900/50 transition text-brand-purple" title="Optimiser le titre">
+                        <SparklesIcon className="h-5 w-5" />
+                    </button>
+                </div>
                  <div className="flex items-center space-x-2 flex-wrap gap-2">
                     <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
                         <button 
@@ -1423,6 +1625,23 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
                     <div className="overflow-y-auto mb-4 flex-grow prose dark:prose-invert max-w-none">
                       <p style={{ fontSize: `${fontSize}px`, lineHeight: '1.6' }}>{currentSection?.content}</p>
                     </div>
+
+                    {/* Rewriting Tools */}
+                    {currentSection && (
+                        <div className="flex space-x-2 mb-4 overflow-x-auto pb-1">
+                            {['Plus Drôle', 'Plus Dramatique', 'Plus Court', 'Plus Simple'].map(nuance => (
+                                <button 
+                                    key={nuance}
+                                    onClick={() => handleRewrite(currentSection.id, nuance)}
+                                    disabled={!!rewritingSectionId}
+                                    className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-xs font-medium border border-gray-200 dark:border-gray-600 whitespace-nowrap"
+                                >
+                                    {rewritingSectionId === currentSection.id ? '...' : nuance}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <div className="flex-shrink-0 flex overflow-x-auto pb-2 space-x-2">
                         {activeScript.sections.map((sec, i) => (
                            <button key={i} onClick={() => setCurrentSection(sec)} className={`flex-shrink-0 px-3 py-1 rounded-full text-sm whitespace-nowrap ${currentSection?.id === sec.id ? 'bg-brand-purple text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>{sec.title}</button>
@@ -1474,19 +1693,10 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
                     </div>
                     
                     {/* Tabs */}
-                    <div className="flex border-b border-gray-200 dark:border-gray-700">
-                        <button 
-                            onClick={() => setActiveProTab('assistant')} 
-                            className={`flex-1 py-2 text-sm font-medium ${activeProTab === 'assistant' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                        >
-                            AI Assistant
-                        </button>
-                        <button 
-                            onClick={() => setActiveProTab('repurpose')} 
-                            className={`flex-1 py-2 text-sm font-medium ${activeProTab === 'repurpose' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                        >
-                            Repurpose
-                        </button>
+                    <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+                        <button onClick={() => setActiveProTab('assistant')} className={`flex-1 py-2 px-2 text-xs font-medium whitespace-nowrap ${activeProTab === 'assistant' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500'}`}>Assistant</button>
+                        <button onClick={() => setActiveProTab('repurpose')} className={`flex-1 py-2 px-2 text-xs font-medium whitespace-nowrap ${activeProTab === 'repurpose' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500'}`}>Repurpose</button>
+                        <button onClick={() => setActiveProTab('integrations')} className={`flex-1 py-2 px-2 text-xs font-medium whitespace-nowrap ${activeProTab === 'integrations' ? 'text-brand-purple border-b-2 border-brand-purple bg-brand-purple/5' : 'text-gray-500'}`}>Connect</button>
                     </div>
 
                     <div className="p-1 flex-grow flex flex-col overflow-hidden">
@@ -1518,7 +1728,7 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
                                         value={currentMessage}
                                         onChange={(e) => setCurrentMessage(e.target.value)}
                                         placeholder="Posez une question..."
-                                        className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-brand-purple focus:outline-none border-transparent"
+                                        className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-brand-blue focus:outline-none border-transparent"
                                         disabled={!user.isProPlus || isChatLoading}
                                     />
                                     <button type="submit" className="p-2 rounded-full bg-brand-purple text-white hover:bg-purple-700 transition disabled:opacity-50" disabled={!user.isProPlus || isChatLoading}>
@@ -1554,12 +1764,42 @@ const OptimizerScreen: React.FC<{ activeScript: Script | null, onUpdateScript: (
                                 </Button>
                             </div>
                         )}
+
+                         {activeProTab === 'integrations' && (
+                            <div className="space-y-4 p-3 overflow-y-auto">
+                                <p className="text-xs text-gray-500">Exportez vers vos outils de production préférés.</p>
+                                <div className="space-y-2">
+                                    <button className="w-full flex items-center p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
+                                        <div className="h-6 w-6 bg-black text-white rounded-full flex items-center justify-center text-[10px] font-bold mr-3">11</div>
+                                        <div className="text-left">
+                                            <div className="text-xs font-bold">ElevenLabs</div>
+                                            <div className="text-[10px] text-gray-500">Voix IA Ultra-Réalistes</div>
+                                        </div>
+                                    </button>
+                                    <button className="w-full flex items-center p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
+                                        <div className="h-6 w-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold mr-3">H</div>
+                                        <div className="text-left">
+                                            <div className="text-xs font-bold">HeyGen</div>
+                                            <div className="text-[10px] text-gray-500">Avatar Vidéo</div>
+                                        </div>
+                                    </button>
+                                     <button className="w-full flex items-center p-2 rounded bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600">
+                                        <div className="h-6 w-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold mr-3">D</div>
+                                        <div className="text-left">
+                                            <div className="text-xs font-bold">Descript</div>
+                                            <div className="text-[10px] text-gray-500">Montage Automatique</div>
+                                        </div>
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-center text-gray-400 mt-2 italic">Connectez vos clés API dans les paramètres pour activer l'export direct.</p>
+                            </div>
+                        )}
                     </div>
                     
                      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
                          <Button onClick={handleVideoGen} variant="secondary" className={`w-full text-sm ${!user.isProPlus ? 'opacity-60' : ''}`}>
                              <VideoIcon className="h-4 w-4 mr-2"/>
-                             Générer Vidéo (Avatar)
+                             Générer Vidéo (Google Veo)
                          </Button>
                      </div>
                 </div>
@@ -1652,11 +1892,13 @@ export const Workspace: React.FC<{
   return (
     <div className="h-full flex flex-col">
        <nav className="flex-shrink-0 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
-            <div className="container mx-auto px-4 sm:px-8 flex justify-center space-x-2 sm:space-x-8">
-                <button onClick={() => setActiveScreen(AppScreen.Dashboard)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Dashboard ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Dashboard</button>
-                <button onClick={() => setActiveScreen(AppScreen.Generator)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Generator ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Générateur</button>
-                <button onClick={() => setActiveScreen(AppScreen.Optimizer)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Optimizer ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Optimiseur</button>
-                <button onClick={() => setActiveScreen(AppScreen.SerialProd)} className={`py-3 px-2 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.SerialProd ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Serial Prod</button>
+            <div className="container mx-auto px-4 sm:px-8 flex justify-center space-x-4 sm:space-x-8">
+                <button onClick={() => setActiveScreen(AppScreen.Dashboard)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Dashboard ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Dashboard</button>
+                <button onClick={() => setActiveScreen(AppScreen.Generator)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Generator ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Studio</button>
+                <button onClick={() => setActiveScreen(AppScreen.Optimizer)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Optimizer ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Optimizer</button>
+                <button onClick={() => setActiveScreen(AppScreen.SerialProd)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.SerialProd ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Serial Prod</button>
+                <button onClick={() => setActiveScreen(AppScreen.Growth)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Growth ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Growth</button>
+                <button onClick={() => setActiveScreen(AppScreen.Business)} className={`py-3 px-1 font-semibold border-b-2 text-sm sm:text-base whitespace-nowrap ${activeScreen === AppScreen.Business ? 'border-brand-purple text-brand-purple' : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}>Business</button>
             </div>
         </nav>
         <div ref={scrollContainerRef} className="flex-grow overflow-x-hidden flex no-scrollbar">
@@ -1679,6 +1921,12 @@ export const Workspace: React.FC<{
                     scripts={scripts}
                     onEditScript={handleEditScript}
                 />
+            </div>
+            <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                <GrowthScreen scripts={scripts} user={user} />
+            </div>
+            <div className="w-full flex-shrink-0 h-full overflow-y-auto">
+                <BusinessScreen user={user} />
             </div>
         </div>
     </div>

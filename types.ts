@@ -42,6 +42,8 @@ export interface Script {
   versions?: ScriptVersion[];
   seriesId?: string; // To group scripts into a series
   seriesName?: string; // The name of the series concept
+  seoScore?: number;
+  seoKeywords?: string[];
 }
 
 export interface RepurposedContent {
@@ -67,11 +69,21 @@ export interface SeriesGenerationProgress {
     scriptId?: string;
 }
 
+export interface SponsorshipDeal {
+    id: string;
+    brandName: string;
+    status: 'contacted' | 'negotiating' | 'closed' | 'rejected';
+    amount?: number;
+    notes?: string;
+}
+
 export enum AppScreen {
   Dashboard,
   Generator,
   Optimizer,
-  SerialProd
+  SerialProd,
+  Growth,
+  Business
 }
 
 export enum AuthScreen {

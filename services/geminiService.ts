@@ -78,6 +78,15 @@ const titleVariationsSchema = {
     }
 }
 
+const seoAnalysisSchema = {
+    type: Type.OBJECT,
+    properties: {
+        score: { type: Type.INTEGER, description: "A score from 0 to 100 indicating SEO strength." },
+        feedback: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of actionable tips to improve SEO." },
+        keywords: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Identified keywords in the script." }
+    }
+}
+
 
 export const generateScript = async (topic: string, tone: string, format: string, channelInfo: string): Promise<Partial<Script> | null> => {
   try {
@@ -366,5 +375,61 @@ export const rewriteContent = async (content: string, nuance: string): Promise<s
     } catch (error) {
         console.error("Error rewriting content:", error);
         return content;
+    }
+}
+
+// --- NEW ECOSYSTEM FEATURES ---
+
+export const analyzeSEO = async (title: string, description: string): Promise<{score: number, feedback: string[], keywords: string[]}> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Analyze the following YouTube title and description for SEO effectiveness. 
+            Title: "${title}"
+            Description: "${description}"
+            
+            Provide a score (0-100), a list of feedback tips, and identified keywords.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: seoAnalysisSchema,
+            }
+        });
+        return JSON.parse(response.text.trim());
+    } catch (error) {
+        console.error("Error analyzing SEO:", error);
+        return { score: 50, feedback: ["Could not analyze at this time."], keywords: [] };
+    }
+}
+
+export const generatePitchEmail = async (brandName: string, channelName: string, niche: string): Promise<string> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Write a professional, persuasive sponsorship pitch email to the brand "${brandName}" from a YouTube creator "${channelName}" in the "${niche}" niche.
+            The tone should be confident but respectful. Highlight potential ROI for the brand. Keep it concise.
+            
+            Subject: [Catchy Subject]
+            
+            Body:
+            [Email Body]`
+        });
+        return response.text;
+    } catch (error) {
+        console.error("Error generating pitch:", error);
+        return "Could not generate pitch.";
+    }
+}
+
+export const getTrendIdeas = async (niche: string): Promise<string[]> => {
+    try {
+        const response = await ai.models.generateContent({
+            model,
+            contents: `Generate 5 viral video ideas for a YouTube channel in the "${niche}" niche, based on general current internet trends or evergreen high-performing formats.
+            Return just the list of 5 ideas as bullet points.`
+        });
+        return response.text.split('\n').filter(line => line.trim().startsWith('-') || line.trim().startsWith('*') || /^\d\./.test(line)).map(l => l.replace(/^[-*0-9\.]+\s*/, ''));
+    } catch (error) {
+        console.error("Error generating trends:", error);
+        return ["Trend generation unavailable."];
     }
 }

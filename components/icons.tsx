@@ -163,3 +163,34 @@ export const PayPalIcon = ({ className = 'h-6' }: IconProps) => (
     </g>
   </svg>
 );
+
+export const ChartBarIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M8.25 3v11.25A2.25 2.25 0 0 1 6 16.5H3.75m16.5 0v1.5a2.25 2.25 0 0 1-2.25 2.25h-2.25a2.25 2.25 0 0 1-2.25-2.25V16.5m6 0h-6.75m-3.75 0h3.75m-3.75 0v1.5a2.25 2.25 0 0 0 2.25 2.25H9m-6 0h6.75m6-13.5V3M12 3v13.5" />
+  </svg>
+);
+
+export const BriefcaseIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.67.38-1.053.318-2.093.55-3.109.705m3.779-1.085-1.967 1.193m-1.812-2.278c.194-.165.42-.295.67-.38 1.053-.318 2.093-.55 3.109-.705m-3.779 1.085 1.967-1.193m-4.5 11.066C12.616 14.803 13.305 15 14.003 15c.698 0 1.387-.197 1.969-.535m-6.438 6.435c-1.096-.144-1.882-1.086-1.882-2.18v-4.25m-3-3.012a48.16 48.16 0 0 1-3.413.387c-1.069.16-1.837 1.094-1.837 2.175v4.784c0 .693.316 1.335.81 1.761m11.066-11.066c.194.165.42.295.67.38 1.053.318 2.093.55 3.109.705m-3.779-1.085-1.967 1.193m-1.812-2.278c.194-.165.42-.295.67-.38 1.053-.318 2.093-.55 3.109-.705m-3.779 1.085 1.967-1.193M3 12h18" />
+  </svg>
+);
+
+export const CalendarIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+    </svg>
+  );
+
+export const FireIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z" />
+    </svg>
+  );
+
+export const BoltIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+  </svg>
+);
