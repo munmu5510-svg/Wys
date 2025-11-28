@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
 import { ChartBarIcon, RobotIcon, BoltIcon, RefreshIcon, KeyIcon, CheckIcon, XMarkIcon } from './icons';
@@ -214,7 +213,7 @@ function implementedFeature() {
                         
                         {activeTab === 'stats' && (
                             <div className="space-y-6">
-                                <h2 className="text-xl font-bold text-red-400 mb-4">> SYSTEM_METRICS</h2>
+                                <h2 className="text-xl font-bold text-red-400 mb-4">&gt; SYSTEM_METRICS</h2>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                     <div className="bg-gray-900 p-4 rounded border border-gray-600">
                                         <p className="text-gray-400 text-xs uppercase">Total Users</p>
@@ -250,7 +249,7 @@ function implementedFeature() {
 
                         {activeTab === 'selfgrow' && (
                              <div className="space-y-6">
-                                <h2 className="text-xl font-bold text-green-400 mb-4">> SELF_REPLICATING_PROTOCOL</h2>
+                                <h2 className="text-xl font-bold text-green-400 mb-4">&gt; SELF_REPLICATING_PROTOCOL</h2>
                                 
                                 {/* GitHub Configuration Panel */}
                                 <div className="bg-gray-900 p-4 rounded border border-gray-600 mb-6">
@@ -310,7 +309,7 @@ function implementedFeature() {
 
                         {activeTab === 'promos' && (
                             <div className="space-y-6">
-                                <h2 className="text-xl font-bold text-blue-400 mb-4">> ACCESS_KEY_MANAGEMENT</h2>
+                                <h2 className="text-xl font-bold text-blue-400 mb-4">&gt; ACCESS_KEY_MANAGEMENT</h2>
                                 
                                 <div className="bg-gray-900 rounded border border-gray-600 overflow-hidden">
                                     <table className="w-full text-sm text-left">
