@@ -1,10 +1,9 @@
-
-import React, { useState } from 'react';
-import { User, ForgeItem } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, ForgeItem, Script, ViralIdea } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, KeyIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon } from './icons';
+import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, KeyIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon } from './icons';
 
 interface AccountPageProps {
   user: User;
@@ -14,7 +13,7 @@ interface AccountPageProps {
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin }) => {
-    const [section, setSection] = useState<'account'|'templates'|'apikey'|'share'|'stats'|'plan'|'feedback'|'sync'|'forge'|'storage'>('account');
+    const [section, setSection] = useState<'account'|'templates'|'apikey'|'share'|'ideas'|'plan'|'feedback'|'sync'|'forge'|'storage'>('account');
     const [promoCode, setPromoCode] = useState('');
     const [syncCode, setSyncCode] = useState('');
     
@@ -27,12 +26,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     const [firebaseConfig, setFirebaseConfig] = useState(user.firebaseConfig || '');
     const [isSyncingDrive, setIsSyncingDrive] = useState(false);
 
+    // Share/Template State
+    const [userScripts, setUserScripts] = useState<Script[]>([]);
+    
+    // Viral Ideas State
+    const [viralIdeas, setViralIdeas] = useState<ViralIdea[]>([]);
+    const [isLoadingIdeas, setIsLoadingIdeas] = useState(false);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('wyslider_scripts');
+        if(saved) setUserScripts(JSON.parse(saved));
+    }, []);
+
     const handlePromoCode = () => {
         if (promoCode === 'admin2301') {
             onNavigateToAdmin();
         } else if (promoCode === 'wys2301') {
             onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
             alert("10 Générations ajoutées !");
+        } else if (promoCode === 'PROPLUS') {
+            onUpdateUser({...user, isPro: true, generationsLeft: 999});
+            alert("Mode Pro+ Activé (Simulation)");
         } else {
             alert("Code invalide");
         }
@@ -71,7 +85,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
 
     const handleCustomizeAI = async () => {
         alert("IA Personnalisée avec succès basés sur vos références !");
-        // In a real app, this would send data to backend/local storage to adjust system prompts
     }
 
     const handleStorageChange = (type: 'local'|'drive'|'firebase') => {
@@ -83,7 +96,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             if (confirmed) onUpdateUser({...user, storagePreference: 'drive'});
             else setStoragePref('local');
         }
-        // Firebase handled by save button below
     }
 
     const handleDriveSync = () => {
@@ -101,30 +113,54 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         alert("Configuration Firebase sauvegardée.");
     }
 
+    const handleShareTemplate = (scriptId: string) => {
+        const updated = userScripts.map(s => s.id === scriptId ? {...s, isTemplate: true} : s);
+        setUserScripts(updated);
+        localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
+        alert("Script partagé comme template avec la communauté WySlider !");
+    }
+
+    const handleGenerateIdeas = async () => {
+        setIsLoadingIdeas(true);
+        const ideas = await geminiService.generateViralIdeas(user.niche);
+        setViralIdeas(ideas.map((idea: any, i: number) => ({ ...idea, id: i.toString() })));
+        setIsLoadingIdeas(false);
+    }
+
+    const handleUseIdea = (idea: ViralIdea) => {
+        // In a real app, this would navigate to Studio with state. 
+        // For now, we'll alert instructions.
+        alert(`Copiez ce titre: "${idea.title}" et utilisez-le dans le Studio !`);
+        onBack();
+    }
+
     const renderContent = () => {
         switch(section) {
             case 'account':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 pb-20">
                         <h2 className="text-2xl font-bold">Mon Compte</h2>
-                        <div className="flex items-center space-x-4">
-                             <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
+                        <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
+                             <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
                                 {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
                              </div>
                              <div>
-                                 <p className="font-bold text-lg">{user.email}</p>
+                                 <div className="flex items-center space-x-2">
+                                     <p className="font-bold text-lg">{user.email}</p>
+                                     {user.isPro && <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">PRO+</span>}
+                                 </div>
                                  <p className="text-gray-400">{user.niche} | {user.channelName}</p>
                              </div>
                         </div>
                         <div className="space-y-4">
-                            <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
-                            <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
-                            <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
+                            <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
+                            <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
+                            <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
                         </div>
                         <div className="pt-4 border-t border-gray-700">
                              <h3 className="font-bold mb-2">Code Promo</h3>
                              <div className="flex space-x-2">
-                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700" placeholder="Entrez un code..."/>
+                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none" placeholder="Entrez un code..."/>
                                 <Button onClick={handlePromoCode} variant="secondary">Appliquer</Button>
                              </div>
                         </div>
@@ -132,7 +168,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 );
             case 'forge':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
                             <FireIcon className="h-8 w-8 text-orange-500" />
                             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">Forge (AI Lab)</h2>
@@ -160,7 +196,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                 <Button onClick={handleAddToForge} className="bg-orange-600 hover:bg-orange-700 text-white">Ajouter</Button>
                              </div>
                              
-                             {/* Improved Forge Grid UI */}
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                                 {forgeItems.length === 0 && <div className="col-span-full text-center py-8 text-gray-500 border border-dashed border-gray-700 rounded-lg">Aucune référence. Commencez à forger votre style.</div>}
                                 {forgeItems.map(item => (
@@ -176,7 +211,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                                 </div>
                                             </div>
                                             <button onClick={() => setForgeItems(forgeItems.filter(i => i.id !== item.id))} className="text-gray-600 hover:text-red-400">
-                                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                <XMarkIcon className="h-4 w-4"/>
                                             </button>
                                         </div>
                                         
@@ -185,14 +220,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                                 <span className="text-gray-400 uppercase font-bold tracking-wider">Style DNA</span>
                                                 <span className="text-orange-400">{item.styleDNA || "Pending..."}</span>
                                             </div>
-                                            {/* DNA Visualization Bar */}
                                             <div className="w-full h-1.5 bg-gray-800 rounded-full mt-1 overflow-hidden">
                                                 <div className={`h-full bg-gradient-to-r from-orange-600 to-red-600 rounded-full ${item.styleDNA ? 'w-3/4 animate-pulse' : 'w-0'}`}></div>
                                             </div>
                                         </div>
-                                        
-                                        {/* Background Decoration */}
-                                        <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-orange-500/10 rounded-full blur-xl group-hover:bg-orange-500/20 transition"></div>
                                     </div>
                                 ))}
                              </div>
@@ -206,7 +237,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 );
             case 'storage':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
                              <ArrowDownTrayIcon className="h-6 w-6 text-blue-400"/>
                              <h2 className="text-2xl font-bold">Stockage</h2>
@@ -214,7 +245,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         <p className="text-gray-400">Définissez où votre base de données (scripts, séries) est stockée.</p>
 
                         <div className="grid gap-4">
-                            {/* LocalStorage */}
                             <div 
                                 onClick={() => handleStorageChange('local')}
                                 className={`p-4 rounded-xl border cursor-pointer flex justify-between items-center transition ${storagePref === 'local' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
@@ -226,7 +256,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                 <div className={`h-4 w-4 rounded-full border ${storagePref === 'local' ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}></div>
                             </div>
 
-                            {/* Google Drive */}
                             <div 
                                 onClick={() => handleStorageChange('drive')}
                                 className={`p-4 rounded-xl border cursor-pointer transition ${storagePref === 'drive' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
@@ -251,7 +280,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                 )}
                             </div>
 
-                            {/* Firebase */}
                             <div 
                                 onClick={() => setStoragePref('firebase')}
                                 className={`p-4 rounded-xl border cursor-pointer transition ${storagePref === 'firebase' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
@@ -281,37 +309,81 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 );
             case 'apikey':
                 return (
-                    <div className="space-y-6">
-                        <h2 className="text-2xl font-bold">Clé API (Veo)</h2>
-                        <p className="text-gray-400">Pour utiliser la génération vidéo avec Veo, vous devez fournir votre propre clé API Google Cloud.</p>
-                        <input type="password" placeholder="AI Studio / GCP API Key" className="w-full bg-gray-800 p-3 rounded border border-gray-700" defaultValue={user.apiKey} onBlur={(e) => handleSaveApiKey(e.target.value)} />
+                    <div className="space-y-6 pb-20">
+                        <h2 className="text-2xl font-bold">Clé API (Veo & Pro Features)</h2>
+                        <p className="text-gray-400">Pour utiliser la génération vidéo (Veo) et les fonctions avancées, entrez votre clé API Google Cloud / AI Studio.</p>
+                        <input type="password" placeholder="AI Studio / GCP API Key" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.apiKey} onBlur={(e) => handleSaveApiKey(e.target.value)} />
+                        <div className="bg-blue-900/20 p-4 rounded border border-blue-900/50 text-xs text-blue-300">
+                            Cette clé est stockée localement dans votre navigateur et n'est jamais envoyée à nos serveurs.
+                        </div>
                     </div>
                 );
-            case 'stats':
+            case 'share':
                 return (
-                    <div className="space-y-6">
-                        <h2 className="text-2xl font-bold">Générations</h2>
-                         <div className="bg-gray-800 p-6 rounded-xl">
-                            <div className="flex justify-between mb-2">
-                                <span>Crédits Utilisés</span>
-                                <span>{6 - user.generationsLeft} / 6 (Freemium)</span>
-                            </div>
-                            <div className="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
-                                <div className="bg-brand-purple h-full" style={{width: `${Math.max(0, ((6 - user.generationsLeft)/6)*100)}%`}}></div>
-                            </div>
-                         </div>
+                    <div className="space-y-6 pb-20">
+                        <div className="flex items-center space-x-2">
+                             <ShareIcon className="h-6 w-6 text-green-400"/>
+                             <h2 className="text-2xl font-bold">Partager des Templates</h2>
+                        </div>
+                        <p className="text-gray-400">Sélectionnez vos meilleurs scripts pour les partager comme modèles avec la communauté.</p>
+                        
+                        <div className="space-y-3">
+                            {userScripts.length === 0 && <div className="text-gray-500 italic">Aucun script à partager.</div>}
+                            {userScripts.map(script => (
+                                <div key={script.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="font-bold">{script.title}</h3>
+                                        <span className="text-xs text-gray-500">{script.niche}</span>
+                                    </div>
+                                    {script.isTemplate ? (
+                                        <span className="text-green-500 text-xs font-bold border border-green-500 px-2 py-1 rounded">PARTAGÉ</span>
+                                    ) : (
+                                        <Button onClick={() => handleShareTemplate(script.id)} variant="outline" className="text-xs py-1 px-3">
+                                            Partager
+                                        </Button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
+                );
+            case 'ideas':
+                return (
+                     <div className="space-y-6 pb-20">
+                        <div className="flex items-center space-x-2">
+                             <LightBulbIcon className="h-6 w-6 text-yellow-400"/>
+                             <h2 className="text-2xl font-bold">Idées Virales (Niche: {user.niche})</h2>
+                        </div>
+                        <p className="text-gray-400">L'IA analyse votre niche pour trouver des concepts à fort potentiel.</p>
+                        
+                        <Button onClick={handleGenerateIdeas} isLoading={isLoadingIdeas} className="w-full mb-6 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold">
+                            <RefreshIcon className="h-5 w-5 mr-2 inline"/> Générer 6 nouvelles idées
+                        </Button>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {viralIdeas.map(idea => (
+                                <div key={idea.id} onClick={() => handleUseIdea(idea)} className="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-yellow-500 cursor-pointer group transition">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${idea.difficulty === 'Easy' ? 'bg-green-900 text-green-400' : idea.difficulty === 'Medium' ? 'bg-yellow-900 text-yellow-400' : 'bg-red-900 text-red-400'}`}>{idea.difficulty}</span>
+                                        <ArrowDownTrayIcon className="h-4 w-4 text-gray-600 group-hover:text-yellow-400 -rotate-90"/>
+                                    </div>
+                                    <h3 className="font-bold text-lg mb-2 group-hover:text-yellow-400 transition">{idea.title}</h3>
+                                    <p className="text-sm text-gray-400 italic">"{idea.hook}"</p>
+                                </div>
+                            ))}
+                        </div>
+                     </div>
                 );
             case 'plan':
                 return (
-                    <div className="space-y-6">
-                        <h2 className="text-2xl font-bold">Formule Actuelle</h2>
+                    <div className="space-y-6 pb-20">
+                        <h2 className="text-2xl font-bold">Formules</h2>
                         <div className="p-4 border border-brand-purple bg-brand-purple/10 rounded-xl">
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-lg">Freemium</span>
+                                <span className="font-bold text-lg">{user.isPro ? 'WySlider Pro+' : 'Freemium'}</span>
                                 <span className="text-sm bg-brand-purple px-2 py-1 rounded">Actif</span>
                             </div>
-                            <p className="text-gray-400 mt-2">6 générations gratuites restantes: {user.generationsLeft}</p>
+                            <p className="text-gray-400 mt-2">Générations restantes: {user.generationsLeft}</p>
                         </div>
                         
                         <div className="grid gap-4">
@@ -323,29 +395,31 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                 <h3 className="font-bold">Post Use</h3>
                                 <p className="text-sm text-gray-400">Partagez sur les réseaux = +10 crédits</p>
                             </div>
-                             <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500 opacity-50">
-                                <h3 className="font-bold">WYS Pro+ ($49)</h3>
+                             <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500 relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1">POPULAIRE</div>
+                                <h3 className="font-bold text-yellow-400">WYS Pro+ ($49)</h3>
                                 <p className="text-sm text-gray-400">50 scripts + Serial Prod + Veo</p>
+                                <Button className="mt-2 w-full text-xs" onClick={() => alert("Paiement simulé. Utilisez le code PROPLUS dans la section Compte.")}>Simuler Upgrade</Button>
                             </div>
                         </div>
                     </div>
                 );
             case 'sync':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 pb-20">
                          <h2 className="text-2xl font-bold">Synchronisation</h2>
                          <p className="text-gray-400">Code de récupération pour synchroniser vos données sur un autre appareil.</p>
                          <div className="flex space-x-2">
-                             <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)} placeholder="Code de récupération (ex: wys2323)" className="flex-1 bg-gray-800 p-3 rounded border border-gray-700"/>
+                             <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)} placeholder="Code de récupération (ex: wys2323)" className="flex-1 bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none"/>
                              <Button onClick={handleSync}>Sync</Button>
                          </div>
                     </div>
                 );
             case 'feedback':
                 return (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pb-20">
                         <h2 className="text-2xl font-bold">Feedback</h2>
-                         <textarea className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32" placeholder="Votre avis nous intéresse..."></textarea>
+                         <textarea className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none" placeholder="Votre avis nous intéresse..."></textarea>
                          <Button onClick={() => alert("Merci pour votre feedback !")}>Envoyer</Button>
                     </div>
                 )
@@ -364,13 +438,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                     {[
                         {id: 'account', label: 'Compte WySlider', icon: <UserIcon className="h-5 w-5"/>},
+                        {id: 'ideas', label: 'Idées Virales', icon: <LightBulbIcon className="h-5 w-5 text-yellow-400"/>},
                         {id: 'forge', label: 'Forge (AI Custom)', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
+                        {id: 'share', label: 'Partager (Templates)', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
                         {id: 'storage', label: 'Stockage', icon: <ArrowDownTrayIcon className="h-5 w-5 text-blue-400"/>},
-                        {id: 'templates', label: 'Templates', icon: <DiamondIcon className="h-5 w-5"/>},
-                        {id: 'apikey', label: 'Clé API', icon: <KeyIcon className="h-5 w-5"/>},
-                        {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5"/>},
-                        {id: 'stats', label: 'Génération', icon: <ChartBarIcon className="h-5 w-5"/>},
-                        {id: 'plan', label: 'Formule', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                        {id: 'apikey', label: 'Clé API & Veo', icon: <KeyIcon className="h-5 w-5"/>},
+                        {id: 'plan', label: 'Formule Pro+', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
                         {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
                         {id: 'sync', label: 'Sync', icon: <RefreshIcon className="h-5 w-5"/>},
                     ].map(item => (
@@ -384,20 +457,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </button>
                     ))}
                 </nav>
-                <div className="p-4 border-t border-gray-800">
-                    <div className="flex items-center space-x-3 mb-4 px-2">
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-purple to-brand-blue"></div>
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-bold truncate">{user.email}</p>
-                            <p className="text-xs text-gray-500 truncate">{user.niche}</p>
-                        </div>
-                    </div>
-                    <Button onClick={() => window.location.reload()} variant="secondary" className="w-full text-xs">Se déconnecter</Button>
-                </div>
              </div>
 
              {/* Center Content */}
-             <div className="flex-1 overflow-y-auto bg-gray-900 p-8">
+             <div className="flex-1 overflow-y-auto bg-gray-900 p-8 scroll-smooth">
                  <div className="max-w-4xl mx-auto">
                     {renderContent()}
                  </div>

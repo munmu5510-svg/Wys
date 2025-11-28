@@ -67,6 +67,13 @@ export interface EpisodeSuggestion {
   title: string;
 }
 
+export interface ViralIdea {
+    id: string;
+    title: string;
+    hook: string;
+    difficulty: 'Easy' | 'Medium' | 'Hard';
+}
+
 export interface SeriesGenerationProgress {
   episodeIndex: number;
   status: string;
@@ -103,6 +110,7 @@ export interface CalendarEvent {
   date: string;
   title: string;
   status: 'planned' | 'scripted' | 'filmed' | 'posted';
+  format: string;
 }
 
 export interface BrandPitch {

@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { AuthPage } from './components/AuthPage';
-import { MainLayout } from './components/MainLayout';
 import { Workspace } from './components/Workspace';
 import { AccountPage } from './components/AccountPage';
 import { AdminPage } from './components/AdminPage';
@@ -112,13 +110,11 @@ export const App: React.FC = () => {
   }
 
   return (
-    <MainLayout user={user} onLogout={handleLogout} onNavigateToAccount={() => setCurrentScreen('Account')}>
        <Workspace 
             user={user} 
             onUpdateUser={updateUserSession} 
             onNavigateAccount={() => setCurrentScreen('Account')}
             onLogout={handleLogout}
        />
-    </MainLayout>
   );
 };

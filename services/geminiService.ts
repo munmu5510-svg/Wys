@@ -4,14 +4,17 @@ import { GoogleGenAI, Type, Chat } from "@google/genai";
 // Lazy initialization of AI client
 let aiInstance: GoogleGenAI | null = null;
 
-const getAi = () => {
+const getAi = (apiKey?: string) => {
+  if (apiKey) {
+      return new GoogleGenAI({ apiKey });
+  }
   if (!aiInstance) {
     // Safety check for process.env
-    const apiKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : '';
-    if (!apiKey) {
+    const envKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : '';
+    if (!envKey) {
         console.warn("API_KEY not found in process.env");
     }
-    aiInstance = new GoogleGenAI({ apiKey: apiKey || 'DUMMY_KEY_FOR_INIT' });
+    aiInstance = new GoogleGenAI({ apiKey: envKey || 'DUMMY_KEY_FOR_INIT' });
   }
   return aiInstance;
 };
@@ -165,8 +168,11 @@ export const generateSeries = async (theme: string, count: number, tone: string,
     }
 };
 
-export const generateEpisodeSuggestions = async (concept: string, count: number) => {
-    const prompt = `Generate ${count} YouTube video titles/ideas for a series based on the concept: "${concept}". Return a JSON array of objects with a "title" property.`;
+export const generateViralIdeas = async (niche: string) => {
+    const prompt = `Generate 6 viral video ideas for the niche: "${niche}". 
+    For each idea, provide a catchy title, a hook, and a difficulty level (Easy, Medium, Hard).
+    Return a valid JSON object with an array "ideas".`;
+
     try {
         const ai = getAi();
         const response = await ai.models.generateContent({
@@ -175,29 +181,121 @@ export const generateEpisodeSuggestions = async (concept: string, count: number)
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            title: { type: Type.STRING }
+                    type: Type.OBJECT,
+                    properties: {
+                        ideas: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    hook: { type: Type.STRING },
+                                    difficulty: { type: Type.STRING }
+                                }
+                            }
                         }
                     }
                 }
             }
         });
+
         if (response.text) {
-            try {
-                return JSON.parse(response.text);
+             try {
+                return JSON.parse(response.text).ideas;
             } catch (e) {
-                return JSON.parse(cleanJson(response.text));
+                return JSON.parse(cleanJson(response.text)).ideas;
             }
         }
         return [];
-    } catch (error) {
-        console.error("Error generating suggestions:", error);
+    } catch (e) {
+        console.error("Error generating viral ideas", e);
         return [];
     }
 };
+
+export const generateEditorialCalendar = async (niche: string) => {
+    const prompt = `Create a 4-week editorial calendar for a YouTube channel in the niche: "${niche}".
+    Return a valid JSON array of objects. Each object should have:
+    - date (YYYY-MM-DD format, starting from tomorrow)
+    - title (Video Title)
+    - format (Shorts or Long-form)
+    - status (always 'planned')
+    Generate about 8-12 events mixed between Shorts and Long-form.`;
+
+    try {
+         const ai = getAi();
+         const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+             config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            date: { type: Type.STRING },
+                            title: { type: Type.STRING },
+                            format: { type: Type.STRING },
+                            status: { type: Type.STRING }
+                        }
+                    }
+                }
+            }
+         });
+         if(response.text) {
+             try {
+                 return JSON.parse(response.text);
+             } catch(e) {
+                 return JSON.parse(cleanJson(response.text));
+             }
+         }
+         return [];
+    } catch (e) {
+        console.error("Error generating calendar", e);
+        return [];
+    }
+}
+
+export const generateVideoPreview = async (scriptTitle: string, scriptContent: string, userApiKey: string) => {
+    // This uses the Veo fast preview model to generate a video based on the script concept
+    if (!userApiKey) throw new Error("API Key required");
+
+    const prompt = `Create a cinematic, high-quality video preview for a YouTube video titled: "${scriptTitle}". 
+    Visual context: ${scriptContent.substring(0, 300)}... 
+    Style: Professional, Engaging, 1080p.`;
+
+    try {
+        const ai = getAi(userApiKey);
+        let operation = await ai.models.generateVideos({
+            model: 'veo-3.1-fast-generate-preview',
+            prompt: prompt,
+            config: {
+                numberOfVideos: 1,
+                resolution: '1080p',
+                aspectRatio: '16:9'
+            }
+        });
+        
+        // Return operation to let the UI poll for it
+        return operation;
+
+    } catch (error) {
+        console.error("Veo Error:", error);
+        throw error;
+    }
+}
+
+export const checkVideoStatus = async (operation: any, userApiKey: string) => {
+    try {
+        const ai = getAi(userApiKey);
+        const updatedOp = await ai.operations.getVideosOperation({operation: operation});
+        return updatedOp;
+    } catch (error) {
+        console.error("Veo Check Status Error:", error);
+        throw error;
+    }
+}
 
 export const analyzeSocialPost = async (url: string): Promise<boolean> => {
     return url.length > 10 && (url.includes("http") || url.includes("www"));
@@ -208,7 +306,7 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
         const ai = getAi();
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
-            contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report:\n\n${metrics}`
+            contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`
         });
         return response.text || "NO_DATA_AVAILABLE";
     } catch (error) {
