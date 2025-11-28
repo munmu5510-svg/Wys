@@ -12,7 +12,7 @@ const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id:
     useEffect(() => {
         const timer = setTimeout(() => onClose(notification.id), 5000);
         return () => clearTimeout(timer);
-    }, []);
+    }, [notification.id, onClose]);
 
     return (
         <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-50`}>
@@ -346,7 +346,7 @@ const SerialProd: React.FC<{
                         {user.generationsLeft} CRÉDITS
                     </button>
                     <button onClick={onNavigateAccount} className="flex items-center space-x-2 text-gray-400 hover:text-white">
-                        {user.profilePicture ? <img src={user.profilePicture} className="h-8 w-8 rounded-full border border-gray-700"/> : <div className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700"><UserIcon className="h-4 w-4"/></div>}
+                        {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-8 w-8 rounded-full border border-gray-700"/> : <div className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700"><UserIcon className="h-4 w-4"/></div>}
                     </button>
                 </div>
             </header>
@@ -870,7 +870,7 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                 </button>
                 <div className="h-5 w-px bg-gray-700"></div>
                 <button onClick={onNavigateAccount} className="flex items-center space-x-2 text-gray-400 hover:text-white">
-                    {user.profilePicture ? <img src={user.profilePicture} className="h-8 w-8 rounded-full border border-gray-700"/> : <div className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700"><UserIcon className="h-4 w-4"/></div>}
+                    {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-8 w-8 rounded-full border border-gray-700"/> : <div className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700"><UserIcon className="h-4 w-4"/></div>}
                 </button>
                 <button onClick={onLogout} className="text-red-900 hover:text-red-500"><ArrowRightIcon className="h-5 w-5"/></button>
             </div>

@@ -257,9 +257,9 @@ export const analyzeSEO = async (niche: string) => {
              contents: `Give me 3 viral trending video ideas for the YouTube niche: ${niche}. Format as a simple list.`
         });
         return response.text || "";
-    } catch (e) { return "" }
+    } catch { return "" }
 }
 
-export const extractStyleFromRef = async (ref: string) => {
+export const extractStyleFromRef = async (_ref: string) => {
     return "Analysis complete. Detected style: High energy, fast cuts, empathetic undertone.";
 }

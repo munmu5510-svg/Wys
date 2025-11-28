@@ -109,7 +109,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         <h2 className="text-2xl font-bold">Mon Compte</h2>
                         <div className="flex items-center space-x-4">
                              <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-                                {user.profilePicture ? <img src={user.profilePicture} className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
+                                {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
                              </div>
                              <div>
                                  <p className="font-bold text-lg">{user.email}</p>

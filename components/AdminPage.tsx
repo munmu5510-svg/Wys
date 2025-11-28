@@ -35,10 +35,17 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     useEffect(() => {
+        const fetchInsights = async () => {
+            setIsLoadingInsight(true);
+            const insight = await geminiService.generateAdminInsights(mockMetrics);
+            setStatsInsight(insight);
+            setIsLoadingInsight(false);
+        }
+
         if (activeTab === 'stats' && !statsInsight) {
             fetchInsights();
         }
-    }, [activeTab]);
+    }, [activeTab, statsInsight, mockMetrics]);
 
     const saveGithubConfig = () => {
         localStorage.setItem('gh_token', ghToken);
@@ -75,7 +82,7 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
         }
     };
 
-    const fetchInsights = async () => {
+    const manualFetchInsights = async () => {
         setIsLoadingInsight(true);
         const insight = await geminiService.generateAdminInsights(mockMetrics);
         setStatsInsight(insight);
@@ -230,7 +237,7 @@ function implementedFeature() {
                                 <div className="bg-gray-900 p-4 rounded border border-gray-600">
                                     <div className="flex justify-between items-center mb-2">
                                         <h3 className="text-lg font-bold text-purple-400">AI_INSIGHTS_ENGINE</h3>
-                                        <button onClick={fetchInsights} disabled={isLoadingInsight} className="text-xs text-gray-400 hover:text-white">
+                                        <button onClick={manualFetchInsights} disabled={isLoadingInsight} className="text-xs text-gray-400 hover:text-white">
                                             <RefreshIcon className="h-4 w-4" />
                                         </button>
                                     </div>

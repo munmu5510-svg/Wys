@@ -25,7 +25,7 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const handleLogin = async (email: string, pass: string) => {
+  const handleLogin = async (email: string, _pass: string) => {
     const mockUser: User = {
       id: 'u_' + Date.now(),
       email,
@@ -40,7 +40,7 @@ export const App: React.FC = () => {
     setIsAuthFlow(false);
   };
 
-  const handleSignUp = async (email: string, channelName: string, youtubeUrl: string, niche: string, pass: string) => {
+  const handleSignUp = async (email: string, channelName: string, youtubeUrl: string, niche: string, _pass: string) => {
      const mockUser: User = {
       id: 'u_' + Date.now(),
       email,
