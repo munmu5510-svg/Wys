@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { ChartBarIcon, RobotIcon, BoltIcon, RefreshIcon, KeyIcon, CheckIcon, XMarkIcon, BellIcon } from './icons';
+import { ChartBarIcon, RobotIcon, BoltIcon, RefreshIcon, KeyIcon, CheckIcon, XMarkIcon, BellIcon, PencilSquareIcon } from './icons';
 import * as geminiService from '../services/geminiService';
 
 interface AdminPageProps {
   onBack: () => void;
+}
+
+interface UserFeedback {
+    id: string;
+    userEmail: string;
+    message: string;
+    timestamp: string;
 }
 
 // Helper for Base64 encoding with Unicode support
@@ -13,7 +20,7 @@ function utf8_to_b64(str: string) {
 }
 
 export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
-    const [activeTab, setActiveTab] = useState<'stats' | 'selfgrow' | 'notifications'>('stats');
+    const [activeTab, setActiveTab] = useState<'stats' | 'selfgrow' | 'notifications' | 'feedbacks'>('stats');
     const [statsInsight, setStatsInsight] = useState('');
     const [isLoadingInsight, setIsLoadingInsight] = useState(false);
     
@@ -29,6 +36,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
     const [codeDiff, setCodeDiff] = useState('');
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
 
+    // Feedback State
+    const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([]);
+
     // GitHub Config State
     const [ghToken, setGhToken] = useState(localStorage.getItem('gh_token') || '');
     const [ghOwner, setGhOwner] = useState(localStorage.getItem('gh_owner') || '');
@@ -41,7 +51,10 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
         // Fetch real data from LocalStorage
         const scripts = JSON.parse(localStorage.getItem('wyslider_scripts') || '[]');
         setScriptCount(scripts.length);
-        // In a real app with backend we'd fetch user count. Here we simulate '1' active session user.
+        
+        // Fetch feedbacks
+        const savedFeedbacks = JSON.parse(localStorage.getItem('wyslider_feedback_box') || '[]');
+        setFeedbacks(savedFeedbacks);
     }, []);
 
     useEffect(() => {
@@ -135,6 +148,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
                             <BellIcon className="h-5 w-5 inline mr-2" />
                             NOTIFICATIONS
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('feedbacks')}
+                            className={`w-full text-left p-3 rounded border ${activeTab === 'feedbacks' ? 'bg-purple-500/20 border-purple-500 text-purple-500' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                        >
+                            <PencilSquareIcon className="h-5 w-5 inline mr-2" />
+                            FEEDBACKS ({feedbacks.length})
+                        </button>
                     </div>
 
                     {/* Content Area */}
@@ -226,6 +246,24 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
                                     <Button onClick={handleSendNotification} className="bg-blue-600 hover:bg-blue-700 border-none w-full">
                                         BROADCAST_NOW
                                     </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'feedbacks' && (
+                            <div className="space-y-6">
+                                <h2 className="text-xl font-bold text-purple-400 mb-4">&gt; INCOMING_TRANSMISSIONS</h2>
+                                <div className="space-y-4 max-h-[400px] overflow-y-auto">
+                                    {feedbacks.length === 0 && <p className="text-gray-500 italic">No feedback signals received.</p>}
+                                    {feedbacks.slice().reverse().map(fb => (
+                                        <div key={fb.id} className="bg-gray-900 p-4 rounded border border-gray-700">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-xs text-purple-300 font-bold">{fb.userEmail}</span>
+                                                <span className="text-[10px] text-gray-500">{new Date(fb.timestamp).toLocaleString()}</span>
+                                            </div>
+                                            <p className="text-sm text-gray-300 whitespace-pre-wrap">{fb.message}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

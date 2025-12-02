@@ -36,11 +36,25 @@ const cleanJson = (text: string) => {
 
 export const checkServiceStatus = () => "Ready";
 
-export const generateScript = async (topic: string, tone: string, format: string, youtubeUrl?: string) => {
-  const prompt = `Write a YouTube video script for the following topic: "${topic}".
+export const generateScript = async (
+    topic: string, 
+    tone: string, 
+    format: string, 
+    youtubeUrl?: string,
+    goal?: string,
+    needs?: string,
+    cta?: string,
+    platforms?: string
+) => {
+  const prompt = `Write a YouTube video script.
+  Topic: "${topic}".
   Tone: ${tone}.
   Format/Length: ${format}.
   ${youtubeUrl ? `Context from creator's channel: ${youtubeUrl}` : ''}
+  ${goal ? `Goal of the video: ${goal}` : ''}
+  ${needs ? `Specific needs/requirements: ${needs}` : ''}
+  ${cta ? `Call To Action: ${cta}` : ''}
+  ${platforms ? `Optimization for platforms: ${platforms}` : ''}
 
   Return a valid JSON object with the following structure:
   {
@@ -104,19 +118,26 @@ export const generateScript = async (topic: string, tone: string, format: string
   }
 };
 
-export const generateSeries = async (theme: string, count: number, tone: string, niche: string, format: string) => {
-    // Optimization: Requested "detailed outlines" instead of "full script structure" to prevent output token truncation for multiple episodes.
-    const prompt = `Generate a YouTube video series of ${count} episodes for the theme: "${theme}".
+export const generateSeriesOutlines = async (
+    theme: string, 
+    count: number, 
+    tone: string, 
+    niche: string, 
+    goal?: string
+) => {
+    const prompt = `Propose ${count} YouTube video titles and brief summaries for a series on the theme: "${theme}".
     Niche: ${niche}.
     Tone: ${tone}.
-    Format: ${format}.
+    ${goal ? `Goal: ${goal}` : ''}
     
-    For EACH episode, provide a comprehensive outline (not a full verbatim script) to ensure the response fits within limits.
-    Return a valid JSON object containing an array "episodes".`;
+    Return a JSON object with an array "episodes". Each item must have:
+    - title: string
+    - summary: string (one sentence)
+    `;
 
     try {
         const ai = getAi();
-         const response = await ai.models.generateContent({
+        const response = await ai.models.generateContent({
             model: MODEL_NAME,
             contents: prompt,
             config: {
@@ -130,20 +151,7 @@ export const generateSeries = async (theme: string, count: number, tone: string,
                                 type: Type.OBJECT,
                                 properties: {
                                     title: { type: Type.STRING },
-                                    youtubeDescription: { type: Type.STRING },
-                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    sections: {
-                                        type: Type.ARRAY,
-                                        items: {
-                                            type: Type.OBJECT,
-                                            properties: {
-                                                title: { type: Type.STRING },
-                                                estimatedTime: { type: Type.STRING },
-                                                content: { type: Type.STRING },
-                                                visualNote: { type: Type.STRING }
-                                            }
-                                        }
-                                    }
+                                    summary: { type: Type.STRING }
                                 }
                             }
                         }
@@ -156,14 +164,12 @@ export const generateSeries = async (theme: string, count: number, tone: string,
             try {
                 return JSON.parse(response.text).episodes;
             } catch (e) {
-                console.warn("Series JSON parse failed, cleaning...", e);
-                const cleaned = cleanJson(response.text);
-                return JSON.parse(cleaned).episodes;
+                return JSON.parse(cleanJson(response.text)).episodes;
             }
         }
         return [];
-    } catch (error) {
-        console.error("Error generating series:", error);
+    } catch (e) {
+        console.error("Error generating series outlines", e);
         return [];
     }
 };
@@ -213,8 +219,9 @@ export const generateViralIdeas = async (niche: string) => {
     }
 };
 
-export const generateEditorialCalendar = async (niche: string) => {
+export const generateEditorialCalendar = async (niche: string, tasks?: string) => {
     const prompt = `Create a 4-week editorial calendar for a YouTube channel in the niche: "${niche}".
+    ${tasks ? `Incorporate the following specific tasks/ideas into the schedule: ${tasks}` : ''}
     Return a valid JSON array of objects. Each object should have:
     - date (YYYY-MM-DD format, starting from tomorrow)
     - title (Video Title)
@@ -257,49 +264,34 @@ export const generateEditorialCalendar = async (niche: string) => {
     }
 }
 
-export const generateVideoPreview = async (scriptTitle: string, scriptContent: string, userApiKey: string) => {
-    // This uses the Veo fast preview model to generate a video based on the script concept
-    if (!userApiKey) throw new Error("API Key required");
-
-    const prompt = `Create a cinematic, high-quality video preview for a YouTube video titled: "${scriptTitle}". 
-    Visual context: ${scriptContent.substring(0, 300)}... 
-    Style: Professional, Engaging, 1080p.`;
-
+export const verifyPostContent = async (url: string) => {
     try {
-        const ai = getAi(userApiKey);
-        let operation = await ai.models.generateVideos({
-            model: 'veo-3.1-fast-generate-preview',
-            prompt: prompt,
+        const ai = getAi();
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: `Analyze this URL or text representation of a social media post: "${url}". 
+            Does it look like a valid social media link (YouTube, Instagram, TikTok, LinkedIn, Twitter/X) that could be about a product named "WySlider"?
+            Return JSON: { "isValid": boolean, "reason": "string" }`,
             config: {
-                numberOfVideos: 1,
-                resolution: '1080p',
-                aspectRatio: '16:9'
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        isValid: { type: Type.BOOLEAN },
+                        reason: { type: Type.STRING }
+                    }
+                }
             }
         });
         
-        // Return operation to let the UI poll for it
-        return operation;
-
-    } catch (error) {
-        console.error("Veo Error:", error);
-        throw error;
+        const text = response.text || "{}";
+        const json = JSON.parse(cleanJson(text));
+        return json.isValid;
+    } catch (e) {
+        // Fallback for demo if URL is generic or analysis fails
+        return url.includes("http") && url.length > 15;
     }
 }
-
-export const checkVideoStatus = async (operation: any, userApiKey: string) => {
-    try {
-        const ai = getAi(userApiKey);
-        const updatedOp = await ai.operations.getVideosOperation({operation: operation});
-        return updatedOp;
-    } catch (error) {
-        console.error("Veo Check Status Error:", error);
-        throw error;
-    }
-}
-
-export const analyzeSocialPost = async (url: string): Promise<boolean> => {
-    return url.length > 10 && (url.includes("http") || url.includes("www"));
-};
 
 export const generateAdminInsights = async (metrics: string): Promise<string> => {
     try {
@@ -334,12 +326,12 @@ export const sendMessageToChat = async (chatSession: Chat, message: string): Pro
     }
 };
 
-export const generatePitch = async (brand: string, objective: string) => {
+export const generatePitch = async (brand: string, url: string, objective: string) => {
     try {
         const ai = getAi();
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
-            contents: `Write a cold email pitch to ${brand} with the objective: ${objective}. Keep it under 200 words.`
+            contents: `Write a cold email pitch to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`
         });
         return response.text || "";
     } catch (error) {
@@ -347,12 +339,12 @@ export const generatePitch = async (brand: string, objective: string) => {
     }
 };
 
-export const analyzeSEO = async (niche: string) => {
+export const analyzeSEO = async (scriptTitle: string, scriptContent: string) => {
     try {
         const ai = getAi();
         const response = await ai.models.generateContent({
              model: MODEL_NAME,
-             contents: `Give me 3 viral trending video ideas for the YouTube niche: ${niche}. Format as a simple list.`
+             contents: `Analyze the SEO potential and CTR for a YouTube video.\nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`
         });
         return response.text || "";
     } catch { return "" }

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon } from './icons';
+import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon, Squares2x2Icon } from './icons';
 import { Button } from './Button';
 import { PRICING } from '../constants';
 
@@ -74,6 +74,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                             </div>
                         </div>
                     ))}
+                </div>
+            </div>
+        </section>
+
+        {/* Community Templates */}
+        <section className="py-24 bg-gray-800">
+            <div className="container mx-auto px-6">
+                <h2 className="text-4xl font-bold text-center mb-4 flex items-center justify-center"><Squares2x2Icon className="h-8 w-8 mr-3 text-pink-500"/> Templates de la Communauté</h2>
+                <p className="text-center text-gray-400 mb-16">Découvrez ce que les autres créateurs utilisent.</p>
+                
+                <div className="grid md:grid-cols-4 gap-6">
+                    {[
+                        {title: "Le Vlog Storytelling", niche: "Lifestyle", user: "SarahVlogs"},
+                        {title: "Review Tech Express", niche: "Tech", user: "GeekMasters"},
+                        {title: "Tuto Cuisine ASMR", niche: "Food", user: "ChefLeo"},
+                        {title: "Analyse Crypto Daily", niche: "Finance", user: "CryptoKing"}
+                    ].map((t, i) => (
+                        <div key={i} className="bg-gray-900 border border-gray-700 p-6 rounded-xl hover:border-pink-500 transition group cursor-pointer" onClick={onNavigateToAuth}>
+                            <h3 className="font-bold text-lg mb-2 group-hover:text-pink-400 transition">{t.title}</h3>
+                            <div className="flex justify-between items-center text-xs text-gray-500">
+                                <span className="bg-gray-800 px-2 py-1 rounded">{t.niche}</span>
+                                <span>@{t.user}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="text-center mt-12">
+                    <Button variant="outline" onClick={onNavigateToAuth}>Voir plus de templates</Button>
                 </div>
             </div>
         </section>

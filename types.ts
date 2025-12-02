@@ -40,6 +40,9 @@ export interface Script {
   isTemplate?: boolean;
   niche?: string;
   thumbnailUrl?: string;
+  goal?: string;
+  needs?: string;
+  cta?: string;
 }
 
 export interface Series {
@@ -119,4 +122,5 @@ export interface BrandPitch {
   brandUrl: string;
   objective: string;
   content: string;
+  createdAt: string;
 }

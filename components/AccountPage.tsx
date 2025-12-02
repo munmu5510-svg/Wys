@@ -3,19 +3,23 @@ import { User, ForgeItem, Script, ViralIdea } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, KeyIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon } from './icons';
+import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon } from './icons';
 
 interface AccountPageProps {
   user: User;
   onUpdateUser: (updatedUser: User) => void;
   onBack: () => void;
   onNavigateToAdmin: () => void;
+  onUseIdea?: (idea: ViralIdea) => void;
 }
 
-export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin }) => {
-    const [section, setSection] = useState<'account'|'templates'|'apikey'|'share'|'ideas'|'plan'|'feedback'|'sync'|'forge'|'storage'>('account');
+export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onUseIdea }) => {
+    const [section, setSection] = useState<'account'|'templates'|'share'|'ideas'|'plan'|'feedback'|'sync'|'forge'|'storage'>('account');
     const [promoCode, setPromoCode] = useState('');
     const [syncCode, setSyncCode] = useState('');
+    
+    // Account details state
+    const [newProfilePic, setNewProfilePic] = useState(user.profilePicture || '');
     
     // Forge State
     const [forgeUrl, setForgeUrl] = useState('');
@@ -28,22 +32,47 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
 
     // Share/Template State
     const [userScripts, setUserScripts] = useState<Script[]>([]);
+    const [communityTemplates, setCommunityTemplates] = useState<Script[]>([]);
     
     // Viral Ideas State
     const [viralIdeas, setViralIdeas] = useState<ViralIdea[]>([]);
     const [isLoadingIdeas, setIsLoadingIdeas] = useState(false);
 
+    // Post Use Verification State
+    const [postUrl, setPostUrl] = useState('');
+    const [isVerifyingPost, setIsVerifyingPost] = useState(false);
+    const [showPostModal, setShowPostModal] = useState(false);
+
+    // Feedback State
+    const [feedbackMsg, setFeedbackMsg] = useState('');
+
     useEffect(() => {
         const saved = localStorage.getItem('wyslider_scripts');
-        if(saved) setUserScripts(JSON.parse(saved));
+        if(saved) {
+            const parsed = JSON.parse(saved);
+            setUserScripts(parsed);
+            // Simulate Community Templates (Filter local shared ones + add some mocks)
+            const shared = parsed.filter((s: Script) => s.isTemplate);
+            setCommunityTemplates([
+                ...shared,
+                { id: 't1', title: 'Product Review Structure', niche: 'Tech', isTemplate: true, sections: [] },
+                { id: 't2', title: 'Storytelling Vlog', niche: 'Lifestyle', isTemplate: true, sections: [] },
+                { id: 't3', title: 'Tutorial Rapide (Shorts)', niche: 'Education', isTemplate: true, sections: [] }
+            ]);
+        }
     }, []);
+
+    const handleSaveProfile = () => {
+        onUpdateUser({...user, profilePicture: newProfilePic});
+        alert("Profil mis à jour !");
+    }
 
     const handlePromoCode = () => {
         if (promoCode === 'admin2301') {
             onNavigateToAdmin();
         } else if (promoCode === 'wys2301') {
             onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
-            alert("10 Générations ajoutées !");
+            alert("Code accepté ! 10 Générations offertes.");
         } else if (promoCode === 'PROPLUS') {
             onUpdateUser({...user, isPro: true, generationsLeft: 999});
             alert("Mode Pro+ Activé (Simulation)");
@@ -59,11 +88,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             alert("Code de synchronisation invalide.");
         }
     };
-
-    const handleSaveApiKey = (key: string) => {
-        onUpdateUser({...user, apiKey: key});
-        alert("Clé API enregistrée !");
-    }
 
     const handleAddToForge = () => {
         if (!forgeUrl) return;
@@ -128,10 +152,67 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     }
 
     const handleUseIdea = (idea: ViralIdea) => {
-        // In a real app, this would navigate to Studio with state. 
-        // For now, we'll alert instructions.
-        alert(`Copiez ce titre: "${idea.title}" et utilisez-le dans le Studio !`);
-        onBack();
+        if (onUseIdea) {
+            onUseIdea(idea);
+        } else {
+            alert(`Copiez ce titre: "${idea.title}"`);
+            onBack();
+        }
+    }
+
+    // --- NEW LOGIC FOR CORP USE ---
+    const handleCorpUse = async () => {
+        const shareData = {
+            title: 'WySlider',
+            text: 'Découvre WySlider, le générateur de scripts IA pour YouTube !',
+            url: 'https://wyslider-v2.vercel.app',
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                onUpdateUser({...user, generationsLeft: user.generationsLeft + 8});
+                alert("Merci pour le partage ! 8 crédits ajoutés.");
+            } catch (err) {
+                console.log('Error sharing:', err);
+            }
+        } else {
+            navigator.clipboard.writeText('https://wyslider-v2.vercel.app');
+            alert("Lien copié ! Envoyez-le à 2 amis et revenez pour vos crédits (Simulation: crédits ajoutés).");
+            onUpdateUser({...user, generationsLeft: user.generationsLeft + 8});
+        }
+    }
+
+    // --- NEW LOGIC FOR POST USE ---
+    const handlePostUseSubmit = async () => {
+        if (!postUrl) return;
+        setIsVerifyingPost(true);
+        const isValid = await geminiService.verifyPostContent(postUrl);
+        setIsVerifyingPost(false);
+        
+        if (isValid) {
+            onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
+            alert("Post vérifié avec succès ! 10 crédits ajoutés.");
+            setShowPostModal(false);
+            setPostUrl('');
+        } else {
+            alert("L'IA n'a pas pu vérifier le lien ou le contenu ne semble pas correspondre à WySlider. Réessayez.");
+        }
+    }
+
+    // --- NEW LOGIC FOR FEEDBACK ---
+    const handleSendFeedback = () => {
+        if (!feedbackMsg) return;
+        const currentFeedbacks = JSON.parse(localStorage.getItem('wyslider_feedback_box') || '[]');
+        currentFeedbacks.push({
+            id: Date.now().toString(),
+            userEmail: user.email,
+            message: feedbackMsg,
+            timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('wyslider_feedback_box', JSON.stringify(currentFeedbacks));
+        alert("Feedback envoyé à l'équipe Admin !");
+        setFeedbackMsg('');
     }
 
     const renderContent = () => {
@@ -141,10 +222,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     <div className="space-y-6 pb-20">
                         <h2 className="text-2xl font-bold">Mon Compte</h2>
                         <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
-                             <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
-                                {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
+                             <div className="relative">
+                                 <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
+                                    {newProfilePic ? <img src={newProfilePic} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
+                                 </div>
                              </div>
-                             <div>
+                             <div className="flex-1">
                                  <div className="flex items-center space-x-2">
                                      <p className="font-bold text-lg">{user.email}</p>
                                      {user.isPro && <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">PRO+</span>}
@@ -152,7 +235,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                  <p className="text-gray-400">{user.niche} | {user.channelName}</p>
                              </div>
                         </div>
+                        
                         <div className="space-y-4">
+                            <label className="text-xs text-gray-400 font-bold uppercase">Photo de profil (URL)</label>
+                            <div className="flex space-x-2">
+                                <input type="text" placeholder="https://..." className="flex-1 bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" value={newProfilePic} onChange={e => setNewProfilePic(e.target.value)}/>
+                                <Button onClick={handleSaveProfile} variant="secondary">Enregistrer</Button>
+                            </div>
+
+                            <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Détails de la chaîne</label>
                             <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
                             <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
                             <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
@@ -160,9 +251,31 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         <div className="pt-4 border-t border-gray-700">
                              <h3 className="font-bold mb-2">Code Promo</h3>
                              <div className="flex space-x-2">
-                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none" placeholder="Entrez un code..."/>
+                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none" placeholder="Entrez un code (ex: wys2301)..."/>
                                 <Button onClick={handlePromoCode} variant="secondary">Appliquer</Button>
                              </div>
+                        </div>
+                    </div>
+                );
+            case 'templates':
+                return (
+                    <div className="space-y-6 pb-20">
+                        <div className="flex items-center space-x-2">
+                             <Squares2x2Icon className="h-6 w-6 text-pink-400"/>
+                             <h2 className="text-2xl font-bold">Community Templates</h2>
+                        </div>
+                        <p className="text-gray-400">Découvrez les structures qui marchent pour les autres créateurs.</p>
+                        
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {communityTemplates.map((tpl, i) => (
+                                <div key={i} className="bg-gray-800 p-4 rounded-xl border border-gray-700 hover:border-pink-500 transition cursor-pointer">
+                                    <h3 className="font-bold text-lg mb-1">{tpl.title}</h3>
+                                    <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{tpl.niche}</span>
+                                    <div className="mt-4 flex justify-end">
+                                        <Button variant="outline" className="text-xs py-1 px-3" onClick={() => alert("Template copié dans votre Studio (Simulé)")}>Utiliser ce template</Button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 );
@@ -307,17 +420,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                     </div>
                 );
-            case 'apikey':
-                return (
-                    <div className="space-y-6 pb-20">
-                        <h2 className="text-2xl font-bold">Clé API (Veo & Pro Features)</h2>
-                        <p className="text-gray-400">Pour utiliser la génération vidéo (Veo) et les fonctions avancées, entrez votre clé API Google Cloud / AI Studio.</p>
-                        <input type="password" placeholder="AI Studio / GCP API Key" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.apiKey} onBlur={(e) => handleSaveApiKey(e.target.value)} />
-                        <div className="bg-blue-900/20 p-4 rounded border border-blue-900/50 text-xs text-blue-300">
-                            Cette clé est stockée localement dans votre navigateur et n'est jamais envoyée à nos serveurs.
-                        </div>
-                    </div>
-                );
             case 'share':
                 return (
                     <div className="space-y-6 pb-20">
@@ -354,7 +456,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              <LightBulbIcon className="h-6 w-6 text-yellow-400"/>
                              <h2 className="text-2xl font-bold">Idées Virales (Niche: {user.niche})</h2>
                         </div>
-                        <p className="text-gray-400">L'IA analyse votre niche pour trouver des concepts à fort potentiel.</p>
+                        <p className="text-gray-400">L'IA analyse votre niche pour trouver des concepts à fort potentiel. Cliquez pour générer.</p>
                         
                         <Button onClick={handleGenerateIdeas} isLoading={isLoadingIdeas} className="w-full mb-6 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold">
                             <RefreshIcon className="h-5 w-5 mr-2 inline"/> Générer 6 nouvelles idées
@@ -377,7 +479,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             case 'plan':
                 return (
                     <div className="space-y-6 pb-20">
-                        <h2 className="text-2xl font-bold">Formules</h2>
+                        <h2 className="text-2xl font-bold">Formules & Bonus</h2>
                         <div className="p-4 border border-brand-purple bg-brand-purple/10 rounded-xl">
                             <div className="flex justify-between items-center">
                                 <span className="font-bold text-lg">{user.isPro ? 'WySlider Pro+' : 'Freemium'}</span>
@@ -387,14 +489,22 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                         
                         <div className="grid gap-4">
-                            <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500">
-                                <h3 className="font-bold">Corp Use</h3>
-                                <p className="text-sm text-gray-400">Invitez 2 amis = +8 crédits</p>
+                            <div 
+                                onClick={handleCorpUse}
+                                className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-blue-500 transition group"
+                            >
+                                <h3 className="font-bold text-blue-400">Corp Use (+8 Crédits)</h3>
+                                <p className="text-sm text-gray-400 group-hover:text-white transition">Partagez WySlider avec 2 amis via vos applis.</p>
                             </div>
-                            <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500">
-                                <h3 className="font-bold">Post Use</h3>
-                                <p className="text-sm text-gray-400">Partagez sur les réseaux = +10 crédits</p>
+                            
+                            <div 
+                                onClick={() => setShowPostModal(true)}
+                                className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-green-500 transition group"
+                            >
+                                <h3 className="font-bold text-green-400">Post Use (+10 Crédits)</h3>
+                                <p className="text-sm text-gray-400 group-hover:text-white transition">Collez le lien de votre post parlant de nous.</p>
                             </div>
+
                              <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500 relative overflow-hidden group">
                                 <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1">POPULAIRE</div>
                                 <h3 className="font-bold text-yellow-400">WYS Pro+ ($49)</h3>
@@ -419,8 +529,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-4 pb-20">
                         <h2 className="text-2xl font-bold">Feedback</h2>
-                         <textarea className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none" placeholder="Votre avis nous intéresse..."></textarea>
-                         <Button onClick={() => alert("Merci pour votre feedback !")}>Envoyer</Button>
+                         <p className="text-sm text-gray-400">Votre avis aide à améliorer WySlider. L'admin lit tous les messages.</p>
+                         <textarea 
+                            value={feedbackMsg}
+                            onChange={e => setFeedbackMsg(e.target.value)}
+                            className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none" 
+                            placeholder="Idées, bugs, ou encouragements..."
+                         />
+                         <Button onClick={handleSendFeedback}>Envoyer à l'Admin</Button>
                     </div>
                 )
             default:
@@ -429,7 +545,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     };
 
     return (
-        <div className="flex h-screen bg-gray-900 text-white animate-fade-in overflow-hidden">
+        <div className="flex h-screen bg-gray-900 text-white animate-fade-in overflow-hidden relative">
+             {/* Post Use Modal */}
+             {showPostModal && (
+                 <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                     <div className="bg-gray-900 border border-green-500 p-6 rounded-xl max-w-md w-full shadow-2xl shadow-green-900/50">
+                         <h3 className="text-xl font-bold text-green-400 mb-4">Vérification Post Use</h3>
+                         <p className="text-sm text-gray-300 mb-4">Collez le lien de votre post (Twitter, LinkedIn, YouTube, etc.) parlant de WySlider.</p>
+                         <input 
+                            value={postUrl} 
+                            onChange={e => setPostUrl(e.target.value)} 
+                            placeholder="https://..." 
+                            className="w-full bg-black border border-gray-700 p-3 rounded text-white mb-4"
+                         />
+                         <div className="flex space-x-3">
+                             <Button onClick={handlePostUseSubmit} isLoading={isVerifyingPost} className="flex-1 bg-green-600 hover:bg-green-700">Vérifier</Button>
+                             <Button onClick={() => setShowPostModal(false)} variant="secondary">Annuler</Button>
+                         </div>
+                     </div>
+                 </div>
+             )}
+
              {/* Sidebar Left */}
              <div className="w-64 flex-shrink-0 border-r border-gray-800 bg-gray-900 flex flex-col">
                 <div className="p-6 border-b border-gray-800">
@@ -439,11 +575,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     {[
                         {id: 'account', label: 'Compte WySlider', icon: <UserIcon className="h-5 w-5"/>},
                         {id: 'ideas', label: 'Idées Virales', icon: <LightBulbIcon className="h-5 w-5 text-yellow-400"/>},
+                        {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
                         {id: 'forge', label: 'Forge (AI Custom)', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
                         {id: 'share', label: 'Partager (Templates)', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
                         {id: 'storage', label: 'Stockage', icon: <ArrowDownTrayIcon className="h-5 w-5 text-blue-400"/>},
-                        {id: 'apikey', label: 'Clé API & Veo', icon: <KeyIcon className="h-5 w-5"/>},
-                        {id: 'plan', label: 'Formule Pro+', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                        {id: 'plan', label: 'Formules & Bonus', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
                         {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
                         {id: 'sync', label: 'Sync', icon: <RefreshIcon className="h-5 w-5"/>},
                     ].map(item => (

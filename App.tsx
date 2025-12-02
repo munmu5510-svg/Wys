@@ -4,15 +4,16 @@ import { AuthPage } from './components/AuthPage';
 import { Workspace } from './components/Workspace';
 import { AccountPage } from './components/AccountPage';
 import { AdminPage } from './components/AdminPage';
-import { User, AppScreen } from './types';
+import { User, AppScreen, ViralIdea } from './types';
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('Dashboard');
   const [isAuthFlow, setIsAuthFlow] = useState(false);
+  const [pendingGenConfig, setPendingGenConfig] = useState<any>(null);
 
   useEffect(() => {
-    console.log("WySlider App Mounted V3");
+    console.log("WySlider App Mounted V3.1");
     const savedUser = localStorage.getItem('wyslider_user');
     if (savedUser) {
       try {
@@ -79,6 +80,18 @@ export const App: React.FC = () => {
       setCurrentScreen('Admin');
   };
 
+  const handleUseIdea = (idea: ViralIdea) => {
+      setPendingGenConfig({
+          topic: idea.title,
+          tone: 'Energique',
+          duration: '8-15min',
+          goal: `Make a viral video about ${idea.title}`,
+          needs: 'High retention hook',
+          cta: 'Subscribe for more'
+      });
+      setCurrentScreen('Dashboard');
+  };
+
   if (!user) {
     if (isAuthFlow) {
         return (
@@ -105,6 +118,7 @@ export const App: React.FC = () => {
             onUpdateUser={updateUserSession} 
             onBack={() => setCurrentScreen('Dashboard')}
             onNavigateToAdmin={() => setCurrentScreen('Admin')}
+            onUseIdea={handleUseIdea}
         />
       );
   }
@@ -115,6 +129,8 @@ export const App: React.FC = () => {
             onUpdateUser={updateUserSession} 
             onNavigateAccount={() => setCurrentScreen('Account')}
             onLogout={handleLogout}
+            pendingGenConfig={pendingGenConfig}
+            clearPendingConfig={() => setPendingGenConfig(null)}
        />
   );
 };
