@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon, Squares2x2Icon } from './icons';
+import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon, Squares2x2Icon, FacebookIcon, WhatsappIcon } from './icons';
 import { Button } from './Button';
 import { PRICING } from '../constants';
 
@@ -12,20 +12,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans animate-fade-in flex flex-col">
         {/* Splash/Hero */}
-        <section className="min-h-screen flex flex-col justify-center items-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pt-20">
+        <section className="min-h-[90vh] flex flex-col justify-center items-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pt-20 pb-12">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-gray-900 to-blue-900/80"></div>
-            <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-                <LogoIcon className="h-32 w-auto mb-8 mx-auto" />
-                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
+            <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+                <LogoIcon className="h-20 md:h-32 w-auto mb-6 md:mb-8 mx-auto" />
+                <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 leading-tight">
                     WySlider
                 </h1>
-                <p className="text-2xl md:text-3xl font-light text-white mb-2">
+                <p className="text-xl md:text-3xl font-light text-white mb-2">
                     Votre Générateur de scripts YouTube professionnels, boosté par l’IA
                 </p>
-                <p className="text-xl text-brand-purple font-semibold tracking-wide uppercase mb-12">
+                <p className="text-lg md:text-xl text-brand-purple font-semibold tracking-wide uppercase mb-8 md:mb-12">
                     Pensez moins, créez plus.
                 </p>
-                <Button onClick={onNavigateToAuth} className="text-xl px-12 py-5 shadow-2xl shadow-purple-500/50 rounded-full">
+                <Button onClick={onNavigateToAuth} className="text-lg md:text-xl px-12 py-5 shadow-2xl shadow-purple-500/50 rounded-full">
                     Rejoindre la bêta maintenant
                 </Button>
             </div>
@@ -67,8 +67,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                         {step: "4", title: "Optimisez et exportez", desc: "Téléchargez votre script, vos notes de montage ou votre description YouTube."}
                     ].map((item, i) => (
                         <div key={i} className="text-center relative">
-                            <div className="text-6xl font-bold text-gray-800 absolute top-0 left-1/2 -translate-x-1/2 -z-10">{item.step}</div>
-                            <div className="pt-10">
+                            {/* Visual Badge Number */}
+                            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-brand-purple to-brand-blue rounded-full flex items-center justify-center text-xl font-bold mb-6 shadow-lg shadow-purple-900/50">
+                                {item.step}
+                            </div>
+                            
+                            {/* Faint Background Number (Optional, kept for style but reduced opacity) */}
+                            <div className="text-8xl font-bold text-gray-800/50 absolute top-4 left-1/2 -translate-x-1/2 -z-10 select-none">
+                                {item.step}
+                            </div>
+
+                            <div className="relative z-10">
                                 <h3 className="text-xl font-bold mb-2">{item.title}</h3>
                                 <p className="text-sm text-gray-400">{item.desc}</p>
                             </div>
@@ -160,8 +169,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                 <div className="mb-8">
                     <h4 className="text-xl font-bold mb-4">Rejoignez la communauté WySlider</h4>
                     <div className="flex justify-center space-x-6">
-                        <a href="https://facebook.com/WySlider" target="_blank" className="text-gray-400 hover:text-blue-500 transition">Facebook</a>
-                        <a href="https://whatsapp.com/channel/0029Vb6jpTK9WtC3oJokm72B" target="_blank" className="text-gray-400 hover:text-green-500 transition">WhatsApp</a>
+                        <a href="https://facebook.com/WySlider" target="_blank" className="text-gray-400 hover:text-blue-500 transition transform hover:scale-110">
+                            <FacebookIcon className="h-8 w-8" />
+                        </a>
+                        <a href="https://whatsapp.com/channel/0029Vb6jpTK9WtC3oJokm72B" target="_blank" className="text-gray-400 hover:text-green-500 transition transform hover:scale-110">
+                            <WhatsappIcon className="h-8 w-8" />
+                        </a>
                     </div>
                 </div>
                 <div className="text-gray-600 text-sm">
