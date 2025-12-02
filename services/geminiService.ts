@@ -9,12 +9,17 @@ const getAi = (apiKey?: string) => {
       return new GoogleGenAI({ apiKey });
   }
   if (!aiInstance) {
-    // Safety check for process.env
-    const envKey = typeof process !== 'undefined' && process.env ? process.env.API_KEY : '';
+    // CRITICAL FIX: Direct access allows Vite to perform string replacement during build.
+    // Do NOT check for 'typeof process' because 'process' does not exist in mobile browsers,
+    // causing the check to fail even if the key was replaced.
+    const envKey = process.env.API_KEY;
+    
     if (!envKey) {
-        console.warn("API_KEY not found in process.env");
+        console.warn("API_KEY appears to be missing.");
     }
-    aiInstance = new GoogleGenAI({ apiKey: envKey || 'DUMMY_KEY_FOR_INIT' });
+    
+    // Initialize with the key (or a dummy if missing to prevent immediate crash, though calls will fail)
+    aiInstance = new GoogleGenAI({ apiKey: envKey || 'MISSING_KEY' });
   }
   return aiInstance;
 };

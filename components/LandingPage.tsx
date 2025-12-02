@@ -12,9 +12,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
   return (
     <div className="min-h-screen bg-gray-900 text-white font-sans animate-fade-in flex flex-col">
         {/* Splash/Hero */}
-        <section className="min-h-[90vh] flex flex-col justify-center items-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pt-20 pb-12">
+        <section className="min-h-screen md:min-h-[90vh] flex flex-col justify-center items-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pt-24 pb-12 px-4">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-gray-900 to-blue-900/80"></div>
-            <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+            <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
                 <LogoIcon className="h-20 md:h-32 w-auto mb-6 md:mb-8 mx-auto" />
                 <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 leading-tight">
                     WySlider
@@ -25,7 +25,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                 <p className="text-lg md:text-xl text-brand-purple font-semibold tracking-wide uppercase mb-8 md:mb-12">
                     Pensez moins, créez plus.
                 </p>
-                <Button onClick={onNavigateToAuth} className="text-lg md:text-xl px-12 py-5 shadow-2xl shadow-purple-500/50 rounded-full">
+                <Button onClick={onNavigateToAuth} className="text-lg md:text-xl px-12 py-5 shadow-2xl shadow-purple-500/50 rounded-full w-full md:w-auto">
                     Rejoindre la bêta maintenant
                 </Button>
             </div>
