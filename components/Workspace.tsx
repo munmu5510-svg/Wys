@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Script, ChatSession, ChatMessage, AppNotification, CalendarEvent, BrandPitch, Series } from '../types';
 import { Button } from './Button';
 import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon, CheckIcon } from './icons';
+import { MainLayout } from './MainLayout';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
 // @ts-ignore
@@ -427,7 +428,8 @@ const SerialProd: React.FC<{
                     goal: config.goal,
                     needs: config.needs,
                     cta: config.cta,
-                    seriesId: seriesId
+                    seriesId: seriesId,
+                    socialPosts: scriptData.socialPosts
                 });
             }
         }
@@ -571,7 +573,8 @@ const Studio: React.FC<{
      const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
 
      useEffect(() => {
-         if (selectedScript && !selectedScript.sections.length && selectedScript.topic) {
+         // Show config initially if script has no sections, but only if we are not generating
+         if (selectedScript && !selectedScript.sections.length && selectedScript.topic && !isGenerating) {
              setConfig(prev => ({
                  ...prev,
                  topic: selectedScript.topic,
@@ -580,8 +583,10 @@ const Studio: React.FC<{
                  cta: selectedScript.cta || prev.cta
              }));
              setShowConfigMobile(true);
+         } else if (selectedScript && selectedScript.sections.length > 0) {
+             setShowConfigMobile(false);
          }
-     }, [selectedScript]);
+     }, [selectedScript, isGenerating]);
 
      const handleGeneratePosts = async () => {
          if(!selectedScript) return;
@@ -599,6 +604,9 @@ const Studio: React.FC<{
         const doc = new jsPDF();
         
         let yPos = 20;
+        const pageHeight = 297; // A4 height in mm
+        const marginBottom = 20;
+        
         doc.setFontSize(22);
         doc.setTextColor(40, 40, 40);
         doc.text(selectedScript.title, 20, yPos);
@@ -614,7 +622,8 @@ const Studio: React.FC<{
         yPos += 10;
 
         selectedScript.sections.forEach((section) => {
-            if (yPos > 270) { doc.addPage(); yPos = 20; }
+            // Check title space
+            if (yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
             
             doc.setFontSize(14);
             doc.setTextColor(0, 0, 0);
@@ -626,9 +635,34 @@ const Studio: React.FC<{
             doc.setFont("helvetica", "normal");
             doc.setTextColor(60, 60, 60);
             
-            const splitText = doc.splitTextToSize(section.content.replace(/\*\*/g, ''), 170);
-            doc.text(splitText, 20, yPos);
-            yPos += (splitText.length * 6) + 5;
+            // Clean content from Markdown-like bold marks
+            const cleanContent = section.content.replace(/\*\*/g, '');
+            const splitText = doc.splitTextToSize(cleanContent, 170);
+            
+            // Print line by line to handle page breaks accurately
+            for (let i = 0; i < splitText.length; i++) {
+                if (yPos > pageHeight - marginBottom) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(splitText[i], 20, yPos);
+                yPos += 6; // Line height
+            }
+            
+            // Visual Note in PDF
+            if (section.visualNote) {
+                yPos += 5;
+                doc.setFontSize(10);
+                doc.setTextColor(100, 100, 150);
+                doc.setFont("helvetica", "italic");
+                const noteText = doc.splitTextToSize(`[Visual: ${section.visualNote}]`, 170);
+                for (let i = 0; i < noteText.length; i++) {
+                    if (yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
+                    doc.text(noteText[i], 20, yPos);
+                    yPos += 5;
+                }
+            }
+            yPos += 5; // Paragraph spacing
         });
 
         if (selectedScript.socialPosts && selectedScript.socialPosts.length > 0) {
@@ -640,7 +674,7 @@ const Studio: React.FC<{
              yPos += 15;
 
              selectedScript.socialPosts.forEach(post => {
-                 if(yPos > 250) { doc.addPage(); yPos = 20; }
+                 if(yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
                  doc.setFontSize(12);
                  doc.setTextColor(0, 0, 200); // Blue
                  doc.text(`Platform: ${post.platform}`, 20, yPos);
@@ -648,14 +682,37 @@ const Studio: React.FC<{
                  
                  doc.setFontSize(11);
                  doc.setTextColor(60, 60, 60);
-                 const content = doc.splitTextToSize(post.content, 170);
-                 doc.text(content, 20, yPos);
-                 yPos += (content.length * 5) + 5;
+                 const contentLines = doc.splitTextToSize(post.content, 170);
+                 
+                 for(let i=0; i<contentLines.length; i++) {
+                     if (yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
+                     doc.text(contentLines[i], 20, yPos);
+                     yPos += 5;
+                 }
+                 
+                 // Visual Note for Social Post
+                 if(post.visualNote) {
+                     yPos += 3;
+                     doc.setFontSize(10);
+                     doc.setTextColor(100, 100, 150);
+                     const vNote = doc.splitTextToSize(`[Visual Asset: ${post.visualNote}]`, 170);
+                     for(let i=0; i<vNote.length; i++) {
+                         if (yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
+                         doc.text(vNote[i], 20, yPos);
+                         yPos += 5;
+                     }
+                 }
+
+                 yPos += 5;
                  
                  doc.setTextColor(150, 150, 150);
                  const tags = doc.splitTextToSize(post.hashtags.join(' '), 170);
-                 doc.text(tags, 20, yPos);
-                 yPos += (tags.length * 5) + 10;
+                 for(let i=0; i<tags.length; i++) {
+                     if (yPos > pageHeight - marginBottom) { doc.addPage(); yPos = 20; }
+                     doc.text(tags[i], 20, yPos);
+                     yPos += 5;
+                 }
+                 yPos += 10;
              });
         }
         
@@ -762,12 +819,18 @@ const Studio: React.FC<{
                          <div key={idx} className="bg-gray-900 border border-gray-700 rounded-xl p-3 md:p-5">
                              <div className="flex justify-between mb-2">
                                 <span className="font-bold text-brand-purple text-sm md:text-base">{section.title}</span>
+                                <span className="text-xs text-gray-500">{section.estimatedTime}</span>
                              </div>
                              <MarkdownEditor value={section.content} onChange={val => {
                                  const newSections = [...selectedScript.sections];
                                  newSections[idx] = {...section, content: val};
                                  onUpdate({...selectedScript, sections: newSections});
                              }}/>
+                             {section.visualNote && (
+                                 <div className="mt-3 p-3 bg-blue-900/20 border border-blue-800 rounded text-xs text-blue-300 italic">
+                                     <strong>Visual Note:</strong> {section.visualNote}
+                                 </div>
+                             )}
                          </div>
                      ))}
 
@@ -783,6 +846,7 @@ const Studio: React.FC<{
                                  <div key={i} className="bg-gray-900 border border-gray-700 p-4 rounded-xl">
                                      <span className="text-xs font-bold uppercase text-brand-blue mb-2 block">{post.platform}</span>
                                      <p className="text-sm text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
+                                     {post.visualNote && <p className="text-xs text-blue-300 italic mb-2">[Asset: {post.visualNote}]</p>}
                                      <div className="text-xs text-blue-400">{post.hashtags.join(' ')}</div>
                                  </div>
                              ))}
@@ -794,458 +858,328 @@ const Studio: React.FC<{
      )
 }
 
-const Growth: React.FC<{ user: User }> = ({ user }) => {
-    // ... (Growth logic updated to prevent crashes)
-    const [section, setSection] = useState<'seo'|'calendar'|'pitch'>('calendar');
-    const [scripts, setScripts] = useState<Script[]>([]);
-    const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-    const [isGeneratingCalendar, setIsGeneratingCalendar] = useState(false);
-    const [calendarTasks, setCalendarTasks] = useState('');
-    const [selectedScriptSEO, setSelectedScriptSEO] = useState('');
-    const [seoAnalysis, setSeoAnalysis] = useState('');
-    const [isAnalyzingSEO, setIsAnalyzingSEO] = useState(false);
-    const [pitchBrand, setPitchBrand] = useState('');
-    const [pitchUrl, setPitchUrl] = useState('');
-    const [pitchObj, setPitchObj] = useState('');
-    const [isWritingPitch, setIsWritingPitch] = useState(false);
-    const [pitchHistory, setPitchHistory] = useState<BrandPitch[]>([]);
+interface WorkspaceProps {
+    user: User;
+    onUpdateUser: (updatedUser: User) => void;
+    onNavigateAccount: () => void;
+    onLogout: () => void;
+    pendingGenConfig: any;
+    clearPendingConfig: () => void;
+}
 
-    useEffect(() => {
-        const s = localStorage.getItem('wyslider_scripts');
-        if(s) setScripts(JSON.parse(s));
-        const h = localStorage.getItem('wyslider_pitch_history');
-        if(h) setPitchHistory(JSON.parse(h));
-    }, []);
-
-    const handleGenerateCalendar = async () => {
-        setIsGeneratingCalendar(true);
-        const events = await geminiService.generateEditorialCalendar(user.niche, calendarTasks);
-        if(events && events.length > 0) {
-            setCalendarEvents(events.map((e: any, i: number) => ({...e, id: i.toString()})));
-        } else {
-            alert("Erreur de génération du calendrier. Réessayez.");
-        }
-        setIsGeneratingCalendar(false);
-    }
-    const handleAnalyzeSEO = async () => {
-        if (!selectedScriptSEO) return;
-        const script = scripts.find(s => s.id === selectedScriptSEO);
-        if(!script) return;
-        setIsAnalyzingSEO(true);
-        const analysis = await geminiService.analyzeSEO(script.title, script.sections.map(s => s.content).join(' '));
-        setSeoAnalysis(analysis);
-        setIsAnalyzingSEO(false);
-    }
-    const handleWritePitch = async () => {
-        if(!pitchBrand || !pitchObj) return;
-        setIsWritingPitch(true);
-        const content = await geminiService.generatePitch(pitchBrand, pitchUrl, pitchObj);
-        const newPitch: BrandPitch = { id: Date.now().toString(), brandName: pitchBrand, brandUrl: pitchUrl, objective: pitchObj, content, createdAt: new Date().toISOString() };
-        const updatedHistory = [newPitch, ...pitchHistory];
-        setPitchHistory(updatedHistory);
-        localStorage.setItem('wyslider_pitch_history', JSON.stringify(updatedHistory));
-        setIsWritingPitch(false);
-    }
-    const handleClearPitchHistory = () => { if(window.confirm("Vider l'historique ?")) { setPitchHistory([]); localStorage.removeItem('wyslider_pitch_history'); } }
-    const handleDownloadPitch = (pitch: BrandPitch) => {
-        const element = document.createElement("a");
-        const file = new Blob([pitch.content], {type: 'text/plain'});
-        element.href = URL.createObjectURL(file);
-        element.download = `pitch_${pitch.brandName}.txt`;
-        document.body.appendChild(element);
-        element.click();
-        document.body.removeChild(element);
-    }
-
-    return (
-        <div className="h-full flex flex-col md:flex-row overflow-hidden animate-fade-in">
-             <div className="w-full md:w-64 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto shrink-0">
-                 <div className="p-4 md:p-6 hidden md:block">
-                     <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">Growth Hub</h2>
-                 </div>
-                 <nav className="flex md:flex-col flex-1 p-2 md:p-3 space-x-2 md:space-x-0 md:space-y-1">
-                     <button onClick={() => setSection('calendar')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'calendar' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <CalendarIcon className="h-5 w-5 text-blue-500"/> <span>Calendrier</span>
-                     </button>
-                     <button onClick={() => setSection('seo')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'seo' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <ChartPieIcon className="h-5 w-5 text-green-500"/> <span>Score SEO</span>
-                     </button>
-                     <button onClick={() => setSection('pitch')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'pitch' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <CurrencyDollarIcon className="h-5 w-5 text-yellow-500"/> <span>Pitch Mark</span>
-                     </button>
-                 </nav>
-             </div>
-             <div className="flex-1 bg-gray-900 p-4 md:p-8 overflow-y-auto scroll-smooth">
-                 {section === 'calendar' && (
-                     <div className="max-w-4xl space-y-6 pb-20">
-                         <h2 className="text-xl md:text-2xl font-bold">Calendrier Éditorial IA</h2>
-                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
-                             <label className="block text-sm font-bold text-gray-400 mb-2">Liste des tâches / Idées à planifier</label>
-                             <textarea value={calendarTasks} onChange={e => setCalendarTasks(e.target.value)} className="w-full bg-gray-900 p-3 rounded border border-gray-600 mb-4 h-24" placeholder="- Video sur les tendances 2024&#10;- Short sur l'outil X..."/>
-                             <Button onClick={handleGenerateCalendar} isLoading={isGeneratingCalendar}><PlusIcon className="h-5 w-5 mr-2 inline"/> Générer le planning</Button>
-                         </div>
-                         {calendarEvents.length > 0 && <div className="grid gap-4">{calendarEvents.map((evt) => <div key={evt.id} className="bg-gray-800 p-4 rounded-xl border border-gray-700 flex items-center justify-between"><div className="flex items-center space-x-4"><div className="bg-gray-700 px-3 py-2 rounded text-center min-w-[60px]"><span className="block text-xs text-gray-400">{evt.date.split('-')[1]}/{evt.date.split('-')[0]}</span><span className="block font-bold text-lg">{evt.date.split('-')[2]}</span></div><div><h3 className="font-bold">{evt.title}</h3><span className="text-xs bg-brand-purple/20 text-brand-purple px-2 py-0.5 rounded mr-2">{evt.format}</span></div></div></div>)}</div>}
-                     </div>
-                 )}
-                 {/* ... SEO and Pitch views remain same ... */}
-                 {section === 'seo' && (
-                     <div className="max-w-4xl space-y-6 pb-20">
-                         <h2 className="text-xl md:text-2xl font-bold">Score SEO & CTR</h2>
-                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
-                             <label className="block text-sm font-bold text-gray-400 mb-2">Sélectionner un script à analyser</label>
-                             <select value={selectedScriptSEO} onChange={e => setSelectedScriptSEO(e.target.value)} className="w-full bg-gray-900 p-3 rounded border border-gray-600 mb-4"><option value="">-- Choisir un script --</option>{scripts.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}</select>
-                             <Button onClick={handleAnalyzeSEO} isLoading={isAnalyzingSEO} disabled={!selectedScriptSEO}>Analyser</Button>
-                         </div>
-                         {seoAnalysis && <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 animate-fade-in"><h3 className="font-bold text-lg mb-4 text-green-400">Résultat de l'analyse</h3><div className="whitespace-pre-wrap leading-relaxed text-gray-300">{seoAnalysis}</div></div>}
-                     </div>
-                 )}
-                 {section === 'pitch' && (
-                     <div className="max-w-4xl space-y-6 pb-20">
-                         <div className="flex justify-between items-center"><h2 className="text-xl md:text-2xl font-bold">Pitch for Mark</h2>{pitchHistory.length > 0 && <button onClick={handleClearPitchHistory} className="text-xs text-red-500 hover:text-red-400 underline">Vider l'historique</button>}</div>
-                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700 grid gap-4">
-                             <input value={pitchBrand} onChange={e => setPitchBrand(e.target.value)} placeholder="Nom de la marque" className="w-full bg-gray-900 p-3 rounded border border-gray-600"/>
-                             <input value={pitchUrl} onChange={e => setPitchUrl(e.target.value)} placeholder="URL de la marque (Site Web)" className="w-full bg-gray-900 p-3 rounded border border-gray-600"/>
-                             <textarea value={pitchObj} onChange={e => setPitchObj(e.target.value)} placeholder="Objectif du pitch..." className="w-full bg-gray-900 p-3 rounded border border-gray-600 h-24"/>
-                             <Button onClick={handleWritePitch} isLoading={isWritingPitch}>Écrire</Button>
-                         </div>
-                         <div className="space-y-4">{pitchHistory.map(pitch => <div key={pitch.id} className="bg-gray-800 p-6 rounded-xl border border-gray-700 relative group"><div className="flex justify-between items-start mb-4"><div><h3 className="font-bold text-lg text-yellow-400">{pitch.brandName}</h3><p className="text-xs text-gray-500">{new Date(pitch.createdAt).toLocaleDateString()}</p></div><Button onClick={() => handleDownloadPitch(pitch)} variant="secondary" className="text-xs py-2 px-3"><DocumentArrowDownIcon className="h-4 w-4 mr-1 inline"/> Télécharger</Button></div><div className="bg-black/30 p-4 rounded text-sm text-gray-300 whitespace-pre-wrap font-mono">{pitch.content}</div></div>)}</div>
-                     </div>
-                 )}
-             </div>
-        </div>
-    );
-};
-
-export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, onNavigateAccount: () => void, onLogout: () => void, pendingGenConfig?: any, clearPendingConfig?: () => void }> = ({ user, onUpdateUser, onNavigateAccount, onLogout, pendingGenConfig, clearPendingConfig }) => {
-    const [currentView, setCurrentView] = useState<'dashboard' | 'growth'>('dashboard');
-    const [showStudio, setShowStudio] = useState(false);
-    const [showSerialProd, setShowSerialProd] = useState(false);
-    
+export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavigateAccount, onLogout, pendingGenConfig, clearPendingConfig }) => {
+    const [screen, setScreen] = useState<'dashboard' | 'studio'>('dashboard');
     const [scripts, setScripts] = useState<Script[]>([]);
     const [series, setSeries] = useState<Series[]>([]);
-    
-    const [selectedScriptId, setSelectedScriptId] = useState<string|null>(null);
+    const [selectedScript, setSelectedScript] = useState<Script | null>(null);
+    const [showSerialModal, setShowSerialModal] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
-
-    // Chat State
+    
+    // Chat
     const [showChat, setShowChat] = useState(false);
     const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-    const [activeChatSessionId, setActiveChatSessionId] = useState<string|null>(null);
+    const [activeChatId, setActiveChatId] = useState<string | null>(null);
     const [isChatProcessing, setIsChatProcessing] = useState(false);
     const chatClientRef = useRef<Chat | null>(null);
+
+    // Notifications
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
-    const [showNotifPanel, setShowNotifPanel] = useState(false);
 
     useEffect(() => {
-        const storedScripts = localStorage.getItem('wyslider_scripts');
-        if (storedScripts) setScripts(JSON.parse(storedScripts));
+        const savedScripts = localStorage.getItem('wyslider_scripts');
+        if (savedScripts) setScripts(JSON.parse(savedScripts));
         
-        const storedSeries = localStorage.getItem('wyslider_series');
-        if (storedSeries) setSeries(JSON.parse(storedSeries));
-        
-        const chatHistory = localStorage.getItem('wyslider_chat_history');
-        if(chatHistory) setChatSessions(JSON.parse(chatHistory));
+        const savedSeries = localStorage.getItem('wyslider_series');
+        if (savedSeries) setSeries(JSON.parse(savedSeries));
 
-        const checkAdminNotifs = () => {
-            const adminMsg = localStorage.getItem('wyslider_admin_broadcast');
-            if (adminMsg) {
-                const msgData = JSON.parse(adminMsg);
-                if (!msgData.seen) {
-                    const newNotif: AppNotification = {
-                        id: Date.now().toString(),
-                        title: "WYS Team",
-                        message: msgData.message,
-                        type: 'info',
-                        read: false,
-                        timestamp: new Date().toISOString()
-                    };
-                    setNotifications(prev => [...prev, newNotif]);
-                    localStorage.setItem('wyslider_admin_broadcast', JSON.stringify({...msgData, seen: true}));
-                }
-            }
-        };
-        const interval = setInterval(checkAdminNotifs, 5000);
-        return () => clearInterval(interval);
+        const savedChats = localStorage.getItem('wyslider_chats');
+        if (savedChats) setChatSessions(JSON.parse(savedChats));
     }, []);
 
     useEffect(() => {
         if (pendingGenConfig) {
-            const tempId = `temp_${Date.now()}`;
-            const tempScript: Script = {
-                id: tempId,
-                title: pendingGenConfig.topic,
-                topic: pendingGenConfig.topic,
-                tone: pendingGenConfig.tone || 'Professionnel',
-                format: pendingGenConfig.duration || '8-15min',
-                sections: [],
-                createdAt: new Date().toISOString(),
-                niche: user.niche,
-                goal: pendingGenConfig.goal,
-                needs: pendingGenConfig.needs,
-                cta: pendingGenConfig.cta
-            };
-            const updated = [tempScript, ...scripts];
-            setScripts(updated); 
-            setSelectedScriptId(tempId);
-            setShowStudio(true);
-            
-            if (clearPendingConfig) clearPendingConfig();
+            handleGenerateScript(pendingGenConfig);
+            clearPendingConfig();
         }
     }, [pendingGenConfig]);
+
+    const addNotification = (title: string, message: string, type: 'info'|'success'|'warning' = 'info') => {
+        const id = Date.now().toString();
+        setNotifications(prev => [...prev, { id, title, message, type, read: false, timestamp: new Date().toISOString() }]);
+    };
+
+    const removeNotification = (id: string) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
 
     const saveScripts = (newScripts: Script[]) => {
         setScripts(newScripts);
         localStorage.setItem('wyslider_scripts', JSON.stringify(newScripts));
     };
 
-    const saveSeries = (newSeries: Series) => {
-        const updated = [newSeries, ...series];
-        setSeries(updated);
-        localStorage.setItem('wyslider_series', JSON.stringify(updated));
-        
-        const updatedScripts = [...newSeries.episodes, ...scripts];
-        saveScripts(updatedScripts);
-        onUpdateUser({...user, generationsLeft: Math.max(0, user.generationsLeft - newSeries.episodes.length)});
+    const saveSeries = (newSeries: Series[]) => {
+        setSeries(newSeries);
+        localStorage.setItem('wyslider_series', JSON.stringify(newSeries));
+    };
+    
+    const saveChats = (newChats: ChatSession[]) => {
+        setChatSessions(newChats);
+        localStorage.setItem('wyslider_chats', JSON.stringify(newChats));
     };
 
-    const deleteSeries = (id: string) => {
-        if(window.confirm("Supprimer toute la série et ses épisodes ?")) {
-            const updated = series.filter(s => s.id !== id);
-            setSeries(updated);
-            localStorage.setItem('wyslider_series', JSON.stringify(updated));
-            const updatedScripts = scripts.filter(s => s.seriesId !== id);
+    const handleDeleteScript = (id: string) => {
+        if(!window.confirm("Supprimer ce script ?")) return;
+        const updated = scripts.filter(s => s.id !== id);
+        saveScripts(updated);
+        if (selectedScript?.id === id) {
+            setSelectedScript(null);
+            setScreen('dashboard');
+        }
+    };
+
+    const handleBulkDelete = (ids: string[]) => {
+        if(!window.confirm(`Supprimer ${ids.length} scripts ?`)) return;
+        const updated = scripts.filter(s => !ids.includes(s.id));
+        saveScripts(updated);
+    };
+
+    const handleBulkShare = (ids: string[]) => {
+         const updated = scripts.map(s => ids.includes(s.id) ? {...s, isTemplate: true} : s);
+         saveScripts(updated);
+         addNotification("Partage réussi", `${ids.length} templates partagés avec la communauté !`, "success");
+    };
+    
+    const handleDeleteSeries = (id: string) => {
+        if(!window.confirm("Supprimer cette série et tous ses épisodes ?")) return;
+        const targetSeries = series.find(s => s.id === id);
+        const updatedSeries = series.filter(s => s.id !== id);
+        saveSeries(updatedSeries);
+        
+        if (targetSeries) {
+            const epIds = targetSeries.episodes.map(e => e.id);
+            const updatedScripts = scripts.filter(s => !epIds.includes(s.id));
             saveScripts(updatedScripts);
         }
     };
-    
-    // Bulk Handlers
-    const handleBulkDelete = (ids: string[]) => {
-        if(!window.confirm(`Supprimer ${ids.length} scripts ?`)) return;
-        const newScripts = scripts.filter(s => !ids.includes(s.id));
-        saveScripts(newScripts);
-    };
 
-    const handleBulkShare = async (ids: string[]) => {
-        const selected = scripts.filter(s => ids.includes(s.id));
-        const shareText = selected.map(s => `${s.title}: ${s.youtubeDescription}`).join('\n\n');
-        
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'Mes Scripts WySlider',
-                    text: shareText
-                });
-            } catch(e) { console.log(e); }
-        } else {
-            alert("Partage non supporté. Contenu copié.");
-            navigator.clipboard.writeText(shareText);
+    const handleGenerateScript = async (config: any) => {
+        if (user.generationsLeft <= 0 && !user.isPro) {
+            alert("Plus de crédits. Passez à la version Pro ou partagez l'app !");
+            return;
         }
-    };
 
-    const handleGenerate = async (config: any) => {
-        if (user.generationsLeft <= 0) { alert("Plus de crédits !"); return; }
         setIsGenerating(true);
-        const data = await geminiService.generateScript(
-            config.topic, 
-            config.tone, 
-            config.duration, 
-            user.youtubeUrl,
-            config.goal,
-            config.needs,
-            config.cta,
-            config.platforms
-        );
-        if (data) {
+        // Create skeleton script
+        const tempId = selectedScript?.id || `script_${Date.now()}`;
+        const isNew = !selectedScript;
+        
+        if (isNew) {
             const newScript: Script = {
-                id: `script_${Date.now()}`,
-                title: data.title || config.topic,
+                id: tempId,
+                title: config.topic || "Nouveau Script",
                 topic: config.topic,
                 tone: config.tone,
                 format: config.duration,
-                sections: data.sections || [],
+                sections: [],
                 createdAt: new Date().toISOString(),
-                youtubeDescription: data.youtubeDescription,
-                hashtags: data.hashtags,
                 niche: config.niche,
                 goal: config.goal,
                 needs: config.needs,
-                cta: config.cta
+                cta: config.cta,
+                isTemplate: false
             };
-            // Replace temp script if exists, otherwise append
-            let updatedScripts;
-            if (selectedScriptId && selectedScriptId.startsWith('temp_')) {
-                 updatedScripts = scripts.map(s => s.id === selectedScriptId ? newScript : s);
-            } else {
-                 updatedScripts = [newScript, ...scripts];
-            }
+            setSelectedScript(newScript);
+            setScreen('studio');
+        }
+
+        const result = await geminiService.generateScript(
+            config.topic, 
+            config.tone, 
+            config.duration, 
+            user.youtubeUrl, 
+            config.goal, 
+            config.needs, 
+            config.cta, 
+            config.platforms
+        );
+
+        if (result) {
+            const finalScript: Script = {
+                id: tempId,
+                title: result.title || config.topic,
+                topic: config.topic,
+                tone: config.tone,
+                format: config.duration,
+                sections: result.sections,
+                createdAt: new Date().toISOString(),
+                youtubeDescription: result.youtubeDescription,
+                hashtags: result.hashtags,
+                niche: config.niche,
+                goal: config.goal,
+                needs: config.needs,
+                cta: config.cta,
+                socialPosts: result.socialPosts
+            };
+
+            const updatedScripts = isNew 
+                ? [finalScript, ...scripts]
+                : scripts.map(s => s.id === tempId ? finalScript : s);
             
             saveScripts(updatedScripts);
-            setSelectedScriptId(newScript.id);
+            setSelectedScript(finalScript);
             onUpdateUser({...user, generationsLeft: user.generationsLeft - 1});
+            addNotification("Génération Terminée", "Votre script est prêt !", "success");
         } else {
-            alert("Erreur lors de la génération du script. Veuillez réessayer.");
+            addNotification("Erreur", "L'IA n'a pas pu générer le script. Réessayez.", "warning");
         }
         setIsGenerating(false);
-    }
-    
-    // Chat handlers
+    };
+
+    const handleUpdateScript = (updated: Script) => {
+        setSelectedScript(updated);
+        const newScripts = scripts.map(s => s.id === updated.id ? updated : s);
+        saveScripts(newScripts);
+    };
+
+    // Chat Logic
     const handleNewChat = () => {
         const newSession: ChatSession = {
             id: Date.now().toString(),
-            title: `Discussion ${new Date().toLocaleTimeString()}`,
-            messages: [{ id: '1', role: 'model', content: "Bonjour ! Comment puis-je vous aider avec votre chaîne aujourd'hui ?", timestamp: new Date().toISOString() }],
+            title: 'Nouvelle discussion',
+            messages: [],
             createdAt: new Date().toISOString()
         };
-        const updated = [newSession, ...chatSessions];
-        setChatSessions(updated);
-        setActiveChatSessionId(newSession.id);
-        localStorage.setItem('wyslider_chat_history', JSON.stringify(updated));
+        saveChats([newSession, ...chatSessions]);
+        setActiveChatId(newSession.id);
         
-        chatClientRef.current = geminiService.startChatSession("Context: User working on scripts.");
+        // Context for chat
+        const context = selectedScript ? `Working on script: ${selectedScript.title}\nContent: ${selectedScript.sections.map(s => s.content).join(' ')}` : `User Dashboard. Niche: ${user.niche}`;
+        chatClientRef.current = geminiService.startChatSession(context);
     };
 
-    const handleDeleteChat = (id: string) => {
-        const updated = chatSessions.filter(s => s.id !== id);
-        setChatSessions(updated);
-        localStorage.setItem('wyslider_chat_history', JSON.stringify(updated));
-        if(activeChatSessionId === id) setActiveChatSessionId(null);
-    }
-
     const handleSendMessage = async (msg: string) => {
-         if(!activeChatSessionId) return;
-         
-         const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: msg, timestamp: new Date().toISOString() };
-         const updatedSessions = chatSessions.map(s => s.id === activeChatSessionId ? { ...s, messages: [...s.messages, userMsg] } : s);
-         setChatSessions(updatedSessions);
-         
-         setIsChatProcessing(true);
-         if (!chatClientRef.current) chatClientRef.current = geminiService.startChatSession("Context: User working on scripts.");
-         
-         const response = await geminiService.sendMessageToChat(chatClientRef.current, msg);
-         const modelMsg: ChatMessage = { id: (Date.now()+1).toString(), role: 'model', content: response, timestamp: new Date().toISOString() };
-         
-         const finalSessions = updatedSessions.map(s => s.id === activeChatSessionId ? { ...s, messages: [...s.messages, modelMsg] } : s);
-         setChatSessions(finalSessions);
-         localStorage.setItem('wyslider_chat_history', JSON.stringify(finalSessions));
-         setIsChatProcessing(false);
-    }
-    
-    const TopBar = () => (
-        <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20 relative">
-            <div className="flex items-center space-x-2">
-                <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-purple to-brand-blue">WYS</span>
-                <span className="text-xs font-mono text-gray-500 pt-1">V2.4</span>
-            </div>
-            <div className="flex items-center space-x-3 md:space-x-6">
-                <div className="relative">
-                    <button onClick={() => setShowNotifPanel(!showNotifPanel)} className="p-2 text-gray-400 hover:text-white relative">
-                        <BellIcon className="h-6 w-6"/>
-                        {notifications.some(n => !n.read) && <span className="absolute top-1 right-1 h-3 w-3 bg-red-500 rounded-full border-2 border-gray-900"></span>}
-                    </button>
-                    {showNotifPanel && (
-                        <div className="absolute right-0 mt-2 w-72 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl z-50 p-2">
-                            <h4 className="text-xs font-bold text-gray-400 uppercase p-2 border-b border-gray-700 mb-2">Notifications</h4>
-                            {notifications.length === 0 && <p className="text-xs text-gray-500 p-2 text-center">Rien à signaler.</p>}
-                            <div className="max-h-60 overflow-y-auto space-y-1">
-                                {notifications.slice().reverse().map(n => (
-                                    <div key={n.id} className="p-3 bg-gray-700/50 rounded hover:bg-gray-700 transition">
-                                        <p className="font-bold text-sm text-brand-purple">{n.title}</p>
-                                        <p className="text-xs text-white">{n.message}</p>
-                                        <p className="text-[10px] text-gray-500 mt-1 text-right">{new Date(n.timestamp).toLocaleTimeString()}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-                <button className="bg-gray-800 hover:bg-gray-700 text-xs px-3 py-1 rounded-full text-brand-purple font-bold border border-gray-700">
-                    {user.generationsLeft} CRÉDITS
-                </button>
-                <button onClick={onNavigateAccount} className="flex items-center space-x-2 text-gray-400 hover:text-white">
-                    {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-8 w-8 rounded-full border border-gray-700 object-cover"/> : <div className="h-8 w-8 bg-gray-800 rounded-full flex items-center justify-center border border-gray-700"><UserIcon className="h-4 w-4"/></div>}
-                </button>
-                <button onClick={onLogout} className="text-red-900 hover:text-red-500"><ArrowRightIcon className="h-5 w-5"/></button>
-            </div>
-        </header>
-    );
+        if (!activeChatId) handleNewChat();
+        
+        const currentSessionId = activeChatId || chatSessions[0]?.id; // Fallback handled by handleNewChat effectively but sync is tricky
+        // If we just called handleNewChat, activeChatId state update might not be flushed.
+        // Better to check if chatClientRef is active or just ensure session exists.
+        
+        // Simple approach: if no session, create one immediately
+        let session = chatSessions.find(s => s.id === activeChatId);
+        let sessionId = activeChatId;
 
-    if (showSerialProd) {
-        return <SerialProd user={user} onClose={() => setShowSerialProd(false)} onSaveSeries={saveSeries} onNavigateAccount={onNavigateAccount} onNotify={(t,m) => setNotifications(prev => [...prev, {id: Date.now().toString(), title: t, message: m, type: 'success', read: false, timestamp: new Date().toISOString()}])} />
-    }
+        if (!session) {
+             const newSession: ChatSession = {
+                id: Date.now().toString(),
+                title: msg.substring(0, 30) + '...',
+                messages: [],
+                createdAt: new Date().toISOString()
+            };
+            session = newSession;
+            sessionId = newSession.id;
+            const updatedSessions = [newSession, ...chatSessions];
+            saveChats(updatedSessions);
+            setActiveChatId(sessionId);
+            
+            const context = selectedScript ? `Working on script: ${selectedScript.title}` : `User Dashboard. Niche: ${user.niche}`;
+            chatClientRef.current = geminiService.startChatSession(context);
+        }
 
-    if (showStudio) {
-        return (
-            <div className="flex flex-col h-screen w-full bg-gray-900 text-white">
-                <TopBar />
-                <div className="flex-1 overflow-hidden relative">
-                    <Studio 
-                        scripts={scripts} 
-                        selectedScript={scripts.find(s=>s.id === selectedScriptId)||null} 
-                        onUpdate={(s)=>saveScripts(scripts.map(old=>old.id===s.id?s:old))} 
-                        onBack={()=>{setShowStudio(false); setSelectedScriptId(null)}} 
-                        onGenerate={handleGenerate} 
-                        isGenerating={isGenerating} 
-                        user={user} 
-                    />
-                </div>
-            </div>
-        )
-    }
+        // Add User Message
+        const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', content: msg, timestamp: new Date().toISOString() };
+        const updatedMsgs = [...session.messages, userMsg];
+        const updatedSession = { ...session, messages: updatedMsgs };
+        saveChats(chatSessions.map(s => s.id === sessionId ? updatedSession : s));
+        
+        setIsChatProcessing(true);
+        
+        if (!chatClientRef.current) {
+             const context = selectedScript ? `Working on script: ${selectedScript.title}` : `User Dashboard. Niche: ${user.niche}`;
+             chatClientRef.current = geminiService.startChatSession(context);
+             // Replay history if needed, but for now simplified
+        }
+
+        const response = await geminiService.sendMessageToChat(chatClientRef.current!, msg);
+        
+        const modelMsg: ChatMessage = { id: (Date.now()+1).toString(), role: 'model', content: response, timestamp: new Date().toISOString() };
+        const finalMsgs = [...updatedMsgs, modelMsg];
+        const finalSession = { ...updatedSession, messages: finalMsgs };
+        saveChats(chatSessions.map(s => s.id === sessionId ? finalSession : s));
+        
+        setIsChatProcessing(false);
+    };
 
     return (
-        <div className="flex flex-col h-screen w-full bg-gray-900 text-white overflow-hidden">
-            <TopBar />
-            
-            <div className="flex justify-center py-4 bg-gray-900 flex-shrink-0">
-                <div className="bg-gray-800 p-1 rounded-full flex space-x-1 relative">
-                    <button onClick={() => setCurrentView('dashboard')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${currentView === 'dashboard' ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-400 hover:text-white'}`}>
-                        Dashboard
-                    </button>
-                    <button onClick={() => setCurrentView('growth')} className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${currentView === 'growth' ? 'bg-white text-gray-900 shadow-lg' : 'text-gray-400 hover:text-white'}`}>
-                        Growth
-                    </button>
-                </div>
-            </div>
+        <MainLayout user={user} onLogout={onLogout} onNavigateToAccount={onNavigateAccount}>
+            {notifications.map(n => (
+                <NotificationToast key={n.id} notification={n} onClose={removeNotification} />
+            ))}
 
-            <div className="flex-1 relative overflow-hidden">
-                <div className={`absolute inset-0 w-[200%] flex transition-transform duration-500 ease-in-out ${currentView === 'dashboard' ? 'translate-x-0' : '-translate-x-1/2'}`}>
-                    <div className="w-1/2 h-full overflow-hidden relative">
-                         <Dashboard 
-                            scripts={scripts} 
-                            series={series}
-                            onSelect={(s) => { setSelectedScriptId(s.id); setShowStudio(true); }}
-                            onDelete={(id) => { if(window.confirm("Supprimer ce script ?")) { const ns = scripts.filter(s=>s.id!==id); saveScripts(ns); }}} 
-                            onBulkDelete={handleBulkDelete}
-                            onBulkShare={handleBulkShare}
-                            onOpenStudio={() => { setSelectedScriptId(null); setShowStudio(true); }}
-                            onOpenSerial={() => setShowSerialProd(true)}
-                         />
-                         {notifications.map(n => <NotificationToast key={n.id} notification={n} onClose={id => setNotifications(prev => prev.filter(x => x.id !== id))} />)}
-                    </div>
-                    <div className="w-1/2 h-full overflow-hidden">
-                        <Growth user={user} />
-                    </div>
-                </div>
-            </div>
-            
+            {screen === 'dashboard' && (
+                <Dashboard 
+                    scripts={scripts} 
+                    series={series}
+                    onSelect={(s) => { setSelectedScript(s); setScreen('studio'); }} 
+                    onDelete={handleDeleteScript}
+                    onBulkDelete={handleBulkDelete}
+                    onBulkShare={handleBulkShare}
+                    onOpenStudio={() => { setSelectedScript(null); setScreen('studio'); }}
+                    onOpenSerial={() => setShowSerialModal(true)}
+                />
+            )}
+
+            {screen === 'studio' && (
+                <Studio 
+                    scripts={scripts}
+                    selectedScript={selectedScript}
+                    onUpdate={handleUpdateScript}
+                    onBack={() => setScreen('dashboard')}
+                    onGenerate={handleGenerateScript}
+                    isGenerating={isGenerating}
+                    user={user}
+                />
+            )}
+
+            {showSerialModal && (
+                <SerialProd 
+                    user={user}
+                    onClose={() => setShowSerialModal(false)}
+                    onSaveSeries={(newSeries) => {
+                        saveSeries([newSeries, ...series]);
+                        saveScripts([...newSeries.episodes, ...scripts]);
+                    }}
+                    onNavigateAccount={onNavigateAccount}
+                    onNotify={(t, m) => addNotification(t, m, 'success')}
+                />
+            )}
+
             <ChatOverlay 
-                 isOpen={showChat}
-                 onClose={() => setShowChat(false)}
-                 sessions={chatSessions}
-                 activeSessionId={activeChatSessionId}
-                 onNewChat={handleNewChat}
-                 onSelectSession={setActiveChatSessionId}
-                 onDeleteSession={handleDeleteChat}
-                 onDeleteAllHistory={() => { setChatSessions([]); localStorage.removeItem('wyslider_chat_history'); }}
-                 onSendMessage={handleSendMessage}
-                 isProcessing={isChatProcessing}
-             />
-             
-             {!showChat && (
-                 <button onClick={() => setShowChat(true)} className="fixed bottom-6 right-6 bg-brand-purple p-4 rounded-full shadow-2xl hover:scale-110 transition z-40">
-                     <ChatBubbleLeftRightIcon className="h-6 w-6 text-white"/>
-                 </button>
-             )}
-        </div>
+                isOpen={showChat}
+                onClose={() => setShowChat(false)}
+                sessions={chatSessions}
+                activeSessionId={activeChatId}
+                onNewChat={handleNewChat}
+                onSelectSession={(id) => setActiveChatId(id)}
+                onDeleteSession={(id) => {
+                    const updated = chatSessions.filter(s => s.id !== id);
+                    saveChats(updated);
+                    if(activeChatId === id) setActiveChatId(null);
+                }}
+                onDeleteAllHistory={() => {
+                    saveChats([]);
+                    setActiveChatId(null);
+                }}
+                onSendMessage={handleSendMessage}
+                isProcessing={isChatProcessing}
+            />
+
+            {/* Chat Trigger */}
+            <button 
+                onClick={() => setShowChat(true)}
+                className="fixed bottom-6 right-6 p-4 bg-brand-purple hover:bg-purple-600 text-white rounded-full shadow-2xl z-40 transition transform hover:scale-110"
+            >
+                <ChatBubbleLeftRightIcon className="h-6 w-6"/>
+            </button>
+        </MainLayout>
     );
 };

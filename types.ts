@@ -28,6 +28,7 @@ export interface SocialPost {
     platform: string;
     content: string;
     hashtags: string[];
+    visualNote?: string;
 }
 
 export interface Script {

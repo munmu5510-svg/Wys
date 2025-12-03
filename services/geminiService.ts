@@ -47,37 +47,38 @@ export const generateScript = async (
     cta?: string,
     platforms?: string
 ) => {
-  const prompt = `You are a professional YouTube Scriptwriter.
-  Create a detailed, engaging video script.
+  const prompt = `You are a world-class YouTube Scriptwriter and Social Media Strategist.
+  Generate a comprehensive content package based on the following configuration:
   
   Topic: "${topic}"
   Tone: ${tone}
-  Format: ${format}
-  ${youtubeUrl ? `Context: ${youtubeUrl}` : ''}
-  ${goal ? `Goal: ${goal}` : ''}
-  ${needs ? `Requirements: ${needs}` : ''}
-  ${cta ? `CTA: ${cta}` : ''}
-  ${platforms ? `Platforms: ${platforms}` : ''}
+  Format: ${format} (Target length)
+  ${youtubeUrl ? `Channel Context: ${youtubeUrl}` : ''}
+  ${goal ? `Primary Goal: ${goal}` : ''}
+  ${needs ? `Specific Requirements: ${needs}` : ''}
+  ${cta ? `Call to Action: ${cta}` : ''}
+  ${platforms ? `Target Social Platforms: ${platforms}` : 'YouTube, Instagram, LinkedIn, TikTok'}
 
-  CRITICAL INSTRUCTION:
-  You MUST return a JSON object with a "sections" array.
-  The "sections" array MUST contain at least 3 distinct sections (e.g., Hook, Core Content, Conclusion).
-  Each section MUST have a "content" field with actual spoken script text (at least 2-3 sentences).
-  
-  Structure:
-  {
-    "title": "Catchy Video Title",
-    "youtubeDescription": "Description with timestamps",
-    "hashtags": ["#tag1", "#tag2"],
-    "sections": [
-        {
-            "title": "Section Header (e.g. The Hook)",
-            "estimatedTime": "e.g. 30s",
-            "content": "The actual spoken words for this part of the video.",
-            "visualNote": "Visual cues (e.g. B-roll of city)"
-        }
-    ]
-  }`;
+  REQUIREMENTS:
+  1. **Title**: High CTR, engaging.
+  2. **Description**: SEO-optimized, formatted for YouTube (3-4 lines).
+  3. **Sections**:
+     - **Intro**: Engaging hook, visual hook.
+     - **Main Content**: Divided into clear, numbered sections (e.g., "1. The Problem", "2. The Solution").
+     - **Conclusion**: Summary.
+     - **CTA**: Clear instruction.
+     - *Every section must have:*
+       - \`title\`: Section header with timestamp hint if applicable.
+       - \`estimatedTime\`: Duration.
+       - \`content\`: The spoken script (verbatim, engaging, conversational).
+       - \`visualNote\`: Detailed direction for camera/editing (B-roll, graphics, camera angle).
+  4. **Social Posts**: Create 1 post for EACH target platform.
+     - \`platform\`: Name of platform.
+     - \`content\`: The post caption/text with emojis.
+     - \`hashtags\`: Relevant tags.
+     - \`visualNote\`: Description of image or video asset to accompany the post.
+
+  OUTPUT FORMAT: JSON only.`;
 
   try {
     const ai = getAi();
@@ -85,7 +86,7 @@ export const generateScript = async (
         model: MODEL_NAME,
         contents: prompt,
         config: {
-            systemInstruction: "You are an expert YouTube strategist and scriptwriter. You always generate complete, structured scripts with full spoken content, not just outlines.",
+            systemInstruction: "You are an expert YouTube strategist and scriptwriter. You always generate complete, structured scripts with full spoken content and detailed visual notes.",
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -103,7 +104,19 @@ export const generateScript = async (
                                 content: { type: Type.STRING },
                                 visualNote: { type: Type.STRING }
                             },
-                            required: ["title", "estimatedTime", "content"]
+                            required: ["title", "estimatedTime", "content", "visualNote"]
+                        }
+                    },
+                    socialPosts: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                platform: { type: Type.STRING },
+                                content: { type: Type.STRING },
+                                hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                visualNote: { type: Type.STRING }
+                            }
                         }
                     }
                 }
@@ -302,6 +315,7 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
     - platform: string
     - content: string (the post text with emojis)
     - hashtags: array of strings
+    - visualNote: description of visual asset
     `;
 
     try {
@@ -321,7 +335,8 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
                                 properties: {
                                     platform: { type: Type.STRING },
                                     content: { type: Type.STRING },
-                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    visualNote: { type: Type.STRING }
                                 }
                             }
                         }
