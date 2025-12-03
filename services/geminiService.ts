@@ -47,27 +47,34 @@ export const generateScript = async (
     cta?: string,
     platforms?: string
 ) => {
-  const prompt = `Write a YouTube video script.
-  Topic: "${topic}".
-  Tone: ${tone}.
-  Format/Length: ${format}.
-  ${youtubeUrl ? `Context from creator's channel: ${youtubeUrl}` : ''}
-  ${goal ? `Goal of the video: ${goal}` : ''}
-  ${needs ? `Specific needs/requirements: ${needs}` : ''}
-  ${cta ? `Call To Action: ${cta}` : ''}
-  ${platforms ? `Optimization for platforms: ${platforms}` : ''}
+  const prompt = `You are a professional YouTube Scriptwriter.
+  Create a detailed, engaging video script.
+  
+  Topic: "${topic}"
+  Tone: ${tone}
+  Format: ${format}
+  ${youtubeUrl ? `Context: ${youtubeUrl}` : ''}
+  ${goal ? `Goal: ${goal}` : ''}
+  ${needs ? `Requirements: ${needs}` : ''}
+  ${cta ? `CTA: ${cta}` : ''}
+  ${platforms ? `Platforms: ${platforms}` : ''}
 
-  Return a valid JSON object with the following structure:
+  CRITICAL INSTRUCTION:
+  You MUST return a JSON object with a "sections" array.
+  The "sections" array MUST contain at least 3 distinct sections (e.g., Hook, Core Content, Conclusion).
+  Each section MUST have a "content" field with actual spoken script text (at least 2-3 sentences).
+  
+  Structure:
   {
-    "title": "Video Title",
-    "youtubeDescription": "SEO-optimized YouTube video description with timestamps",
+    "title": "Catchy Video Title",
+    "youtubeDescription": "Description with timestamps",
     "hashtags": ["#tag1", "#tag2"],
     "sections": [
         {
-            "title": "Intro/Hook/Content/CTA",
-            "estimatedTime": "Duration in seconds",
-            "content": "Full spoken script content for this section.",
-            "visualNote": "Visual direction or B-Roll suggestion"
+            "title": "Section Header (e.g. The Hook)",
+            "estimatedTime": "e.g. 30s",
+            "content": "The actual spoken words for this part of the video.",
+            "visualNote": "Visual cues (e.g. B-roll of city)"
         }
     ]
   }`;
@@ -78,6 +85,7 @@ export const generateScript = async (
         model: MODEL_NAME,
         contents: prompt,
         config: {
+            systemInstruction: "You are an expert YouTube strategist and scriptwriter. You always generate complete, structured scripts with full spoken content, not just outlines.",
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -105,11 +113,18 @@ export const generateScript = async (
 
     if (response.text) {
         try {
-            return JSON.parse(response.text);
+            const data = JSON.parse(response.text);
+            // Validation check to ensure we have content
+            if (!data.sections || data.sections.length === 0) {
+                console.warn("AI returned empty sections, attempting fallback parsing or ignoring.");
+                return null;
+            }
+            return data;
         } catch (e) {
             console.warn("Direct JSON parse failed, attempting cleanup", e);
             const cleaned = cleanJson(response.text);
-            return JSON.parse(cleaned);
+            const data = JSON.parse(cleaned);
+            return data;
         }
     }
     return null;

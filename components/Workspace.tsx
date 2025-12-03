@@ -752,7 +752,12 @@ const Studio: React.FC<{
                     <button onClick={() => setShowConfigMobile(true)} className="md:hidden p-2 bg-gray-700 rounded"><PencilSquareIcon className="h-5 w-5"/></button>
                  </div>
                  <div className="space-y-4">
-                     {selectedScript.sections.length === 0 && <div className="text-gray-400 p-4 border border-dashed border-gray-600 rounded">Le contenu généré apparaîtra ici. Si vide, régénérez.</div>}
+                     {selectedScript.sections.length === 0 && (
+                        <div className="text-gray-400 p-8 border border-dashed border-gray-600 rounded text-center">
+                            <p className="mb-4">Contenu vide ou incomplet.</p>
+                            <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Régénérer le Script</Button>
+                        </div>
+                     )}
                      {selectedScript.sections.map((section, idx) => (
                          <div key={idx} className="bg-gray-900 border border-gray-700 rounded-xl p-3 md:p-5">
                              <div className="flex justify-between mb-2">
@@ -1077,6 +1082,8 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
             saveScripts(updatedScripts);
             setSelectedScriptId(newScript.id);
             onUpdateUser({...user, generationsLeft: user.generationsLeft - 1});
+        } else {
+            alert("Erreur lors de la génération du script. Veuillez réessayer.");
         }
         setIsGenerating(false);
     }
