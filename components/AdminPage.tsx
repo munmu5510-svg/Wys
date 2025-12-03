@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button';
-import { ChartBarIcon, RobotIcon, BoltIcon, RefreshIcon, KeyIcon, CheckIcon, XMarkIcon, BellIcon, PencilSquareIcon } from './icons';
+import { ChartBarIcon, RobotIcon, BoltIcon, RefreshIcon, KeyIcon, CheckIcon, XMarkIcon, BellIcon, PencilSquareIcon, FireIcon } from './icons';
 import * as geminiService from '../services/geminiService';
 
 interface AdminPageProps {
@@ -14,13 +15,8 @@ interface UserFeedback {
     timestamp: string;
 }
 
-// Helper for Base64 encoding with Unicode support
-function utf8_to_b64(str: string) {
-  return window.btoa(unescape(encodeURIComponent(str)));
-}
-
 export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
-    const [activeTab, setActiveTab] = useState<'stats' | 'selfgrow' | 'notifications' | 'feedbacks'>('stats');
+    const [activeTab, setActiveTab] = useState<'stats' | 'selfgrow' | 'notifications' | 'feedbacks' | 'firebase'>('stats');
     const [statsInsight, setStatsInsight] = useState('');
     const [isLoadingInsight, setIsLoadingInsight] = useState(false);
     
@@ -39,12 +35,14 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
     // Feedback State
     const [feedbacks, setFeedbacks] = useState<UserFeedback[]>([]);
 
+    // Firebase State
+    const [fbConfig, setFbConfig] = useState('');
+    const [fbStatus, setFbStatus] = useState<'local'|'connected'>('local');
+
     // GitHub Config State
     const [ghToken, setGhToken] = useState(localStorage.getItem('gh_token') || '');
     const [ghOwner, setGhOwner] = useState(localStorage.getItem('gh_owner') || '');
     const [ghRepo, setGhRepo] = useState(localStorage.getItem('gh_repo') || '');
-    const [ghBranch, setGhBranch] = useState('main');
-    const [isPushing, setIsPushing] = useState(false);
     const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
     useEffect(() => {
@@ -55,6 +53,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
         // Fetch feedbacks
         const savedFeedbacks = JSON.parse(localStorage.getItem('wyslider_feedback_box') || '[]');
         setFeedbacks(savedFeedbacks);
+
+        // Check Firebase config
+        const fbData = localStorage.getItem('wyslider_firebase_config');
+        if(fbData) {
+            setFbConfig(fbData);
+            setFbStatus('connected');
+        }
     }, []);
 
     useEffect(() => {
@@ -81,7 +86,6 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
 
     const handleSendNotification = () => {
         if (!notifMessage) return;
-        // Simulate sending to backend by saving to a specific key that Workspace listens to
         localStorage.setItem('wyslider_admin_broadcast', JSON.stringify({
             message: notifMessage,
             timestamp: new Date().toISOString(),
@@ -91,21 +95,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
         setNotifMessage('');
     }
 
-    // ... GitHub Connection Logic (same as before) ...
     const testGithubConnection = async () => {
-         // (Omitted for brevity, logic identical to previous version)
          setConnectionStatus('idle');
          if (!ghToken || !ghOwner || !ghRepo) return alert("Missing fields");
          try {
              const res = await fetch(`https://api.github.com/repos/${ghOwner}/${ghRepo}`, { headers: {'Authorization': `token ${ghToken}`} });
              setConnectionStatus(res.ok ? 'success' : 'error');
          } catch { setConnectionStatus('error'); }
-    };
-    
-    // ... Commit Logic (same as before) ...
-    const commitToGithub = async () => {
-         // (Omitted for brevity, logic identical to previous version)
-         alert("Commit Simulated (Previous logic applies)");
     };
 
     const handleGenerateCode = async () => {
@@ -115,12 +111,33 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
         setCodeDiff(`// Simulated Patch for: ${featureRequest}\nfunction update() { return true; }`);
         setIsGeneratingCode(false);
     }
+    
+    const saveFirebaseConfig = () => {
+        if(!fbConfig.includes('apiKey') || !fbConfig.includes('projectId')) {
+            alert("Configuration invalide. Assurez-vous de coller l'objet de configuration Firebase complet.");
+            return;
+        }
+        localStorage.setItem('wyslider_firebase_config', fbConfig);
+        setFbStatus('connected');
+        alert("Configuration Firebase enregistrée. L'application va basculer en mode Cloud.");
+        // Simulate reload trigger
+        window.location.reload();
+    }
+
+    const resetFirebase = () => {
+        if(window.confirm("Repasser en mode Local Storage ?")) {
+            localStorage.removeItem('wyslider_firebase_config');
+            setFbStatus('local');
+            setFbConfig('');
+            window.location.reload();
+        }
+    }
 
     return (
         <div className="min-h-screen bg-gray-900 text-white p-6 font-mono animate-fade-in">
             <div className="max-w-6xl mx-auto">
                 <div className="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
-                    <h1 className="text-3xl font-bold text-red-500 tracking-wider">WYSLIDER_ADMIN_PANEL_v1.0</h1>
+                    <h1 className="text-3xl font-bold text-red-500 tracking-wider">WYSLIDER_ADMIN_PANEL_v1.2</h1>
                     <Button onClick={onBack} variant="outline" className="border-gray-500 text-gray-400 hover:text-white">EXIT_SYSTEM</Button>
                 </div>
 
@@ -155,6 +172,13 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
                             <PencilSquareIcon className="h-5 w-5 inline mr-2" />
                             FEEDBACKS ({feedbacks.length})
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('firebase')}
+                            className={`w-full text-left p-3 rounded border ${activeTab === 'firebase' ? 'bg-orange-500/20 border-orange-500 text-orange-500' : 'bg-gray-800 border-gray-700 hover:bg-gray-700'}`}
+                        >
+                            <FireIcon className="h-5 w-5 inline mr-2" />
+                            FIREBASE_CONFIG
+                        </button>
                     </div>
 
                     {/* Content Area */}
@@ -173,8 +197,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
                                         <p className="text-2xl font-bold">{userCount}</p>
                                     </div>
                                     <div className="bg-gray-900 p-4 rounded border border-gray-600">
-                                        <p className="text-gray-400 text-xs uppercase">Storage Usage (Est)</p>
-                                        <p className="text-2xl font-bold text-blue-400">{(scriptCount * 0.5).toFixed(1)} KB</p>
+                                        <p className="text-gray-400 text-xs uppercase">DB Mode</p>
+                                        <p className={`text-2xl font-bold ${fbStatus === 'connected' ? 'text-orange-500' : 'text-blue-400'}`}>{fbStatus === 'connected' ? 'FIREBASE' : 'LOCAL'}</p>
                                     </div>
                                 </div>
 
@@ -264,6 +288,35 @@ export const AdminPage: React.FC<AdminPageProps> = ({ onBack }) => {
                                             <p className="text-sm text-gray-300 whitespace-pre-wrap">{fb.message}</p>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'firebase' && (
+                            <div className="space-y-6">
+                                <h2 className="text-xl font-bold text-orange-500 mb-4">&gt; CLOUD_DATABASE_UPLINK</h2>
+                                
+                                <div className="bg-gray-900 p-4 rounded border border-gray-600">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className={`px-3 py-1 rounded text-xs font-bold ${fbStatus === 'connected' ? 'bg-orange-500/20 text-orange-500' : 'bg-gray-700 text-gray-400'}`}>
+                                            STATUS: {fbStatus === 'connected' ? 'CONNECTED' : 'LOCAL_MODE'}
+                                        </span>
+                                        {fbStatus === 'connected' && (
+                                            <button onClick={resetFirebase} className="text-xs text-red-500 hover:text-red-400 underline">DISCONNECT (RESET)</button>
+                                        )}
+                                    </div>
+
+                                    <label className="text-xs font-bold text-gray-400 mb-2 block">PASTE FIREBASE CONFIG OBJECT</label>
+                                    <p className="text-[10px] text-gray-500 mb-2">e.g. const firebaseConfig = {"{ ... }"}</p>
+                                    <textarea 
+                                        value={fbConfig} 
+                                        onChange={e => setFbConfig(e.target.value)}
+                                        className="w-full bg-black border border-gray-700 p-3 rounded text-white text-xs font-mono h-40 mb-4 focus:border-orange-500 outline-none"
+                                        placeholder="Paste config here..."
+                                    />
+                                    <Button onClick={saveFirebaseConfig} className="bg-orange-600 hover:bg-orange-700 border-none w-full">
+                                        SAVE_AND_CONNECT
+                                    </Button>
                                 </div>
                             </div>
                         )}

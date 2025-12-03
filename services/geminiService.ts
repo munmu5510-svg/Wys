@@ -9,16 +9,12 @@ const getAi = (apiKey?: string) => {
       return new GoogleGenAI({ apiKey });
   }
   if (!aiInstance) {
-    // CRITICAL FIX: Direct access allows Vite to perform string replacement during build.
-    // Do NOT check for 'typeof process' because 'process' does not exist in mobile browsers,
-    // causing the check to fail even if the key was replaced.
     const envKey = process.env.API_KEY;
     
     if (!envKey) {
         console.warn("API_KEY appears to be missing.");
     }
     
-    // Initialize with the key (or a dummy if missing to prevent immediate crash, though calls will fail)
     aiInstance = new GoogleGenAI({ apiKey: envKey || 'MISSING_KEY' });
   }
   return aiInstance;
@@ -70,7 +66,7 @@ export const generateScript = async (
         {
             "title": "Intro/Hook/Content/CTA",
             "estimatedTime": "Duration in seconds",
-            "content": "Spoken script content",
+            "content": "Full spoken script content for this section.",
             "visualNote": "Visual direction or B-Roll suggestion"
         }
     ]
@@ -225,14 +221,15 @@ export const generateViralIdeas = async (niche: string) => {
 };
 
 export const generateEditorialCalendar = async (niche: string, tasks?: string) => {
-    const prompt = `Create a 4-week editorial calendar for a YouTube channel in the niche: "${niche}".
-    ${tasks ? `Incorporate the following specific tasks/ideas into the schedule: ${tasks}` : ''}
-    Return a valid JSON array of objects. Each object should have:
-    - date (YYYY-MM-DD format, starting from tomorrow)
-    - title (Video Title)
+    // Simplified prompt for reliability
+    const prompt = `Create a 4-week content calendar for a YouTube channel in the niche: "${niche}".
+    Tasks to include: ${tasks || 'General trends'}.
+    Return a valid JSON object containing an array called "events".
+    Each event must have:
+    - date (YYYY-MM-DD format)
+    - title (string)
     - format (Shorts or Long-form)
-    - status (always 'planned')
-    Generate about 8-12 events mixed between Shorts and Long-form.`;
+    - status ('planned')`;
 
     try {
          const ai = getAi();
@@ -242,29 +239,92 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
              config: {
                 responseMimeType: "application/json",
                 responseSchema: {
-                    type: Type.ARRAY,
-                    items: {
-                        type: Type.OBJECT,
-                        properties: {
-                            date: { type: Type.STRING },
-                            title: { type: Type.STRING },
-                            format: { type: Type.STRING },
-                            status: { type: Type.STRING }
+                    type: Type.OBJECT,
+                    properties: {
+                        events: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    date: { type: Type.STRING },
+                                    title: { type: Type.STRING },
+                                    format: { type: Type.STRING },
+                                    status: { type: Type.STRING }
+                                }
+                            }
                         }
                     }
                 }
             }
          });
+         
          if(response.text) {
              try {
-                 return JSON.parse(response.text);
+                 const parsed = JSON.parse(response.text);
+                 // Handle if model returns array directly or wrapped in object
+                 if (Array.isArray(parsed)) return parsed;
+                 if (parsed.events && Array.isArray(parsed.events)) return parsed.events;
+                 return [];
              } catch(e) {
-                 return JSON.parse(cleanJson(response.text));
+                 const clean = JSON.parse(cleanJson(response.text));
+                 return clean.events || clean || [];
              }
          }
          return [];
     } catch (e) {
         console.error("Error generating calendar", e);
+        return [];
+    }
+}
+
+export const generateSocialPosts = async (scriptTitle: string, scriptContent: string, platforms: string) => {
+    const prompt = `Based on this YouTube script, write promotional social media posts.
+    Title: "${scriptTitle}"
+    Content Summary: "${scriptContent.substring(0, 1000)}..."
+    Platforms: ${platforms} (e.g., LinkedIn, Twitter, Instagram).
+    
+    Return a JSON object with a property "posts", which is an array of objects:
+    - platform: string
+    - content: string (the post text with emojis)
+    - hashtags: array of strings
+    `;
+
+    try {
+        const ai = getAi();
+        const response = await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        posts: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    platform: { type: Type.STRING },
+                                    content: { type: Type.STRING },
+                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (response.text) {
+             try {
+                return JSON.parse(response.text).posts;
+            } catch (e) {
+                return JSON.parse(cleanJson(response.text)).posts || [];
+            }
+        }
+        return [];
+    } catch(e) {
+        console.error("Error generating social posts", e);
         return [];
     }
 }

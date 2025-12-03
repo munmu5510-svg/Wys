@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { User, ForgeItem, Script, ViralIdea } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
@@ -18,8 +19,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     const [promoCode, setPromoCode] = useState('');
     const [syncCode, setSyncCode] = useState('');
     
-    // Account details state
-    const [newProfilePic, setNewProfilePic] = useState(user.profilePicture || '');
+    // File Input Ref for Profile Pic
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     // Forge State
     const [forgeUrl, setForgeUrl] = useState('');
@@ -51,21 +52,71 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         if(saved) {
             const parsed = JSON.parse(saved);
             setUserScripts(parsed);
-            // Simulate Community Templates (Filter local shared ones + add some mocks)
+            // Simulate Community Templates with REAL content
             const shared = parsed.filter((s: Script) => s.isTemplate);
-            setCommunityTemplates([
-                ...shared,
-                { id: 't1', title: 'Product Review Structure', niche: 'Tech', isTemplate: true, sections: [] },
-                { id: 't2', title: 'Storytelling Vlog', niche: 'Lifestyle', isTemplate: true, sections: [] },
-                { id: 't3', title: 'Tutorial Rapide (Shorts)', niche: 'Education', isTemplate: true, sections: [] }
-            ]);
+            
+            const realTemplates: Script[] = [
+                { 
+                    id: 't1', 
+                    title: 'Structure Review Tech (MKBHD Style)', 
+                    topic: 'Tech Review',
+                    tone: 'Professionnel',
+                    format: '8-15min',
+                    niche: 'Tech', 
+                    isTemplate: true, 
+                    createdAt: new Date().toISOString(),
+                    sections: [
+                        { id: 's1', title: 'The Hook', estimatedTime: '30s', content: "**Visual:** B-roll of the product in a cinematic macro shot.\n**Audio:** 'This might be the most controversial phone of the year, and here is why...'"},
+                        { id: 's2', title: 'Specs & Design', estimatedTime: '2min', content: "Let's talk about the build quality. [Show edges]. It feels premium..."},
+                        { id: 's3', title: 'The Verdict', estimatedTime: '1min', content: "Should you buy it? If you are in the ecosystem, yes. If not..."}
+                    ] 
+                },
+                { 
+                    id: 't2', 
+                    title: 'Vlog Storytelling (Casey Neistat)', 
+                    topic: 'Vlog',
+                    tone: 'Energique',
+                    format: '8-15min',
+                    niche: 'Lifestyle', 
+                    isTemplate: true, 
+                    createdAt: new Date().toISOString(),
+                    sections: [
+                        { id: 'v1', title: 'The Setup (Timelapse)', estimatedTime: '15s', content: "**Visual:** Time lapse of city sunrise.\n**Audio:** Good morning. Today is a big day."},
+                        { id: 'v2', title: 'The Conflict', estimatedTime: '3min', content: "I forgot my camera gear at the studio... so we have to improvise."},
+                    ] 
+                },
+                { 
+                    id: 't3', 
+                    title: 'Tuto Rapide (Format Shorts)', 
+                    topic: 'Tutorial',
+                    tone: 'Educatif',
+                    format: '60s',
+                    niche: 'Education', 
+                    isTemplate: true, 
+                    createdAt: new Date().toISOString(),
+                    sections: [
+                        { id: 'sh1', title: 'Problem', estimatedTime: '5s', content: "Stop doing this mistake in Excel!"},
+                        { id: 'sh2', title: 'Solution', estimatedTime: '40s', content: "Instead, press ALT + F1. Look at that chart!"},
+                        { id: 'sh3', title: 'CTA', estimatedTime: '5s', content: "Subscribe for more tips."}
+                    ] 
+                }
+            ];
+
+            setCommunityTemplates([...shared, ...realTemplates]);
         }
     }, []);
 
-    const handleSaveProfile = () => {
-        onUpdateUser({...user, profilePicture: newProfilePic});
-        alert("Profil mis à jour !");
-    }
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64 = reader.result as string;
+                onUpdateUser({...user, profilePicture: base64});
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const handlePromoCode = () => {
         if (promoCode === 'admin2301') {
@@ -147,6 +198,22 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
         alert("Script partagé comme template avec la communauté WySlider !");
     }
+    
+    const handleCopyTemplate = (tpl: Script) => {
+        // Create a copy of the template as a new script for the user
+        const newScript: Script = {
+            ...tpl,
+            id: `copy_${Date.now()}`,
+            isTemplate: false,
+            createdAt: new Date().toISOString(),
+            title: `Copy of ${tpl.title}`
+        };
+        const updated = [newScript, ...userScripts];
+        setUserScripts(updated);
+        localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
+        alert("Template ajouté à votre Studio !");
+        onBack(); // Go back to dashboard to see it
+    }
 
     const handleGenerateIdeas = async () => {
         setIsLoadingIdeas(true);
@@ -226,10 +293,14 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     <div className="space-y-6 pb-20">
                         <h2 className="text-2xl font-bold">Mon Compte</h2>
                         <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
-                             <div className="relative">
+                             <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
                                  <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
-                                    {newProfilePic ? <img src={newProfilePic} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
+                                    {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
                                  </div>
+                                 <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                     <span className="text-xs text-white font-bold">Modifier</span>
+                                 </div>
+                                 <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden"/>
                              </div>
                              <div className="flex-1">
                                  <div className="flex items-center space-x-2">
@@ -241,12 +312,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                         
                         <div className="space-y-4">
-                            <label className="text-xs text-gray-400 font-bold uppercase">Photo de profil (URL)</label>
-                            <div className="flex space-x-2">
-                                <input type="text" placeholder="https://..." className="flex-1 bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" value={newProfilePic} onChange={e => setNewProfilePic(e.target.value)}/>
-                                <Button onClick={handleSaveProfile} variant="secondary">Enregistrer</Button>
-                            </div>
-
                             <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Détails de la chaîne</label>
                             <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
                             <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
@@ -268,15 +333,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              <Squares2x2Icon className="h-6 w-6 text-pink-400"/>
                              <h2 className="text-2xl font-bold">Community Templates</h2>
                         </div>
-                        <p className="text-gray-400">Découvrez les structures qui marchent pour les autres créateurs.</p>
+                        <p className="text-gray-400">Découvrez les structures qui marchent pour les autres créateurs. (Contenu Réel)</p>
                         
                         <div className="grid gap-4 md:grid-cols-2">
                             {communityTemplates.map((tpl, i) => (
                                 <div key={i} className="bg-gray-800 p-4 rounded-xl border border-gray-700 hover:border-pink-500 transition cursor-pointer">
                                     <h3 className="font-bold text-lg mb-1">{tpl.title}</h3>
                                     <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{tpl.niche}</span>
+                                    <p className="text-xs text-gray-500 mt-2">{tpl.sections.length} Sections</p>
                                     <div className="mt-4 flex justify-end">
-                                        <Button variant="outline" className="text-xs py-1 px-3" onClick={() => alert("Template copié dans votre Studio (Simulé)")}>Utiliser ce template</Button>
+                                        <Button variant="outline" className="text-xs py-1 px-3" onClick={() => handleCopyTemplate(tpl)}>Utiliser ce template</Button>
                                     </div>
                                 </div>
                             ))}
@@ -284,6 +350,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'forge':
+                // ... (Forge content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -353,6 +420,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'storage':
+                // ... (Storage content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -425,6 +493,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'share':
+                // ... (Share content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -454,6 +523,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'ideas':
+                // ... (Ideas content remains same)
                 return (
                      <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -481,6 +551,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                      </div>
                 );
             case 'plan':
+                // ... (Plan content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <h2 className="text-2xl font-bold">Formules & Bonus</h2>
@@ -519,6 +590,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'sync':
+                // ... (Sync content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                          <h2 className="text-2xl font-bold">Synchronisation</h2>
@@ -530,6 +602,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'feedback':
+                // ... (Feedback content remains same)
                 return (
                     <div className="space-y-4 pb-20">
                         <h2 className="text-2xl font-bold">Feedback</h2>

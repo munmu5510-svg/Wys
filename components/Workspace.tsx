@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Script, ChatSession, ChatMessage, AppNotification, CalendarEvent, BrandPitch, Series } from '../types';
 import { Button } from './Button';
-import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon } from './icons';
+import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon, CheckIcon } from './icons';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
+// @ts-ignore
+import { jsPDF } from 'jspdf';
 
 // --- Helper Components ---
 
@@ -14,7 +17,7 @@ const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id:
     }, [notification.id, onClose]);
 
     return (
-        <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-50`}>
+        <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-[60]`}>
             <div className="flex-1">
                 <h4 className="font-bold text-sm text-gray-200">{notification.title}</h4>
                 <p className="text-xs text-gray-400 mt-1">{notification.message}</p>
@@ -24,7 +27,7 @@ const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id:
     );
 };
 
-// ... ChatOverlay and MarkdownEditor components ...
+// ... ChatOverlay ...
 const ChatOverlay: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void;
@@ -61,7 +64,7 @@ const ChatOverlay: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-y-0 right-0 w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
+        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
             <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
                 <div className="flex items-center space-x-2">
                     <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="Historique">
@@ -119,7 +122,7 @@ const ChatOverlay: React.FC<{
                             )}
                             <div ref={messagesEndRef} />
                         </div>
-                        <div className="p-4 bg-gray-900 border-t border-gray-800">
+                        <div className="p-4 bg-gray-900 border-t border-gray-800 pb-8 md:pb-4">
                             <div className="flex space-x-2">
                                 <input 
                                     value={input} 
@@ -215,23 +218,32 @@ const MarkdownEditor: React.FC<{ value: string, onChange: (val: string) => void,
     )
 }
 
-const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: Script) => void, onDelete: (id: string) => void, onOpenStudio: () => void, onOpenSerial: () => void }> = ({ scripts, series, onSelect, onDelete, onOpenStudio, onOpenSerial }) => {
-    const [editMode, setEditMode] = useState(false);
-    const [showMenu, setShowMenu] = useState(false);
+const Dashboard: React.FC<{ 
+    scripts: Script[], 
+    series: Series[], 
+    onSelect: (s: Script) => void, 
+    onDelete: (id: string) => void, 
+    onBulkDelete: (ids: string[]) => void,
+    onBulkShare: (ids: string[]) => void,
+    onOpenStudio: () => void, 
+    onOpenSerial: () => void 
+}> = ({ scripts, series, onSelect, onDelete, onBulkDelete, onBulkShare, onOpenStudio, onOpenSerial }) => {
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-    const handleShareApp = async () => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'WySlider',
-                    text: 'Générez des scripts YouTube incroyables avec IA !',
-                    url: 'https://wyslider-v2.vercel.app',
-                });
-            } catch (err) { console.log('Share failed', err); }
-        } else {
-            alert("Partage natif non supporté sur cet appareil.");
-        }
-        setShowMenu(false);
+    const toggleSelection = (id: string) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
+        setSelectedIds(newSet);
+    };
+
+    const handleBulkAction = (action: 'delete' | 'share') => {
+        if (selectedIds.size === 0) return;
+        if (action === 'delete') onBulkDelete(Array.from(selectedIds));
+        if (action === 'share') onBulkShare(Array.from(selectedIds));
+        setSelectionMode(false);
+        setSelectedIds(new Set());
     };
 
     return (
@@ -241,22 +253,19 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
                     <div className="flex-1 relative">
                         <input type="text" placeholder="Rechercher..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none"/>
                     </div>
-                    <div className="relative">
-                        <button onClick={() => setShowMenu(!showMenu)} className={`p-2 rounded hover:bg-gray-700 transition ${editMode ? 'text-red-400 bg-red-900/20' : 'text-gray-400 hover:text-white'}`}>
-                            <Bars3Icon className="h-5 w-5"/>
-                        </button>
-                        {showMenu && (
-                            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
-                                <button onClick={() => { setEditMode(!editMode); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-700 flex items-center">
-                                    <PencilSquareIcon className="h-4 w-4 mr-2"/> {editMode ? 'Quitter Mode Édition' : 'Mode Édition (Suppr/Renommer)'}
-                                </button>
-                                <button onClick={handleShareApp} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-700 flex items-center border-t border-gray-700">
-                                    <ShareIcon className="h-4 w-4 mr-2"/> Partager l'application
-                                </button>
-                            </div>
+                    <div className="flex space-x-2">
+                        {selectionMode ? (
+                             <div className="flex space-x-2">
+                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-900/50 text-red-400 rounded hover:bg-red-900 border border-red-800" title="Supprimer Sélection"><TrashIcon className="h-5 w-5"/></button>
+                                <button onClick={() => handleBulkAction('share')} className="p-2 bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900 border border-blue-800" title="Partager Sélection"><ShareIcon className="h-5 w-5"/></button>
+                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600">Annuler</button>
+                             </div>
+                        ) : (
+                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-700 text-gray-400 hover:text-white" title="Sélectionner...">
+                                <Bars3Icon className="h-5 w-5"/>
+                            </button>
                         )}
                     </div>
-                    <div className="hidden md:block text-sm font-mono text-brand-purple">{scripts.length} Scripts</div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -268,14 +277,22 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {scripts.filter(s => !s.seriesId).map(script => (
-                         <div key={script.id} onClick={() => onSelect(script)} className="group bg-gray-800 rounded-xl overflow-hidden border border-gray-700 hover:border-brand-purple cursor-pointer transition relative">
+                         <div 
+                             key={script.id} 
+                             onClick={() => selectionMode ? toggleSelection(script.id) : onSelect(script)} 
+                             className={`group bg-gray-800 rounded-xl overflow-hidden border cursor-pointer transition relative ${selectionMode && selectedIds.has(script.id) ? 'border-brand-purple ring-1 ring-brand-purple' : 'border-gray-700 hover:border-brand-purple'}`}
+                         >
                              <div className="h-32 bg-gray-700 relative overflow-hidden">
                                  <div className="absolute inset-0 flex items-center justify-center text-gray-500 bg-gray-900">
                                      <span className="text-4xl font-black opacity-20">WYS</span>
                                  </div>
-                                 <div className={`absolute top-2 right-2 transition ${editMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                                     <button onClick={(e) => {e.stopPropagation(); onDelete(script.id)}} className="bg-red-500/80 p-2 rounded-full text-white shadow-lg"><TrashIcon className="h-4 w-4"/></button>
-                                 </div>
+                                 {selectionMode && (
+                                     <div className="absolute top-2 right-2">
+                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'border-gray-400 bg-gray-800'}`}>
+                                             {selectedIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white"/>}
+                                         </div>
+                                     </div>
+                                 )}
                              </div>
                              <div className="p-4">
                                  <div className="flex justify-between items-start mb-2">
@@ -316,7 +333,7 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
                                         <h3 className="font-bold text-lg text-white">{s.title}</h3>
                                         <span className="text-xs text-gray-400">{s.episodeCount} épisodes | {new Date(s.createdAt).toLocaleDateString()}</span>
                                     </div>
-                                    <button className={`text-red-500 hover:text-red-400 transition ${editMode ? 'opacity-100' : 'opacity-0'}`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
+                                    <button className={`text-red-500 hover:text-red-400 transition`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
                                 </div>
                                 <div className="grid gap-2 pl-4 border-l-2 border-gray-700">
                                     {s.episodes.map(ep => (
@@ -335,7 +352,6 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
     );
 };
 
-// ... SerialProd (Unchanged) ...
 const AVAILABLE_TONES = ["Personal brand", "Humour", "Energique", "Professionnel", "Critique", "Colere", "Empathie"];
 const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
 
@@ -346,7 +362,6 @@ const SerialProd: React.FC<{
     onNavigateAccount: () => void;
     onNotify: (t: string, m: string) => void;
 }> = ({ user, onClose, onSaveSeries, onNavigateAccount, onNotify }) => {
-    // ... Existing SerialProd Code ...
     const [step, setStep] = useState<'config' | 'preview' | 'generating'>('config');
     const [theme, setTheme] = useState('');
     const [config, setConfig] = useState({ 
@@ -382,7 +397,6 @@ const SerialProd: React.FC<{
         setIsLoading(true);
         setStep('generating');
         
-        // Generate full scripts based on proposals
         const generatedScripts: Script[] = [];
         const seriesId = `series_${Date.now()}`;
 
@@ -546,7 +560,7 @@ const Studio: React.FC<{
          niche: user.niche, 
          tone: 'Professionnel', 
          duration: '8-15min', 
-         platforms: 'YouTube',
+         platforms: 'YouTube, TikTok, Instagram',
          goal: '',
          needs: '',
          cta: ''
@@ -554,6 +568,7 @@ const Studio: React.FC<{
      const [customTone, setCustomTone] = useState('');
      const [isAddingTone, setIsAddingTone] = useState(false);
      const [showConfigMobile, setShowConfigMobile] = useState(false);
+     const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
 
      useEffect(() => {
          if (selectedScript && !selectedScript.sections.length && selectedScript.topic) {
@@ -567,6 +582,85 @@ const Studio: React.FC<{
              setShowConfigMobile(true);
          }
      }, [selectedScript]);
+
+     const handleGeneratePosts = async () => {
+         if(!selectedScript) return;
+         setIsGeneratingPosts(true);
+         const fullContent = selectedScript.sections.map(s => s.content).join(' ');
+         const posts = await geminiService.generateSocialPosts(selectedScript.title, fullContent, config.platforms);
+         if(posts && posts.length > 0) {
+             onUpdate({...selectedScript, socialPosts: posts});
+         }
+         setIsGeneratingPosts(false);
+     };
+
+     const handleDownloadPDF = () => {
+        if (!selectedScript) return;
+        const doc = new jsPDF();
+        
+        let yPos = 20;
+        doc.setFontSize(22);
+        doc.setTextColor(40, 40, 40);
+        doc.text(selectedScript.title, 20, yPos);
+        yPos += 15;
+        
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Topic: ${selectedScript.topic} | Tone: ${selectedScript.tone}`, 20, yPos);
+        yPos += 10;
+        
+        doc.setLineWidth(0.5);
+        doc.line(20, yPos, 190, yPos);
+        yPos += 10;
+
+        selectedScript.sections.forEach((section) => {
+            if (yPos > 270) { doc.addPage(); yPos = 20; }
+            
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont("helvetica", "bold");
+            doc.text(`${section.title} (${section.estimatedTime})`, 20, yPos);
+            yPos += 8;
+            
+            doc.setFontSize(11);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(60, 60, 60);
+            
+            const splitText = doc.splitTextToSize(section.content.replace(/\*\*/g, ''), 170);
+            doc.text(splitText, 20, yPos);
+            yPos += (splitText.length * 6) + 5;
+        });
+
+        if (selectedScript.socialPosts && selectedScript.socialPosts.length > 0) {
+             doc.addPage();
+             yPos = 20;
+             doc.setFontSize(18);
+             doc.setFont("helvetica", "bold");
+             doc.text("Campaign Social Posts", 20, yPos);
+             yPos += 15;
+
+             selectedScript.socialPosts.forEach(post => {
+                 if(yPos > 250) { doc.addPage(); yPos = 20; }
+                 doc.setFontSize(12);
+                 doc.setTextColor(0, 0, 200); // Blue
+                 doc.text(`Platform: ${post.platform}`, 20, yPos);
+                 yPos += 7;
+                 
+                 doc.setFontSize(11);
+                 doc.setTextColor(60, 60, 60);
+                 const content = doc.splitTextToSize(post.content, 170);
+                 doc.text(content, 20, yPos);
+                 yPos += (content.length * 5) + 5;
+                 
+                 doc.setTextColor(150, 150, 150);
+                 const tags = doc.splitTextToSize(post.hashtags.join(' '), 170);
+                 doc.text(tags, 20, yPos);
+                 yPos += (tags.length * 5) + 10;
+             });
+        }
+        
+        doc.save(`${selectedScript.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+     }
 
      if (!selectedScript) {
          return (
@@ -646,6 +740,11 @@ const Studio: React.FC<{
                      <p><strong>Needs:</strong> {selectedScript.needs || '-'}</p>
                      <p><strong>CTA:</strong> {selectedScript.cta || '-'}</p>
                  </div>
+                 <div className="mt-8 pt-4 border-t border-gray-700">
+                     <Button onClick={handleDownloadPDF} variant="secondary" className="w-full flex items-center justify-center">
+                         <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Télécharger PDF
+                     </Button>
+                 </div>
              </div>
              <div className="flex-1 bg-gray-800 overflow-y-auto p-4 md:p-8 scroll-smooth">
                  <div className="flex justify-between items-start mb-6">
@@ -653,6 +752,7 @@ const Studio: React.FC<{
                     <button onClick={() => setShowConfigMobile(true)} className="md:hidden p-2 bg-gray-700 rounded"><PencilSquareIcon className="h-5 w-5"/></button>
                  </div>
                  <div className="space-y-4">
+                     {selectedScript.sections.length === 0 && <div className="text-gray-400 p-4 border border-dashed border-gray-600 rounded">Le contenu généré apparaîtra ici. Si vide, régénérez.</div>}
                      {selectedScript.sections.map((section, idx) => (
                          <div key={idx} className="bg-gray-900 border border-gray-700 rounded-xl p-3 md:p-5">
                              <div className="flex justify-between mb-2">
@@ -665,6 +765,24 @@ const Studio: React.FC<{
                              }}/>
                          </div>
                      ))}
+
+                     {/* Social Posts Section */}
+                     <div className="mt-8 pt-8 border-t border-gray-700">
+                         <div className="flex justify-between items-center mb-4">
+                             <h3 className="text-xl font-bold flex items-center"><ShareIcon className="h-5 w-5 mr-2 text-green-400"/> Mes Posts</h3>
+                             <Button onClick={handleGeneratePosts} isLoading={isGeneratingPosts} className="text-sm py-1 px-3">Générer Posts</Button>
+                         </div>
+                         {!selectedScript.socialPosts && <p className="text-gray-500 italic text-sm">Aucun post généré.</p>}
+                         <div className="grid gap-4 md:grid-cols-2">
+                             {selectedScript.socialPosts?.map((post, i) => (
+                                 <div key={i} className="bg-gray-900 border border-gray-700 p-4 rounded-xl">
+                                     <span className="text-xs font-bold uppercase text-brand-blue mb-2 block">{post.platform}</span>
+                                     <p className="text-sm text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
+                                     <div className="text-xs text-blue-400">{post.hashtags.join(' ')}</div>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
                  </div>
              </div>
          </div>
@@ -672,7 +790,7 @@ const Studio: React.FC<{
 }
 
 const Growth: React.FC<{ user: User }> = ({ user }) => {
-    // ... Existing Growth Code with Mobile Layout Adjustments ...
+    // ... (Growth logic updated to prevent crashes)
     const [section, setSection] = useState<'seo'|'calendar'|'pitch'>('calendar');
     const [scripts, setScripts] = useState<Script[]>([]);
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -697,7 +815,11 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
     const handleGenerateCalendar = async () => {
         setIsGeneratingCalendar(true);
         const events = await geminiService.generateEditorialCalendar(user.niche, calendarTasks);
-        setCalendarEvents(events.map((e: any, i: number) => ({...e, id: i.toString()})));
+        if(events && events.length > 0) {
+            setCalendarEvents(events.map((e: any, i: number) => ({...e, id: i.toString()})));
+        } else {
+            alert("Erreur de génération du calendrier. Réessayez.");
+        }
         setIsGeneratingCalendar(false);
     }
     const handleAnalyzeSEO = async () => {
@@ -749,7 +871,6 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
                  </nav>
              </div>
              <div className="flex-1 bg-gray-900 p-4 md:p-8 overflow-y-auto scroll-smooth">
-                 {/* Content Views (Calendar, SEO, Pitch) */}
                  {section === 'calendar' && (
                      <div className="max-w-4xl space-y-6 pb-20">
                          <h2 className="text-xl md:text-2xl font-bold">Calendrier Éditorial IA</h2>
@@ -761,6 +882,7 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
                          {calendarEvents.length > 0 && <div className="grid gap-4">{calendarEvents.map((evt) => <div key={evt.id} className="bg-gray-800 p-4 rounded-xl border border-gray-700 flex items-center justify-between"><div className="flex items-center space-x-4"><div className="bg-gray-700 px-3 py-2 rounded text-center min-w-[60px]"><span className="block text-xs text-gray-400">{evt.date.split('-')[1]}/{evt.date.split('-')[0]}</span><span className="block font-bold text-lg">{evt.date.split('-')[2]}</span></div><div><h3 className="font-bold">{evt.title}</h3><span className="text-xs bg-brand-purple/20 text-brand-purple px-2 py-0.5 rounded mr-2">{evt.format}</span></div></div></div>)}</div>}
                      </div>
                  )}
+                 {/* ... SEO and Pitch views remain same ... */}
                  {section === 'seo' && (
                      <div className="max-w-4xl space-y-6 pb-20">
                          <h2 className="text-xl md:text-2xl font-bold">Score SEO & CTR</h2>
@@ -841,10 +963,8 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
         return () => clearInterval(interval);
     }, []);
 
-    // Handle Pending Configuration (e.g. from Viral Ideas)
     useEffect(() => {
         if (pendingGenConfig) {
-            // Create a temp script with config and open studio
             const tempId = `temp_${Date.now()}`;
             const tempScript: Script = {
                 id: tempId,
@@ -860,15 +980,9 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                 cta: pendingGenConfig.cta
             };
             const updated = [tempScript, ...scripts];
-            setScripts(updated); // Don't save to LS yet to avoid garbage, but Studio will save on update
+            setScripts(updated); 
             setSelectedScriptId(tempId);
             setShowStudio(true);
-            
-            // Auto generate
-            setTimeout(() => {
-                // We rely on the user clicking "Generate" in studio, OR we trigger it.
-                // The Studio component takes `onGenerate`. We can pass a flag to auto-trigger but better let user review.
-            }, 500);
             
             if (clearPendingConfig) clearPendingConfig();
         }
@@ -884,7 +998,6 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
         setSeries(updated);
         localStorage.setItem('wyslider_series', JSON.stringify(updated));
         
-        // Also add episodes to scripts list so they are accessible individually
         const updatedScripts = [...newSeries.episodes, ...scripts];
         saveScripts(updatedScripts);
         onUpdateUser({...user, generationsLeft: Math.max(0, user.generationsLeft - newSeries.episodes.length)});
@@ -895,9 +1008,32 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
             const updated = series.filter(s => s.id !== id);
             setSeries(updated);
             localStorage.setItem('wyslider_series', JSON.stringify(updated));
-            // Also delete associated scripts
             const updatedScripts = scripts.filter(s => s.seriesId !== id);
             saveScripts(updatedScripts);
+        }
+    };
+    
+    // Bulk Handlers
+    const handleBulkDelete = (ids: string[]) => {
+        if(!window.confirm(`Supprimer ${ids.length} scripts ?`)) return;
+        const newScripts = scripts.filter(s => !ids.includes(s.id));
+        saveScripts(newScripts);
+    };
+
+    const handleBulkShare = async (ids: string[]) => {
+        const selected = scripts.filter(s => ids.includes(s.id));
+        const shareText = selected.map(s => `${s.title}: ${s.youtubeDescription}`).join('\n\n');
+        
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Mes Scripts WySlider',
+                    text: shareText
+                });
+            } catch(e) { console.log(e); }
+        } else {
+            alert("Partage non supporté. Contenu copié.");
+            navigator.clipboard.writeText(shareText);
         }
     };
 
@@ -930,7 +1066,14 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                 needs: config.needs,
                 cta: config.cta
             };
-            const updatedScripts = [newScript, ...scripts];
+            // Replace temp script if exists, otherwise append
+            let updatedScripts;
+            if (selectedScriptId && selectedScriptId.startsWith('temp_')) {
+                 updatedScripts = scripts.map(s => s.id === selectedScriptId ? newScript : s);
+            } else {
+                 updatedScripts = [newScript, ...scripts];
+            }
+            
             saveScripts(updatedScripts);
             setSelectedScriptId(newScript.id);
             onUpdateUser({...user, generationsLeft: user.generationsLeft - 1});
@@ -984,7 +1127,7 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
         <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center justify-between px-4 md:px-6 flex-shrink-0 z-20 relative">
             <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-purple to-brand-blue">WYS</span>
-                <span className="text-xs font-mono text-gray-500 pt-1">V2.3</span>
+                <span className="text-xs font-mono text-gray-500 pt-1">V2.4</span>
             </div>
             <div className="flex items-center space-x-3 md:space-x-6">
                 <div className="relative">
@@ -1028,7 +1171,15 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
             <div className="flex flex-col h-screen w-full bg-gray-900 text-white">
                 <TopBar />
                 <div className="flex-1 overflow-hidden relative">
-                    <Studio scripts={scripts} selectedScript={scripts.find(s=>s.id === selectedScriptId)||null} onUpdate={(s)=>saveScripts(scripts.map(old=>old.id===s.id?s:old))} onBack={()=>{setShowStudio(false); setSelectedScriptId(null)}} onGenerate={handleGenerate} isGenerating={isGenerating} user={user} />
+                    <Studio 
+                        scripts={scripts} 
+                        selectedScript={scripts.find(s=>s.id === selectedScriptId)||null} 
+                        onUpdate={(s)=>saveScripts(scripts.map(old=>old.id===s.id?s:old))} 
+                        onBack={()=>{setShowStudio(false); setSelectedScriptId(null)}} 
+                        onGenerate={handleGenerate} 
+                        isGenerating={isGenerating} 
+                        user={user} 
+                    />
                 </div>
             </div>
         )
@@ -1056,7 +1207,9 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                             scripts={scripts} 
                             series={series}
                             onSelect={(s) => { setSelectedScriptId(s.id); setShowStudio(true); }}
-                            onDelete={(id) => deleteSeries(id)} 
+                            onDelete={(id) => { if(window.confirm("Supprimer ce script ?")) { const ns = scripts.filter(s=>s.id!==id); saveScripts(ns); }}} 
+                            onBulkDelete={handleBulkDelete}
+                            onBulkShare={handleBulkShare}
                             onOpenStudio={() => { setSelectedScriptId(null); setShowStudio(true); }}
                             onOpenSerial={() => setShowSerialProd(true)}
                          />

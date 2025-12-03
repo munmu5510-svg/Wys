@@ -24,6 +24,12 @@ export interface ScriptSection {
   visualNote?: string;
 }
 
+export interface SocialPost {
+    platform: string;
+    content: string;
+    hashtags: string[];
+}
+
 export interface Script {
   id: string;
   title: string;
@@ -43,6 +49,7 @@ export interface Script {
   goal?: string;
   needs?: string;
   cta?: string;
+  socialPosts?: SocialPost[];
 }
 
 export interface Series {
