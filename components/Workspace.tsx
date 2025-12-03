@@ -24,8 +24,7 @@ const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id:
     );
 };
 
-// ... ChatOverlay and MarkdownEditor components remain the same ...
-// Re-declaring purely to maintain file structure for the XML replacement
+// ... ChatOverlay and MarkdownEditor components ...
 const ChatOverlay: React.FC<{ 
     isOpen: boolean; 
     onClose: () => void;
@@ -62,7 +61,7 @@ const ChatOverlay: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-y-0 right-0 w-96 bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
+        <div className="fixed inset-y-0 right-0 w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
             <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
                 <div className="flex items-center space-x-2">
                     <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="Historique">
@@ -217,16 +216,47 @@ const MarkdownEditor: React.FC<{ value: string, onChange: (val: string) => void,
 }
 
 const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: Script) => void, onDelete: (id: string) => void, onOpenStudio: () => void, onOpenSerial: () => void }> = ({ scripts, series, onSelect, onDelete, onOpenStudio, onOpenSerial }) => {
+    const [editMode, setEditMode] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
+
+    const handleShareApp = async () => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'WySlider',
+                    text: 'Générez des scripts YouTube incroyables avec IA !',
+                    url: 'https://wyslider-v2.vercel.app',
+                });
+            } catch (err) { console.log('Share failed', err); }
+        } else {
+            alert("Partage natif non supporté sur cet appareil.");
+        }
+        setShowMenu(false);
+    };
+
     return (
-        <div className="h-full overflow-y-auto p-6 animate-fade-in scroll-smooth">
+        <div className="h-full overflow-y-auto p-4 md:p-6 animate-fade-in scroll-smooth">
              <div className="max-w-6xl mx-auto space-y-8 pb-20">
-                <div className="flex items-center space-x-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700">
+                <div className="flex items-center space-x-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700 relative z-20">
                     <div className="flex-1 relative">
-                        <input type="text" placeholder="Rechercher un script..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none"/>
+                        <input type="text" placeholder="Rechercher..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none"/>
                     </div>
-                    <button className="p-2 text-gray-400 hover:text-white"><Bars3Icon className="h-5 w-5"/></button>
-                    <div className="text-sm font-mono text-brand-purple">{scripts.length} Scripts</div>
-                    <button className="p-2 text-gray-400 hover:text-white"><PencilSquareIcon className="h-5 w-5"/></button>
+                    <div className="relative">
+                        <button onClick={() => setShowMenu(!showMenu)} className={`p-2 rounded hover:bg-gray-700 transition ${editMode ? 'text-red-400 bg-red-900/20' : 'text-gray-400 hover:text-white'}`}>
+                            <Bars3Icon className="h-5 w-5"/>
+                        </button>
+                        {showMenu && (
+                            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                                <button onClick={() => { setEditMode(!editMode); setShowMenu(false); }} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-700 flex items-center">
+                                    <PencilSquareIcon className="h-4 w-4 mr-2"/> {editMode ? 'Quitter Mode Édition' : 'Mode Édition (Suppr/Renommer)'}
+                                </button>
+                                <button onClick={handleShareApp} className="w-full text-left px-4 py-3 text-sm hover:bg-gray-700 flex items-center border-t border-gray-700">
+                                    <ShareIcon className="h-4 w-4 mr-2"/> Partager l'application
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    <div className="hidden md:block text-sm font-mono text-brand-purple">{scripts.length} Scripts</div>
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -243,8 +273,8 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
                                  <div className="absolute inset-0 flex items-center justify-center text-gray-500 bg-gray-900">
                                      <span className="text-4xl font-black opacity-20">WYS</span>
                                  </div>
-                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
-                                     <button onClick={(e) => {e.stopPropagation(); onDelete(script.id)}} className="bg-red-500/80 p-1 rounded-full text-white"><TrashIcon className="h-4 w-4"/></button>
+                                 <div className={`absolute top-2 right-2 transition ${editMode ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                     <button onClick={(e) => {e.stopPropagation(); onDelete(script.id)}} className="bg-red-500/80 p-2 rounded-full text-white shadow-lg"><TrashIcon className="h-4 w-4"/></button>
                                  </div>
                              </div>
                              <div className="p-4">
@@ -266,7 +296,7 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
                 <div className="flex items-center justify-between pt-4 border-t border-gray-800">
                     <h2 className="text-xl font-bold flex items-center space-x-2"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>Mes Séries</span></h2>
                      <div className="flex items-center space-x-3">
-                        <span className="text-sm font-mono text-gray-500">{series.length} Séries</span>
+                        <span className="hidden md:inline text-sm font-mono text-gray-500">{series.length} Séries</span>
                         <button onClick={onOpenSerial} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
                             <PlusIcon className="h-6 w-6"/>
                         </button>
@@ -275,18 +305,18 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
 
                 {series.length === 0 ? (
                     <div className="bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:bg-gray-800/50 transition cursor-pointer" onClick={onOpenSerial}>
-                        Vous n'avez pas encore créé de série. Cliquez ici pour lancer Serial Prod et générer 5+ vidéos d'un coup.
+                        Vous n'avez pas encore créé de série. Cliquez ici pour lancer Serial Prod.
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {series.map(s => (
-                            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-xl p-4 relative">
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
                                         <h3 className="font-bold text-lg text-white">{s.title}</h3>
                                         <span className="text-xs text-gray-400">{s.episodeCount} épisodes | {new Date(s.createdAt).toLocaleDateString()}</span>
                                     </div>
-                                    <button className="text-red-500 hover:text-red-400" onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
+                                    <button className={`text-red-500 hover:text-red-400 transition ${editMode ? 'opacity-100' : 'opacity-0'}`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
                                 </div>
                                 <div className="grid gap-2 pl-4 border-l-2 border-gray-700">
                                     {s.episodes.map(ep => (
@@ -305,7 +335,7 @@ const Dashboard: React.FC<{ scripts: Script[], series: Series[], onSelect: (s: S
     );
 };
 
-// --- TONES & DURATIONS ---
+// ... SerialProd (Unchanged) ...
 const AVAILABLE_TONES = ["Personal brand", "Humour", "Energique", "Professionnel", "Critique", "Colere", "Empathie"];
 const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
 
@@ -316,6 +346,7 @@ const SerialProd: React.FC<{
     onNavigateAccount: () => void;
     onNotify: (t: string, m: string) => void;
 }> = ({ user, onClose, onSaveSeries, onNavigateAccount, onNotify }) => {
+    // ... Existing SerialProd Code ...
     const [step, setStep] = useState<'config' | 'preview' | 'generating'>('config');
     const [theme, setTheme] = useState('');
     const [config, setConfig] = useState({ 
@@ -522,9 +553,9 @@ const Studio: React.FC<{
      });
      const [customTone, setCustomTone] = useState('');
      const [isAddingTone, setIsAddingTone] = useState(false);
+     const [showConfigMobile, setShowConfigMobile] = useState(false);
 
      useEffect(() => {
-         // Pre-fill config if selected script is new/empty but has a topic (e.g. from Viral Idea)
          if (selectedScript && !selectedScript.sections.length && selectedScript.topic) {
              setConfig(prev => ({
                  ...prev,
@@ -533,15 +564,15 @@ const Studio: React.FC<{
                  needs: selectedScript.needs || prev.needs,
                  cta: selectedScript.cta || prev.cta
              }));
+             setShowConfigMobile(true);
          }
      }, [selectedScript]);
 
      if (!selectedScript) {
          return (
              <div className="h-full flex overflow-hidden animate-fade-in">
-                  <div className="w-80 bg-gray-900 border-r border-gray-800 flex flex-col p-6 space-y-6 overflow-y-auto">
+                  <div className="w-full md:w-80 bg-gray-900 border-r border-gray-800 flex flex-col p-6 space-y-6 overflow-y-auto">
                      <h2 className="font-bold text-lg mb-4">Studio Config</h2>
-                     {/* Config form remains same */}
                      <div className="space-y-4">
                         <div>
                             <label className="text-xs text-gray-400 font-bold uppercase">Sujet</label>
@@ -592,7 +623,7 @@ const Studio: React.FC<{
                      <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Générer Script</Button>
                      <Button variant="secondary" onClick={onBack}>Annuler</Button>
                   </div>
-                  <div className="flex-1 bg-gray-800 flex items-center justify-center text-gray-500">
+                  <div className="hidden md:flex flex-1 bg-gray-800 items-center justify-center text-gray-500">
                       <div className="text-center">
                           <PencilSquareIcon className="h-16 w-16 mx-auto mb-4 opacity-20"/>
                           <p>Configurez votre script à gauche pour commencer.</p>
@@ -603,23 +634,29 @@ const Studio: React.FC<{
      }
 
      return (
-         <div className="h-full flex overflow-hidden animate-fade-in">
-             <div className="w-80 bg-gray-900 border-r border-gray-800 p-6 hidden lg:block overflow-y-auto">
-                 <button onClick={onBack} className="text-sm text-gray-400 mb-4">&larr; Retour</button>
-                 <h2 className="font-bold mb-4">{selectedScript.title}</h2>
+         <div className="h-full flex overflow-hidden animate-fade-in relative">
+             <div className={`${showConfigMobile ? 'absolute inset-0 z-30 bg-gray-900' : 'hidden'} md:block md:static md:w-80 md:bg-gray-900 md:border-r border-gray-800 p-6 overflow-y-auto`}>
+                 <div className="flex justify-between items-center mb-4">
+                    <button onClick={onBack} className="text-sm text-gray-400">&larr; Retour</button>
+                    {showConfigMobile && <button onClick={() => setShowConfigMobile(false)} className="md:hidden"><XMarkIcon className="h-6 w-6"/></button>}
+                 </div>
+                 <h2 className="font-bold mb-4 truncate">{selectedScript.title}</h2>
                  <div className="text-xs text-gray-400 space-y-2">
                      <p><strong>Goal:</strong> {selectedScript.goal || '-'}</p>
                      <p><strong>Needs:</strong> {selectedScript.needs || '-'}</p>
                      <p><strong>CTA:</strong> {selectedScript.cta || '-'}</p>
                  </div>
              </div>
-             <div className="flex-1 bg-gray-800 overflow-y-auto p-8 scroll-smooth">
-                 <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-3xl font-bold bg-transparent w-full mb-6"/>
+             <div className="flex-1 bg-gray-800 overflow-y-auto p-4 md:p-8 scroll-smooth">
+                 <div className="flex justify-between items-start mb-6">
+                    <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full mr-2"/>
+                    <button onClick={() => setShowConfigMobile(true)} className="md:hidden p-2 bg-gray-700 rounded"><PencilSquareIcon className="h-5 w-5"/></button>
+                 </div>
                  <div className="space-y-4">
                      {selectedScript.sections.map((section, idx) => (
-                         <div key={idx} className="bg-gray-900 border border-gray-700 rounded-xl p-5">
+                         <div key={idx} className="bg-gray-900 border border-gray-700 rounded-xl p-3 md:p-5">
                              <div className="flex justify-between mb-2">
-                                <span className="font-bold text-brand-purple">{section.title}</span>
+                                <span className="font-bold text-brand-purple text-sm md:text-base">{section.title}</span>
                              </div>
                              <MarkdownEditor value={section.content} onChange={val => {
                                  const newSections = [...selectedScript.sections];
@@ -635,11 +672,7 @@ const Studio: React.FC<{
 }
 
 const Growth: React.FC<{ user: User }> = ({ user }) => {
-    // ... Growth Component ... (No changes needed, keeping existing XML structure safe)
-    // Re-rendering Growth for consistency if needed, but avoiding redundancy for brevity 
-    // unless you want me to print the whole file again. 
-    // Assuming context is maintained, I'll print the full component to be safe.
-    
+    // ... Existing Growth Code with Mobile Layout Adjustments ...
     const [section, setSection] = useState<'seo'|'calendar'|'pitch'>('calendar');
     const [scripts, setScripts] = useState<Script[]>([]);
     const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
@@ -661,7 +694,6 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
         if(h) setPitchHistory(JSON.parse(h));
     }, []);
 
-    // ... Handlers ...
     const handleGenerateCalendar = async () => {
         setIsGeneratingCalendar(true);
         const events = await geminiService.generateEditorialCalendar(user.niche, calendarTasks);
@@ -699,29 +731,29 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
     }
 
     return (
-        <div className="h-full flex overflow-hidden animate-fade-in">
-             <div className="w-64 bg-gray-900 border-r border-gray-800 flex flex-col">
-                 <div className="p-6">
+        <div className="h-full flex flex-col md:flex-row overflow-hidden animate-fade-in">
+             <div className="w-full md:w-64 bg-gray-900 border-b md:border-b-0 md:border-r border-gray-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto shrink-0">
+                 <div className="p-4 md:p-6 hidden md:block">
                      <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-blue-500">Growth Hub</h2>
                  </div>
-                 <nav className="flex-1 space-y-1 px-3">
-                     <button onClick={() => setSection('calendar')} className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition ${section === 'calendar' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <CalendarIcon className="h-5 w-5 text-blue-500"/> <span>Calendrier Éditorial</span>
+                 <nav className="flex md:flex-col flex-1 p-2 md:p-3 space-x-2 md:space-x-0 md:space-y-1">
+                     <button onClick={() => setSection('calendar')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'calendar' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
+                         <CalendarIcon className="h-5 w-5 text-blue-500"/> <span>Calendrier</span>
                      </button>
-                     <button onClick={() => setSection('seo')} className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition ${section === 'seo' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <ChartPieIcon className="h-5 w-5 text-green-500"/> <span>Score SEO & CTR</span>
+                     <button onClick={() => setSection('seo')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'seo' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
+                         <ChartPieIcon className="h-5 w-5 text-green-500"/> <span>Score SEO</span>
                      </button>
-                     <button onClick={() => setSection('pitch')} className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition ${section === 'pitch' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
-                         <CurrencyDollarIcon className="h-5 w-5 text-yellow-500"/> <span>Pitch for Mark</span>
+                     <button onClick={() => setSection('pitch')} className={`flex-shrink-0 flex items-center space-x-3 px-3 py-2 rounded-lg transition whitespace-nowrap ${section === 'pitch' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
+                         <CurrencyDollarIcon className="h-5 w-5 text-yellow-500"/> <span>Pitch Mark</span>
                      </button>
                  </nav>
              </div>
-             <div className="flex-1 bg-gray-900 p-8 overflow-y-auto scroll-smooth">
+             <div className="flex-1 bg-gray-900 p-4 md:p-8 overflow-y-auto scroll-smooth">
                  {/* Content Views (Calendar, SEO, Pitch) */}
                  {section === 'calendar' && (
                      <div className="max-w-4xl space-y-6 pb-20">
-                         <h2 className="text-2xl font-bold">Calendrier Éditorial IA</h2>
-                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                         <h2 className="text-xl md:text-2xl font-bold">Calendrier Éditorial IA</h2>
+                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
                              <label className="block text-sm font-bold text-gray-400 mb-2">Liste des tâches / Idées à planifier</label>
                              <textarea value={calendarTasks} onChange={e => setCalendarTasks(e.target.value)} className="w-full bg-gray-900 p-3 rounded border border-gray-600 mb-4 h-24" placeholder="- Video sur les tendances 2024&#10;- Short sur l'outil X..."/>
                              <Button onClick={handleGenerateCalendar} isLoading={isGeneratingCalendar}><PlusIcon className="h-5 w-5 mr-2 inline"/> Générer le planning</Button>
@@ -731,8 +763,8 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
                  )}
                  {section === 'seo' && (
                      <div className="max-w-4xl space-y-6 pb-20">
-                         <h2 className="text-2xl font-bold">Score SEO & CTR</h2>
-                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                         <h2 className="text-xl md:text-2xl font-bold">Score SEO & CTR</h2>
+                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700">
                              <label className="block text-sm font-bold text-gray-400 mb-2">Sélectionner un script à analyser</label>
                              <select value={selectedScriptSEO} onChange={e => setSelectedScriptSEO(e.target.value)} className="w-full bg-gray-900 p-3 rounded border border-gray-600 mb-4"><option value="">-- Choisir un script --</option>{scripts.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}</select>
                              <Button onClick={handleAnalyzeSEO} isLoading={isAnalyzingSEO} disabled={!selectedScriptSEO}>Analyser</Button>
@@ -742,8 +774,8 @@ const Growth: React.FC<{ user: User }> = ({ user }) => {
                  )}
                  {section === 'pitch' && (
                      <div className="max-w-4xl space-y-6 pb-20">
-                         <div className="flex justify-between items-center"><h2 className="text-2xl font-bold">Pitch for Mark</h2>{pitchHistory.length > 0 && <button onClick={handleClearPitchHistory} className="text-xs text-red-500 hover:text-red-400 underline">Vider l'historique</button>}</div>
-                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 grid gap-4">
+                         <div className="flex justify-between items-center"><h2 className="text-xl md:text-2xl font-bold">Pitch for Mark</h2>{pitchHistory.length > 0 && <button onClick={handleClearPitchHistory} className="text-xs text-red-500 hover:text-red-400 underline">Vider l'historique</button>}</div>
+                         <div className="bg-gray-800 p-4 md:p-6 rounded-xl border border-gray-700 grid gap-4">
                              <input value={pitchBrand} onChange={e => setPitchBrand(e.target.value)} placeholder="Nom de la marque" className="w-full bg-gray-900 p-3 rounded border border-gray-600"/>
                              <input value={pitchUrl} onChange={e => setPitchUrl(e.target.value)} placeholder="URL de la marque (Site Web)" className="w-full bg-gray-900 p-3 rounded border border-gray-600"/>
                              <textarea value={pitchObj} onChange={e => setPitchObj(e.target.value)} placeholder="Objectif du pitch..." className="w-full bg-gray-900 p-3 rounded border border-gray-600 h-24"/>
@@ -827,8 +859,6 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                 needs: pendingGenConfig.needs,
                 cta: pendingGenConfig.cta
             };
-            // Add temporarily to state logic handled by Studio via selectedScriptId or pass config directly
-            // Easier: just add to scripts (it's empty anyway) and open it.
             const updated = [tempScript, ...scripts];
             setScripts(updated); // Don't save to LS yet to avoid garbage, but Studio will save on update
             setSelectedScriptId(tempId);
@@ -1026,7 +1056,7 @@ export const Workspace: React.FC<{ user: User, onUpdateUser: (u: User) => void, 
                             scripts={scripts} 
                             series={series}
                             onSelect={(s) => { setSelectedScriptId(s.id); setShowStudio(true); }}
-                            onDelete={(id) => deleteSeries(id)} // Modified to handle script deletion inside dashboard if needed, or pass correct deleter
+                            onDelete={(id) => deleteSeries(id)} 
                             onOpenStudio={() => { setSelectedScriptId(null); setShowStudio(true); }}
                             onOpenSerial={() => setShowSerialProd(true)}
                          />

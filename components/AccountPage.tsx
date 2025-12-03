@@ -74,12 +74,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
             alert("Code accepté ! 10 Générations offertes.");
         } else if (promoCode === 'PROPLUS') {
-            onUpdateUser({...user, isPro: true, generationsLeft: 999});
-            alert("Mode Pro+ Activé (Simulation)");
+            handleUpgradePro();
         } else {
             alert("Code invalide");
         }
     };
+
+    const handleUpgradePro = () => {
+        onUpdateUser({...user, isPro: true, generationsLeft: 999});
+        alert("Mode Pro+ Activé avec succès !");
+    }
 
     const handleSync = () => {
         if (syncCode === 'wys2323') {
@@ -229,7 +233,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              </div>
                              <div className="flex-1">
                                  <div className="flex items-center space-x-2">
-                                     <p className="font-bold text-lg">{user.email}</p>
+                                     <p className="font-bold text-lg break-all">{user.email}</p>
                                      {user.isPro && <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">PRO+</span>}
                                  </div>
                                  <p className="text-gray-400">{user.niche} | {user.channelName}</p>
@@ -509,7 +513,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                 <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1">POPULAIRE</div>
                                 <h3 className="font-bold text-yellow-400">WYS Pro+ ($49)</h3>
                                 <p className="text-sm text-gray-400">50 scripts + Serial Prod + Veo</p>
-                                <Button className="mt-2 w-full text-xs" onClick={() => alert("Paiement simulé. Utilisez le code PROPLUS dans la section Compte.")}>Simuler Upgrade</Button>
+                                <Button className="mt-2 w-full text-xs" onClick={handleUpgradePro}>Simuler Upgrade</Button>
                             </div>
                         </div>
                     </div>
@@ -545,7 +549,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     };
 
     return (
-        <div className="flex h-screen bg-gray-900 text-white animate-fade-in overflow-hidden relative">
+        <div className="flex flex-col md:flex-row h-screen bg-gray-900 text-white animate-fade-in overflow-hidden relative">
              {/* Post Use Modal */}
              {showPostModal && (
                  <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -566,37 +570,38 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                  </div>
              )}
 
-             {/* Sidebar Left */}
-             <div className="w-64 flex-shrink-0 border-r border-gray-800 bg-gray-900 flex flex-col">
-                <div className="p-6 border-b border-gray-800">
-                    <Button onClick={onBack} variant="outline" className="w-full text-sm">← Retour</Button>
+             {/* Sidebar (Top nav on mobile, Left sidebar on desktop) */}
+             <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
+                <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-800 flex items-center md:block">
+                    <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Retour</span></Button>
                 </div>
-                <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+                <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
                     {[
-                        {id: 'account', label: 'Compte WySlider', icon: <UserIcon className="h-5 w-5"/>},
-                        {id: 'ideas', label: 'Idées Virales', icon: <LightBulbIcon className="h-5 w-5 text-yellow-400"/>},
+                        {id: 'account', label: 'Compte', icon: <UserIcon className="h-5 w-5"/>},
+                        {id: 'ideas', label: 'Idées', icon: <LightBulbIcon className="h-5 w-5 text-yellow-400"/>},
                         {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
-                        {id: 'forge', label: 'Forge (AI Custom)', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
-                        {id: 'share', label: 'Partager (Templates)', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
+                        {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
+                        {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
                         {id: 'storage', label: 'Stockage', icon: <ArrowDownTrayIcon className="h-5 w-5 text-blue-400"/>},
-                        {id: 'plan', label: 'Formules & Bonus', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                        {id: 'plan', label: 'Formules', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
                         {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
                         {id: 'sync', label: 'Sync', icon: <RefreshIcon className="h-5 w-5"/>},
                     ].map(item => (
                         <button 
                             key={item.id} 
                             onClick={() => setSection(item.id as any)}
-                            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                            className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition whitespace-nowrap ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
                         >
                             {item.icon}
-                            <span>{item.label}</span>
+                            <span className="hidden md:inline">{item.label}</span>
+                            <span className="md:hidden">{item.label.split(' ')[0]}</span>
                         </button>
                     ))}
                 </nav>
              </div>
 
              {/* Center Content */}
-             <div className="flex-1 overflow-y-auto bg-gray-900 p-8 scroll-smooth">
+             <div className="flex-1 overflow-y-auto bg-gray-900 p-4 md:p-8 scroll-smooth">
                  <div className="max-w-4xl mx-auto">
                     {renderContent()}
                  </div>
