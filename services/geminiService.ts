@@ -60,32 +60,33 @@ export const generateScript = async (
   - Social Platforms: ${platforms || 'YouTube, Instagram, TikTok, LinkedIn'}
 
   **MANDATORY OUTPUT STRUCTURE (JSON):**
-  The output MUST be in French (Français), professional, and engaging.
+  The output MUST be in French (Français).
+  Ensure the response is valid JSON. Do not repeat sections endlessly. Keep it concise and professional.
   
   1. **title**: Catchy, High CTR (Click-Through Rate).
   2. **youtubeDescription**: 3-4 lines optimized for SEO with keywords.
   3. **hashtags**: 5-10 relevant hashtags.
   4. **sections**: An array of script sections. 
      - **Intro**: Must include a "Hook Pertinent" (catchy opening) and "Intro".
-     - **Main Content**: Must be divided into clearly NUMBERED sections (e.g., "1. Le Problème", "2. La Solution").
+     - **Main Content**: Must be divided into clearly NUMBERED sections (e.g., "1. Le Problème", "2. La Solution"). Limit to 3-5 main points max.
      - **Conclusion**: Brief summary.
      - **CTA**: The specific Call to Action.
      *Each section object must contain:*
        - \`title\`: Section header (e.g., "0:00 Intro", "1:30 Partie 1").
        - \`estimatedTime\`: Duration (e.g., "30s").
-       - \`content\`: The spoken script (Verbatim). Natural, engaging flow.
-       - \`visualNote\`: Detailed visual direction (B-roll, camera angle, graphics) to facilitate video creation.
+       - \`content\`: The spoken script (Verbatim). Natural, engaging flow. Avoid repetition.
+       - \`visualNote\`: Detailed visual direction.
   5. **socialPosts**: Promotional posts for the specified platforms.
      *Each post object must contain:*
        - \`platform\`: Platform name.
        - \`content\`: Engaging caption with emojis.
        - \`hashtags\`: Platform-specific tags.
-       - \`visualNote\`: Description of the visual asset (image/video) for this post.
+       - \`visualNote\`: Description of the visual asset.
 
-  **TONE GUIDELINES:**
-  - Be direct, avoid generic AI fluff.
-  - Use short sentences for better retention.
-  - Focus on value for the viewer.
+  **IMPORTANT:**
+  - STRICTLY Output valid JSON.
+  - Do not truncate the JSON.
+  - Total script length should fit within ${format}.
   `;
 
   try {
@@ -94,7 +95,8 @@ export const generateScript = async (
         model: MODEL_NAME,
         contents: prompt,
         config: {
-            systemInstruction: "You are WySlider, an expert YouTube strategist. You speak French. You generate structured JSON scripts.",
+            systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
+            maxOutputTokens: 8192, 
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -135,17 +137,20 @@ export const generateScript = async (
     if (response.text) {
         try {
             const data = JSON.parse(response.text);
-            // Validation check to ensure we have content
             if (!data.sections || data.sections.length === 0) {
-                console.warn("AI returned empty sections, attempting fallback parsing or ignoring.");
                 return null;
             }
             return data;
         } catch (e) {
             console.warn("Direct JSON parse failed, attempting cleanup", e);
             const cleaned = cleanJson(response.text);
-            const data = JSON.parse(cleaned);
-            return data;
+            try {
+                 const data = JSON.parse(cleaned);
+                 return data;
+            } catch (err) {
+                 console.error("Failed to parse cleaned JSON:", err);
+                 return null;
+            }
         }
     }
     return null;
@@ -179,6 +184,7 @@ export const generateSeriesOutlines = async (
             model: MODEL_NAME,
             contents: prompt,
             config: {
+                maxOutputTokens: 4096,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -224,6 +230,7 @@ export const generateViralIdeas = async (niche: string) => {
             model: MODEL_NAME,
             contents: prompt,
             config: {
+                maxOutputTokens: 2048,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -276,6 +283,7 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
             model: MODEL_NAME,
             contents: prompt,
              config: {
+                maxOutputTokens: 4096,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -336,6 +344,7 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
             model: MODEL_NAME,
             contents: prompt,
             config: {
+                maxOutputTokens: 2048,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -380,6 +389,7 @@ export const verifyPostContent = async (url: string) => {
             Does it look like a valid social media link (YouTube, Instagram, TikTok, LinkedIn, Twitter/X) that could be about a product named "WySlider"?
             Return JSON: { "isValid": boolean, "reason": "string" }`,
             config: {
+                maxOutputTokens: 1024,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -405,7 +415,10 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
         const ai = getAi();
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
-            contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`
+            contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`,
+            config: {
+                maxOutputTokens: 1024
+            }
         });
         return response.text || "NO_DATA_AVAILABLE";
     } catch (error) {
@@ -471,6 +484,7 @@ INFOS CLÉS SUR L'APPLICATION WYSLIDER :
         1. Corp Use : Partager l'app avec 2 amis (+8 crédits).
         2. Post Use : Poster un lien parlant de WySlider (+10 crédits après vérification IA).
         3. Codes Promo : Entrer un code dans l'onglet Compte.
+        4. Promo Code Spécial : 'pro2301' débloque l'accès Pro+.
 
 3. DÉPANNAGE & CONSEILS :
    - Page blanche ? -> Va dans "Idées Virales".

@@ -146,7 +146,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                     <div className="bg-gray-800 p-6 rounded-2xl border border-brand-purple shadow-lg shadow-brand-purple/20 relative">
                         <div className="absolute top-0 right-0 bg-brand-purple text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">POPULAIRE</div>
                         <h3 className="text-xl font-bold text-white mb-2">Premium</h3>
-                        <p className="text-3xl font-bold text-brand-purple mb-4">$29<span className="text-sm text-gray-500">/script</span></p>
+                        <p className="text-3xl font-bold text-brand-purple mb-4">$49<span className="text-sm text-gray-500">/script</span></p>
                         <p className="text-sm text-gray-400">Accès complet à toutes les fonctionnalités avancées.</p>
                     </div>
                     <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
