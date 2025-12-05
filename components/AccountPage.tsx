@@ -124,7 +124,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         } else if (promoCode === 'wys2301') {
             onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
             alert("Code accepté ! 10 Générations offertes.");
-        } else if (promoCode === 'PROPLUS') {
+        } else if (promoCode === 'PROPLUS' || promoCode === 'pro2301') {
             handleUpgradePro();
         } else {
             alert("Code invalide");

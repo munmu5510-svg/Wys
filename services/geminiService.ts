@@ -47,38 +47,46 @@ export const generateScript = async (
     cta?: string,
     platforms?: string
 ) => {
-  const prompt = `You are a world-class YouTube Scriptwriter and Social Media Strategist.
-  Generate a comprehensive content package based on the following configuration:
+  const prompt = `You are a world-class YouTube Scriptwriter (WySlider AI).
   
-  Topic: "${topic}"
-  Tone: ${tone}
-  Format: ${format} (Target length)
-  ${youtubeUrl ? `Channel Context: ${youtubeUrl}` : ''}
-  ${goal ? `Primary Goal: ${goal}` : ''}
-  ${needs ? `Specific Requirements: ${needs}` : ''}
-  ${cta ? `Call to Action: ${cta}` : ''}
-  ${platforms ? `Target Social Platforms: ${platforms}` : 'YouTube, Instagram, LinkedIn, TikTok'}
+  **CONFIGURATION:**
+  - Topic: "${topic}"
+  - Tone: ${tone}
+  - Format/Length: ${format}
+  - Channel Context: ${youtubeUrl || 'General'}
+  - Goal: ${goal || 'Engagement & Growth'}
+  - Specific Needs: ${needs || 'None'}
+  - CTA: ${cta || 'Subscribe'}
+  - Social Platforms: ${platforms || 'YouTube, Instagram, TikTok, LinkedIn'}
 
-  REQUIREMENTS:
-  1. **Title**: High CTR, engaging.
-  2. **Description**: SEO-optimized, formatted for YouTube (3-4 lines).
-  3. **Sections**:
-     - **Intro**: Engaging hook, visual hook.
-     - **Main Content**: Divided into clear, numbered sections (e.g., "1. The Problem", "2. The Solution").
-     - **Conclusion**: Summary.
-     - **CTA**: Clear instruction.
-     - *Every section must have:*
-       - \`title\`: Section header with timestamp hint if applicable.
-       - \`estimatedTime\`: Duration.
-       - \`content\`: The spoken script (verbatim, engaging, conversational).
-       - \`visualNote\`: Detailed direction for camera/editing (B-roll, graphics, camera angle).
-  4. **Social Posts**: Create 1 post for EACH target platform.
-     - \`platform\`: Name of platform.
-     - \`content\`: The post caption/text with emojis.
-     - \`hashtags\`: Relevant tags.
-     - \`visualNote\`: Description of image or video asset to accompany the post.
+  **MANDATORY OUTPUT STRUCTURE (JSON):**
+  The output MUST be in French (Français), professional, and engaging.
+  
+  1. **title**: Catchy, High CTR (Click-Through Rate).
+  2. **youtubeDescription**: 3-4 lines optimized for SEO with keywords.
+  3. **hashtags**: 5-10 relevant hashtags.
+  4. **sections**: An array of script sections. 
+     - **Intro**: Must include a "Hook Pertinent" (catchy opening) and "Intro".
+     - **Main Content**: Must be divided into clearly NUMBERED sections (e.g., "1. Le Problème", "2. La Solution").
+     - **Conclusion**: Brief summary.
+     - **CTA**: The specific Call to Action.
+     *Each section object must contain:*
+       - \`title\`: Section header (e.g., "0:00 Intro", "1:30 Partie 1").
+       - \`estimatedTime\`: Duration (e.g., "30s").
+       - \`content\`: The spoken script (Verbatim). Natural, engaging flow.
+       - \`visualNote\`: Detailed visual direction (B-roll, camera angle, graphics) to facilitate video creation.
+  5. **socialPosts**: Promotional posts for the specified platforms.
+     *Each post object must contain:*
+       - \`platform\`: Platform name.
+       - \`content\`: Engaging caption with emojis.
+       - \`hashtags\`: Platform-specific tags.
+       - \`visualNote\`: Description of the visual asset (image/video) for this post.
 
-  OUTPUT FORMAT: JSON only.`;
+  **TONE GUIDELINES:**
+  - Be direct, avoid generic AI fluff.
+  - Use short sentences for better retention.
+  - Focus on value for the viewer.
+  `;
 
   try {
     const ai = getAi();
@@ -86,7 +94,7 @@ export const generateScript = async (
         model: MODEL_NAME,
         contents: prompt,
         config: {
-            systemInstruction: "You are an expert YouTube strategist and scriptwriter. You always generate complete, structured scripts with full spoken content and detailed visual notes.",
+            systemInstruction: "You are WySlider, an expert YouTube strategist. You speak French. You generate structured JSON scripts.",
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -158,6 +166,7 @@ export const generateSeriesOutlines = async (
     Niche: ${niche}.
     Tone: ${tone}.
     ${goal ? `Goal: ${goal}` : ''}
+    Language: French.
     
     Return a JSON object with an array "episodes". Each item must have:
     - title: string
@@ -205,6 +214,7 @@ export const generateSeriesOutlines = async (
 
 export const generateViralIdeas = async (niche: string) => {
     const prompt = `Generate 6 viral video ideas for the niche: "${niche}". 
+    Language: French.
     For each idea, provide a catchy title, a hook, and a difficulty level (Easy, Medium, Hard).
     Return a valid JSON object with an array "ideas".`;
 
@@ -251,6 +261,7 @@ export const generateViralIdeas = async (niche: string) => {
 export const generateEditorialCalendar = async (niche: string, tasks?: string) => {
     // Simplified prompt for reliability
     const prompt = `Create a 4-week content calendar for a YouTube channel in the niche: "${niche}".
+    Language: French.
     Tasks to include: ${tasks || 'General trends'}.
     Return a valid JSON object containing an array called "events".
     Each event must have:
@@ -307,6 +318,7 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
 
 export const generateSocialPosts = async (scriptTitle: string, scriptContent: string, platforms: string) => {
     const prompt = `Based on this YouTube script, write promotional social media posts.
+    Language: French.
     Title: "${scriptTitle}"
     Content Summary: "${scriptContent.substring(0, 1000)}..."
     Platforms: ${platforms} (e.g., LinkedIn, Twitter, Instagram).
@@ -401,12 +413,85 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
     }
 };
 
+const APP_KNOWLEDGE_BASE = `
+CONTEXTE GLOBAL & RÔLE :
+Tu es WYS AI, l'assistant intelligent officiel de l'application WySlider (Version 2). 
+Ton rôle est d'être un guide expert pour l'utilisateur, à la fois sur la création de contenu YouTube et sur l'utilisation de l'application elle-même.
+
+INFOS CLÉS SUR L'APPLICATION WYSLIDER :
+
+1. NAVIGATION GÉNÉRALE :
+   - Dashboard (Accueil) : Vue d'ensemble des scripts et séries. Barre de recherche et actions de masse.
+   - Studio : L'éditeur de script avancé avec support Markdown.
+   - Serial Prod : Le générateur de séries (Accessible via Dashboard).
+   - Compte : Hub central pour le profil, les réglages, la Forge, les Idées, et le Stockage.
+   - Chat AI : Assistant contextuel accessible via la bulle en bas à droite.
+
+2. FONCTIONNALITÉS DÉTAILLÉES :
+
+   A. CRÉATION DE SCRIPTS (STUDIO) :
+      - Accès : Bouton "+" Mauve sur le Dashboard.
+      - Configuration : Définir Sujet, Ton (personnalisable), Durée, Objectif, Besoins, CTA, Plateformes.
+      - Éditeur : Supporte le Markdown (Gras, Italique, Listes).
+      - Visual Notes : Bouton "Oeil" pour ajouter des directions visuelles [Visual: ...].
+      - Export : "Télécharger PDF" dans le menu config.
+      - Social Posts : Générer des posts promotionnels basés sur le script (bouton en bas du Studio).
+
+   B. CRÉATION DE SÉRIES (SERIAL PROD) :
+      - Accès : Bouton "+" Bleu sur le Dashboard (Section Séries) ou via bannière si vide.
+      - Fonction : Générer 3 à 20 scripts cohérents sur un même thème.
+      - Workflow : 1. Config (Thème, Niche, Objectif) -> 2. Validation des titres par l'IA -> 3. Génération en masse.
+      - Note : Nécessite des crédits ou un accès Pro+.
+
+   C. IDÉES VIRALES (GROWTH) :
+      - Accès : Menu "Compte" -> Onglet "Idées".
+      - Fonction : L'IA analyse la niche de l'utilisateur et génère 6 concepts avec difficulté (Easy/Medium/Hard).
+      - Action : Cliquer sur une idée crée instantanément le script dans le Studio.
+
+   D. FORGE (AI LAB) :
+      - Accès : Menu "Compte" -> Onglet "Forge".
+      - Fonction : Personnaliser le style de l'IA.
+      - Action : Ajouter des URLs YouTube de référence. L'IA analyse le "Style DNA" pour reproduire le rythme et l'humour.
+
+   E. TEMPLATES & PARTAGE :
+      - Accès : Menu "Compte" -> Onglets "Templates" ou "Partager".
+      - Templates Communautaires : Copier des structures (Vlog, Review, Tuto) pour gagner du temps.
+      - Partage : Partager ses propres scripts comme modèles pour la communauté.
+
+   F. GESTION DES DONNÉES (STOCKAGE) :
+      - Accès : Menu "Compte" -> Onglet "Stockage".
+      - Local Storage : Par défaut (navigateur).
+      - Google Drive : Synchronisation cloud pour ne pas perdre ses données.
+      - Firebase : Option avancée pour une persistance professionnelle.
+
+   G. CRÉDITS & FORMULES :
+      - Freemium : Crédits offerts à l'inscription.
+      - Pro+ : Accès illimité et fonctionnalités avancées (Serial Prod).
+      - Gagner des crédits (Gamification) :
+        1. Corp Use : Partager l'app avec 2 amis (+8 crédits).
+        2. Post Use : Poster un lien parlant de WySlider (+10 crédits après vérification IA).
+        3. Codes Promo : Entrer un code dans l'onglet Compte.
+
+3. DÉPANNAGE & CONSEILS :
+   - Page blanche ? -> Va dans "Idées Virales".
+   - Besoin de changer de style ? -> Utilise la "Forge" ou change le "Ton" dans le Studio.
+   - Problème de sauvegarde ? -> Vérifie l'onglet "Stockage" et active Google Drive si possible.
+   - Questions techniques ? -> Guide l'utilisateur vers le menu précis (ex: "Clique sur ton avatar en haut à droite...").
+
+DIRECTIVES DE COMPORTEMENT :
+- Langue : Français uniquement.
+- Ton : Professionnel, encourageant, expert YouTube mais accessible.
+- Ne mentionne JAMAIS l'accès "Admin" ou le "Bypass Login".
+- Sois proactif : Si l'utilisateur écrit un script, propose des améliorations contextuelles (Hook, CTA).
+- Si l'utilisateur demande "Comment faire X ?", donne le chemin exact dans l'interface.
+`;
+
 export const startChatSession = (context: string): Chat => {
     const ai = getAi();
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `You are a professional YouTube script consultant and AI assistant for the app WySlider. Use the following context from the user's current script to assist them:\n\n${context}`
+            systemInstruction: `${APP_KNOWLEDGE_BASE}\n\nCONTEXTE ACTUEL DE L'UTILISATEUR (SCRIPT EN COURS) :\n${context}`
         }
     });
 };
@@ -426,7 +511,7 @@ export const generatePitch = async (brand: string, url: string, objective: strin
         const ai = getAi();
         const response = await ai.models.generateContent({
             model: MODEL_NAME,
-            contents: `Write a cold email pitch to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`
+            contents: `Write a cold email pitch (in French) to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`
         });
         return response.text || "";
     } catch (error) {
@@ -439,7 +524,7 @@ export const analyzeSEO = async (scriptTitle: string, scriptContent: string) => 
         const ai = getAi();
         const response = await ai.models.generateContent({
              model: MODEL_NAME,
-             contents: `Analyze the SEO potential and CTR for a YouTube video.\nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`
+             contents: `Analyze the SEO potential and CTR for a YouTube video. Language: French. \nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`
         });
         return response.text || "";
     } catch { return "" }
