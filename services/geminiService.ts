@@ -9,10 +9,10 @@ const getAi = (apiKey?: string) => {
       return new GoogleGenAI({ apiKey });
   }
   if (!aiInstance) {
-    const envKey = process.env.API_KEY;
+    const envKey = process.env.GEMINI_API_KEY;
     
     if (!envKey) {
-        console.warn("API_KEY appears to be missing.");
+        console.warn("GEMINI_API_KEY appears to be missing.");
     }
     
     aiInstance = new GoogleGenAI({ apiKey: envKey || 'MISSING_KEY' });
@@ -33,6 +33,64 @@ const cleanJson = (text: string) => {
          clean = clean.replace(/^```/, "").replace(/```$/, "");
     }
     return clean.trim();
+};
+
+// Helper to repair truncated JSON
+const repairJson = (jsonStr: string) => {
+    let str = jsonStr.trim();
+    // 1. Fix unterminated string
+    let inString = false;
+    let escape = false;
+    for(let i=0; i<str.length; i++){
+        if(str[i] === '\\' && !escape) { escape = true; continue; }
+        if(str[i] === '"' && !escape) inString = !inString;
+        escape = false;
+    }
+    if(inString) str += '"';
+    
+    // 2. Close open brackets/braces
+    const stack = [];
+    inString = false;
+    escape = false;
+    for(let i=0; i<str.length; i++){
+        const char = str[i];
+        if(char === '\\' && !escape) { escape = true; continue; }
+        if(char === '"' && !escape) inString = !inString;
+        escape = false;
+        
+        if(!inString) {
+            if(char === '{') stack.push('}');
+            else if(char === '[') stack.push(']');
+            else if(char === '}' || char === ']') {
+                 if(stack.length > 0 && stack[stack.length-1] === char) stack.pop();
+            }
+        }
+    }
+    // Close remaining
+    while(stack.length > 0) str += stack.pop();
+    
+    return str;
+};
+
+const parseResponse = (text: string) => {
+    if (!text) return null;
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        const cleaned = cleanJson(text);
+        try {
+            return JSON.parse(cleaned);
+        } catch (e2) {
+            try {
+                // Attempt to repair truncated JSON
+                const repaired = repairJson(cleaned);
+                return JSON.parse(repaired);
+            } catch (e3) {
+                console.error("JSON parse failed even after repair:", e3);
+                return null;
+            }
+        }
+    }
 };
 
 export const checkServiceStatus = () => "Ready";
@@ -96,7 +154,7 @@ export const generateScript = async (
         contents: prompt,
         config: {
             systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
-            maxOutputTokens: 8192, 
+            maxOutputTokens: 25000, 
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -135,23 +193,11 @@ export const generateScript = async (
     });
 
     if (response.text) {
-        try {
-            const data = JSON.parse(response.text);
-            if (!data.sections || data.sections.length === 0) {
-                return null;
-            }
-            return data;
-        } catch (e) {
-            console.warn("Direct JSON parse failed, attempting cleanup", e);
-            const cleaned = cleanJson(response.text);
-            try {
-                 const data = JSON.parse(cleaned);
-                 return data;
-            } catch (err) {
-                 console.error("Failed to parse cleaned JSON:", err);
-                 return null;
-            }
+        const data = parseResponse(response.text);
+        if (data && (!data.sections || data.sections.length === 0)) {
+            return null;
         }
+        return data;
     }
     return null;
   } catch (error) {
@@ -184,7 +230,7 @@ export const generateSeriesOutlines = async (
             model: MODEL_NAME,
             contents: prompt,
             config: {
-                maxOutputTokens: 4096,
+                maxOutputTokens: 8192,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -205,11 +251,8 @@ export const generateSeriesOutlines = async (
         });
 
         if (response.text) {
-            try {
-                return JSON.parse(response.text).episodes;
-            } catch (e) {
-                return JSON.parse(cleanJson(response.text)).episodes;
-            }
+            const data = parseResponse(response.text);
+            return data?.episodes || [];
         }
         return [];
     } catch (e) {
@@ -230,7 +273,7 @@ export const generateViralIdeas = async (niche: string) => {
             model: MODEL_NAME,
             contents: prompt,
             config: {
-                maxOutputTokens: 2048,
+                maxOutputTokens: 4096,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -252,11 +295,8 @@ export const generateViralIdeas = async (niche: string) => {
         });
 
         if (response.text) {
-             try {
-                return JSON.parse(response.text).ideas;
-            } catch (e) {
-                return JSON.parse(cleanJson(response.text)).ideas;
-            }
+             const data = parseResponse(response.text);
+             return data?.ideas || [];
         }
         return [];
     } catch (e) {
@@ -283,7 +323,7 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
             model: MODEL_NAME,
             contents: prompt,
              config: {
-                maxOutputTokens: 4096,
+                maxOutputTokens: 8192,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -306,15 +346,11 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
          });
          
          if(response.text) {
-             try {
-                 const parsed = JSON.parse(response.text);
-                 // Handle if model returns array directly or wrapped in object
-                 if (Array.isArray(parsed)) return parsed;
-                 if (parsed.events && Array.isArray(parsed.events)) return parsed.events;
+             const data = parseResponse(response.text);
+             if (data) {
+                 if (Array.isArray(data)) return data;
+                 if (data.events && Array.isArray(data.events)) return data.events;
                  return [];
-             } catch(e) {
-                 const clean = JSON.parse(cleanJson(response.text));
-                 return clean.events || clean || [];
              }
          }
          return [];
@@ -344,7 +380,7 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
             model: MODEL_NAME,
             contents: prompt,
             config: {
-                maxOutputTokens: 2048,
+                maxOutputTokens: 4096,
                 responseMimeType: "application/json",
                 responseSchema: {
                     type: Type.OBJECT,
@@ -367,11 +403,8 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
         });
 
         if (response.text) {
-             try {
-                return JSON.parse(response.text).posts;
-            } catch (e) {
-                return JSON.parse(cleanJson(response.text)).posts || [];
-            }
+             const data = parseResponse(response.text);
+             return data?.posts || [];
         }
         return [];
     } catch(e) {
@@ -402,8 +435,8 @@ export const verifyPostContent = async (url: string) => {
         });
         
         const text = response.text || "{}";
-        const json = JSON.parse(cleanJson(text));
-        return json.isValid;
+        const json = parseResponse(text) || {};
+        return !!json.isValid;
     } catch (e) {
         // Fallback for demo if URL is generic or analysis fails
         return url.includes("http") && url.length > 15;
