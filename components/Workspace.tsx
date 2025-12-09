@@ -792,11 +792,16 @@ interface WorkspaceProps {
   clearPendingConfig?: () => void;
   isDarkMode?: boolean;
   toggleTheme?: () => void;
+  view?: 'dashboard' | 'studio' | 'serial';
+  setView?: (view: 'dashboard' | 'studio' | 'serial') => void;
 }
 
-export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavigateAccount, onLogout, pendingGenConfig, clearPendingConfig, isDarkMode, toggleTheme }) => {
-    // State initialization
-    const [view, setView] = useState<'dashboard' | 'studio' | 'serial'>('dashboard');
+export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavigateAccount, onLogout, pendingGenConfig, clearPendingConfig, isDarkMode, toggleTheme, view: propView, setView: propSetView }) => {
+    // State initialization - use props if available, otherwise internal state (fallback)
+    const [internalView, setInternalView] = useState<'dashboard' | 'studio' | 'serial'>('dashboard');
+    const view = propView || internalView;
+    const setView = propSetView || setInternalView;
+
     const [scripts, setScripts] = useState<Script[]>([]);
     const [series, setSeries] = useState<Series[]>([]);
     const [currentScript, setCurrentScript] = useState<Script | null>(null);
@@ -990,6 +995,16 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
         setIsChatProcessing(false);
     };
 
+    const handleTabChange = (tab: string) => {
+        if (tab === 'dashboard') setView('dashboard');
+        else if (tab === 'studio') {
+            if (!currentScript) handleCreateScript();
+            setView('studio');
+        } else if (tab === 'account') {
+            onNavigateAccount();
+        }
+    }
+
     return (
         <MainLayout 
             user={user} 
@@ -997,6 +1012,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
             onNavigateToAccount={onNavigateAccount}
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
+            activeTab={view}
+            onTabChange={handleTabChange}
         >
             {/* Notification Toasts */}
             <div className="fixed bottom-4 right-4 z-[60] flex flex-col space-y-2 pointer-events-none">
@@ -1029,10 +1046,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                 isProcessing={isChatProcessing}
             />
 
-             {/* Floating Chat Button */}
+             {/* Floating Chat Button (Above bottom bar on mobile) */}
              <button 
                 onClick={() => setIsChatOpen(true)}
-                className="fixed bottom-6 right-6 md:bottom-10 md:right-10 bg-brand-purple hover:bg-purple-600 text-white p-4 rounded-full shadow-2xl z-40 transition-transform transform hover:scale-110 flex items-center justify-center"
+                className="fixed bottom-20 right-6 md:bottom-10 md:right-10 bg-brand-purple hover:bg-purple-600 text-white p-4 rounded-full shadow-2xl z-40 transition-transform transform hover:scale-110 flex items-center justify-center"
             >
                 <ChatBubbleLeftRightIcon className="h-8 w-8" />
                 {isChatProcessing && <span className="absolute top-0 right-0 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span></span>}

@@ -9,6 +9,7 @@ import { User, AppScreen, ViralIdea } from './types';
 export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('Dashboard');
+  const [workspaceView, setWorkspaceView] = useState<'dashboard' | 'studio' | 'serial'>('dashboard');
   const [isAuthFlow, setIsAuthFlow] = useState(false);
   const [pendingGenConfig, setPendingGenConfig] = useState<any>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
@@ -122,6 +123,7 @@ export const App: React.FC = () => {
           cta: 'Subscribe for more'
       });
       setCurrentScreen('Dashboard');
+      setWorkspaceView('studio');
   };
 
   if (!user) {
@@ -150,6 +152,10 @@ export const App: React.FC = () => {
             onUpdateUser={updateUserSession} 
             onBack={() => setCurrentScreen('Dashboard')}
             onNavigateToAdmin={() => setCurrentScreen('Admin')}
+            onNavigateToStudio={() => {
+                setWorkspaceView('studio');
+                setCurrentScreen('Dashboard');
+            }}
             onUseIdea={handleUseIdea}
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
@@ -160,6 +166,8 @@ export const App: React.FC = () => {
   return (
        <Workspace 
             user={user} 
+            view={workspaceView}
+            setView={setWorkspaceView}
             onUpdateUser={updateUserSession} 
             onNavigateAccount={() => setCurrentScreen('Account')}
             onLogout={handleLogout}

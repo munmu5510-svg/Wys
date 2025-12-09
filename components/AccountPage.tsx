@@ -5,18 +5,20 @@ import { Button } from './Button';
 import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
 import * as geminiService from '../services/geminiService';
 import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon, TrendingUpIcon, SunIcon, MoonIcon } from './icons';
+import { MainLayout } from './MainLayout';
 
 interface AccountPageProps {
   user: User;
   onUpdateUser: (updatedUser: User) => void;
   onBack: () => void;
   onNavigateToAdmin: () => void;
+  onNavigateToStudio?: () => void;
   onUseIdea?: (idea: ViralIdea) => void;
   isDarkMode?: boolean;
   toggleTheme?: () => void;
 }
 
-export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onUseIdea, isDarkMode, toggleTheme }) => {
+export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onNavigateToStudio, onUseIdea, isDarkMode, toggleTheme }) => {
     // Removed 'sync' and 'storage', renamed 'ideas' to 'growth'
     const [section, setSection] = useState<'account'|'templates'|'share'|'growth'|'plan'|'feedback'|'forge'>('account');
     const [promoCode, setPromoCode] = useState('');
@@ -503,62 +505,78 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         }
     };
 
+    const handleTabChange = (tab: string) => {
+        if (tab === 'dashboard') onBack();
+        else if (tab === 'studio' && onNavigateToStudio) onNavigateToStudio();
+        // account is already active
+    }
+
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-gray-900 text-white animate-fade-in overflow-hidden relative">
-             {/* Post Use Modal */}
-             {showPostModal && (
-                 <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                     <div className="bg-gray-900 border border-green-500 p-6 rounded-xl max-w-md w-full shadow-2xl shadow-green-900/50">
-                         <h3 className="text-xl font-bold text-green-400 mb-4">Vérification Post Use</h3>
-                         <p className="text-sm text-gray-300 mb-4">Collez le lien de votre post (Twitter, LinkedIn, YouTube, etc.) parlant de WySlider.</p>
-                         <input 
-                            value={postUrl} 
-                            onChange={e => setPostUrl(e.target.value)} 
-                            placeholder="https://..." 
-                            className="w-full bg-black border border-gray-700 p-3 rounded text-white mb-4"
-                         />
-                         <div className="flex space-x-3">
-                             <Button onClick={handlePostUseSubmit} isLoading={isVerifyingPost} className="flex-1 bg-green-600 hover:bg-green-700">Vérifier</Button>
-                             <Button onClick={() => setShowPostModal(false)} variant="secondary">Annuler</Button>
-                         </div>
-                     </div>
-                 </div>
-             )}
+        <MainLayout
+            user={user} 
+            onLogout={() => {}} // Logout handled by MainLayout generally via props, but AccountPage usually doesn't need to pass logout if header handles it. Wait, MainLayout header has logout button.
+            onNavigateToAccount={() => {}} // Already on account
+            isDarkMode={isDarkMode}
+            toggleTheme={toggleTheme}
+            activeTab="account"
+            onTabChange={handleTabChange}
+        >
+            <div className="flex flex-col md:flex-row h-full text-white animate-fade-in overflow-hidden relative">
+                {/* Post Use Modal */}
+                {showPostModal && (
+                    <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-gray-900 border border-green-500 p-6 rounded-xl max-w-md w-full shadow-2xl shadow-green-900/50">
+                            <h3 className="text-xl font-bold text-green-400 mb-4">Vérification Post Use</h3>
+                            <p className="text-sm text-gray-300 mb-4">Collez le lien de votre post (Twitter, LinkedIn, YouTube, etc.) parlant de WySlider.</p>
+                            <input 
+                                value={postUrl} 
+                                onChange={e => setPostUrl(e.target.value)} 
+                                placeholder="https://..." 
+                                className="w-full bg-black border border-gray-700 p-3 rounded text-white mb-4"
+                            />
+                            <div className="flex space-x-3">
+                                <Button onClick={handlePostUseSubmit} isLoading={isVerifyingPost} className="flex-1 bg-green-600 hover:bg-green-700">Vérifier</Button>
+                                <Button onClick={() => setShowPostModal(false)} variant="secondary">Annuler</Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
-             {/* Sidebar (Top nav on mobile, Left sidebar on desktop) */}
-             <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
-                <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-800 flex items-center md:block">
-                    <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Retour</span></Button>
+                {/* Sidebar (Top nav on mobile, Left sidebar on desktop) */}
+                <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
+                    <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-800 flex items-center md:block">
+                        <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Retour</span></Button>
+                    </div>
+                    <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
+                        {[
+                            {id: 'account', label: 'Compte', icon: <UserIcon className="h-5 w-5"/>},
+                            {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-400"/>},
+                            {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
+                            {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
+                            {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
+                            {id: 'plan', label: 'Formules', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                            {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
+                        ].map(item => (
+                            <button 
+                                key={item.id} 
+                                onClick={() => setSection(item.id as any)}
+                                className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition whitespace-nowrap ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                            >
+                                {item.icon}
+                                <span className="hidden md:inline">{item.label}</span>
+                                <span className="md:hidden">{item.label.split(' ')[0]}</span>
+                            </button>
+                        ))}
+                    </nav>
                 </div>
-                <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
-                    {[
-                        {id: 'account', label: 'Compte', icon: <UserIcon className="h-5 w-5"/>},
-                        {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-400"/>},
-                        {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
-                        {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
-                        {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
-                        {id: 'plan', label: 'Formules', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
-                        {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
-                    ].map(item => (
-                        <button 
-                            key={item.id} 
-                            onClick={() => setSection(item.id as any)}
-                            className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition whitespace-nowrap ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
-                        >
-                            {item.icon}
-                            <span className="hidden md:inline">{item.label}</span>
-                            <span className="md:hidden">{item.label.split(' ')[0]}</span>
-                        </button>
-                    ))}
-                </nav>
-             </div>
 
-             {/* Center Content */}
-             <div className="flex-1 overflow-y-auto bg-gray-900 p-4 md:p-8 scroll-smooth">
-                 <div className="max-w-4xl mx-auto">
-                    {renderContent()}
-                 </div>
-             </div>
-        </div>
+                {/* Center Content */}
+                <div className="flex-1 overflow-y-auto bg-gray-900 p-4 md:p-8 scroll-smooth">
+                    <div className="max-w-4xl mx-auto">
+                        {renderContent()}
+                    </div>
+                </div>
+            </div>
+        </MainLayout>
     );
 };
