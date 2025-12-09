@@ -4,7 +4,7 @@ import { User, ForgeItem, Script, ViralIdea } from '../types';
 import { Button } from './Button';
 import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon } from './icons';
+import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon, TrendingUpIcon, SunIcon, MoonIcon } from './icons';
 
 interface AccountPageProps {
   user: User;
@@ -12,12 +12,14 @@ interface AccountPageProps {
   onBack: () => void;
   onNavigateToAdmin: () => void;
   onUseIdea?: (idea: ViralIdea) => void;
+  isDarkMode?: boolean;
+  toggleTheme?: () => void;
 }
 
-export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onUseIdea }) => {
-    const [section, setSection] = useState<'account'|'templates'|'share'|'ideas'|'plan'|'feedback'|'sync'|'forge'|'storage'>('account');
+export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onUseIdea, isDarkMode, toggleTheme }) => {
+    // Removed 'sync' and 'storage', renamed 'ideas' to 'growth'
+    const [section, setSection] = useState<'account'|'templates'|'share'|'growth'|'plan'|'feedback'|'forge'>('account');
     const [promoCode, setPromoCode] = useState('');
-    const [syncCode, setSyncCode] = useState('');
     
     // File Input Ref for Profile Pic
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,16 +28,11 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     const [forgeUrl, setForgeUrl] = useState('');
     const [forgeItems, setForgeItems] = useState<ForgeItem[]>([]);
     
-    // Storage State
-    const [storagePref, setStoragePref] = useState<'local'|'drive'|'firebase'>(user.storagePreference || 'local');
-    const [firebaseConfig, setFirebaseConfig] = useState(user.firebaseConfig || '');
-    const [isSyncingDrive, setIsSyncingDrive] = useState(false);
-
     // Share/Template State
     const [userScripts, setUserScripts] = useState<Script[]>([]);
     const [communityTemplates, setCommunityTemplates] = useState<Script[]>([]);
     
-    // Viral Ideas State
+    // Viral Ideas State (Growth)
     const [viralIdeas, setViralIdeas] = useState<ViralIdea[]>([]);
     const [isLoadingIdeas, setIsLoadingIdeas] = useState(false);
 
@@ -136,14 +133,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         alert("Mode Pro+ Activé avec succès !");
     }
 
-    const handleSync = () => {
-        if (syncCode === 'wys2323') {
-            alert("Données récupérées et synchronisées avec succès.");
-        } else {
-            alert("Code de synchronisation invalide.");
-        }
-    };
-
     const handleAddToForge = () => {
         if (!forgeUrl) return;
         const newItem: ForgeItem = {
@@ -166,32 +155,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         alert("IA Personnalisée avec succès basés sur vos références !");
     }
 
-    const handleStorageChange = (type: 'local'|'drive'|'firebase') => {
-        setStoragePref(type);
-        if (type === 'local') {
-            onUpdateUser({...user, storagePreference: 'local'});
-        } else if (type === 'drive') {
-            const confirmed = window.confirm("Autoriser WySlider à accéder à Google Drive ?");
-            if (confirmed) onUpdateUser({...user, storagePreference: 'drive'});
-            else setStoragePref('local');
-        }
-    }
-
-    const handleDriveSync = () => {
-        if(storagePref !== 'drive') return;
-        setIsSyncingDrive(true);
-        setTimeout(() => {
-            setIsSyncingDrive(false);
-            onUpdateUser({...user, lastSyncedAt: new Date().toISOString()});
-            alert("Synchronisation Google Drive réussie !");
-        }, 2500);
-    }
-
-    const saveFirebaseConfig = () => {
-        onUpdateUser({...user, storagePreference: 'firebase', firebaseConfig});
-        alert("Configuration Firebase sauvegardée.");
-    }
-
     const handleShareTemplate = (scriptId: string) => {
         const updated = userScripts.map(s => s.id === scriptId ? {...s, isTemplate: true} : s);
         setUserScripts(updated);
@@ -200,7 +163,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     }
     
     const handleCopyTemplate = (tpl: Script) => {
-        // Create a copy of the template as a new script for the user
         const newScript: Script = {
             ...tpl,
             id: `copy_${Date.now()}`,
@@ -212,7 +174,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         setUserScripts(updated);
         localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
         alert("Template ajouté à votre Studio !");
-        onBack(); // Go back to dashboard to see it
+        onBack();
     }
 
     const handleGenerateIdeas = async () => {
@@ -231,7 +193,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         }
     }
 
-    // --- NEW LOGIC FOR CORP USE ---
     const handleCorpUse = async () => {
         const shareData = {
             title: 'WySlider',
@@ -254,7 +215,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         }
     }
 
-    // --- NEW LOGIC FOR POST USE ---
     const handlePostUseSubmit = async () => {
         if (!postUrl) return;
         setIsVerifyingPost(true);
@@ -271,7 +231,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         }
     }
 
-    // --- NEW LOGIC FOR FEEDBACK ---
     const handleSendFeedback = () => {
         if (!feedbackMsg) return;
         const currentFeedbacks = JSON.parse(localStorage.getItem('wyslider_feedback_box') || '[]');
@@ -291,7 +250,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             case 'account':
                 return (
                     <div className="space-y-6 pb-20">
-                        <h2 className="text-2xl font-bold">Mon Compte</h2>
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-2xl font-bold">Mon Compte</h2>
+                            <div className="text-sm text-gray-400">Local Storage Active</div>
+                        </div>
                         <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
                              <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
                                  <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
@@ -313,14 +275,24 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         
                         <div className="space-y-4">
                             <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Détails de la chaîne</label>
-                            <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
-                            <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
-                            <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
+                            <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
+                            <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
+                            <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
                         </div>
+
+                        {toggleTheme && (
+                            <div className="pt-4 border-t border-gray-700">
+                                <h3 className="font-bold mb-2">Thème</h3>
+                                <Button onClick={toggleTheme} variant="secondary" className="w-full flex justify-center items-center">
+                                    {isDarkMode ? <><SunIcon className="h-5 w-5 mr-2"/> Switch to Light Mode</> : <><MoonIcon className="h-5 w-5 mr-2"/> Switch to Dark Mode</>}
+                                </Button>
+                            </div>
+                        )}
+
                         <div className="pt-4 border-t border-gray-700">
                              <h3 className="font-bold mb-2">Code Promo</h3>
                              <div className="flex space-x-2">
-                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none" placeholder="Entrez un code (ex: wys2301)..."/>
+                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" placeholder="Entrez un code (ex: wys2301)..."/>
                                 <Button onClick={handlePromoCode} variant="secondary">Appliquer</Button>
                              </div>
                         </div>
@@ -350,7 +322,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     </div>
                 );
             case 'forge':
-                // ... (Forge content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -368,7 +339,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                         value={forgeUrl} 
                                         onChange={e => setForgeUrl(e.target.value)}
                                         placeholder="Coller URL YouTube de référence..." 
-                                        className="w-full bg-gray-900 p-3 rounded border border-gray-700 pl-10 focus:ring-1 focus:ring-orange-500 outline-none transition"
+                                        className="w-full bg-gray-900 p-3 rounded border border-gray-700 pl-10 focus:ring-1 focus:ring-orange-500 outline-none transition text-white"
                                     />
                                     <div className="absolute left-3 top-3 text-gray-500">
                                         <VideoIcon className="h-5 w-5" />
@@ -419,81 +390,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                     </div>
                 );
-            case 'storage':
-                // ... (Storage content remains same)
-                return (
-                    <div className="space-y-6 pb-20">
-                        <div className="flex items-center space-x-2">
-                             <ArrowDownTrayIcon className="h-6 w-6 text-blue-400"/>
-                             <h2 className="text-2xl font-bold">Stockage</h2>
-                        </div>
-                        <p className="text-gray-400">Définissez où votre base de données (scripts, séries) est stockée.</p>
-
-                        <div className="grid gap-4">
-                            <div 
-                                onClick={() => handleStorageChange('local')}
-                                className={`p-4 rounded-xl border cursor-pointer flex justify-between items-center transition ${storagePref === 'local' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
-                            >
-                                <div>
-                                    <h3 className="font-bold flex items-center"><BoltIcon className="h-4 w-4 mr-2"/> Local Storage</h3>
-                                    <p className="text-sm text-gray-400">Vos données restent dans votre navigateur. (Par défaut)</p>
-                                </div>
-                                <div className={`h-4 w-4 rounded-full border ${storagePref === 'local' ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}></div>
-                            </div>
-
-                            <div 
-                                onClick={() => handleStorageChange('drive')}
-                                className={`p-4 rounded-xl border cursor-pointer transition ${storagePref === 'drive' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
-                            >
-                                <div className="flex justify-between items-center mb-2">
-                                    <div>
-                                        <h3 className="font-bold flex items-center"><ArrowDownTrayIcon className="h-4 w-4 mr-2"/> Google Drive</h3>
-                                        <p className="text-sm text-gray-400">Synchronisation cloud automatique.</p>
-                                    </div>
-                                    <div className={`h-4 w-4 rounded-full border ${storagePref === 'drive' ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}></div>
-                                </div>
-                                {storagePref === 'drive' && (
-                                    <div className="mt-4 pt-4 border-t border-gray-700" onClick={e => e.stopPropagation()}>
-                                        <div className="flex justify-between items-center bg-gray-900 p-3 rounded mb-3">
-                                            <span className="text-sm text-gray-400">Dernière synchro: {user.lastSyncedAt ? new Date(user.lastSyncedAt).toLocaleString() : 'Jamais'}</span>
-                                            {isSyncingDrive ? <div className="text-blue-400 text-xs font-bold animate-pulse">SYNCHRONISATION...</div> : <CheckIcon className="h-4 w-4 text-green-500"/>}
-                                        </div>
-                                        <Button onClick={handleDriveSync} disabled={isSyncingDrive} className="w-full py-2 text-sm bg-blue-600 hover:bg-blue-700 flex items-center justify-center">
-                                            <CloudArrowUpIcon className="h-4 w-4 mr-2"/> {isSyncingDrive ? 'En cours...' : 'Synchroniser maintenant'}
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div 
-                                onClick={() => setStoragePref('firebase')}
-                                className={`p-4 rounded-xl border cursor-pointer transition ${storagePref === 'firebase' ? 'bg-blue-900/20 border-blue-500' : 'bg-gray-800 border-gray-700 hover:border-gray-500'}`}
-                            >
-                                <div className="flex justify-between items-center mb-2">
-                                    <div>
-                                        <h3 className="font-bold flex items-center"><FireIcon className="h-4 w-4 mr-2 text-orange-500"/> Firebase</h3>
-                                        <p className="text-sm text-gray-400">Pour une persistance professionnelle.</p>
-                                    </div>
-                                    <div className={`h-4 w-4 rounded-full border ${storagePref === 'firebase' ? 'bg-blue-500 border-blue-500' : 'border-gray-500'}`}></div>
-                                </div>
-                                {storagePref === 'firebase' && (
-                                    <div className="mt-4 pt-4 border-t border-gray-700 space-y-3 animate-fade-in" onClick={e => e.stopPropagation()}>
-                                        <p className="text-xs text-gray-300">1. Créez un projet Firebase. <br/>2. Activez Firestore. <br/>3. Collez la configuration SDK ci-dessous.</p>
-                                        <textarea 
-                                            value={firebaseConfig} 
-                                            onChange={e => setFirebaseConfig(e.target.value)}
-                                            placeholder='const firebaseConfig = { ... }'
-                                            className="w-full h-24 bg-gray-900 p-2 text-xs font-mono rounded border border-gray-600"
-                                        />
-                                        <Button onClick={saveFirebaseConfig} className="w-full py-2 text-sm">Sauvegarder Config Firebase</Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                );
             case 'share':
-                // ... (Share content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
@@ -522,13 +419,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                     </div>
                 );
-            case 'ideas':
-                // ... (Ideas content remains same)
+            case 'growth':
                 return (
                      <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
-                             <LightBulbIcon className="h-6 w-6 text-yellow-400"/>
-                             <h2 className="text-2xl font-bold">Idées Virales (Niche: {user.niche})</h2>
+                             <TrendingUpIcon className="h-6 w-6 text-yellow-400"/>
+                             <h2 className="text-2xl font-bold">Growth Engine (Niche: {user.niche})</h2>
                         </div>
                         <p className="text-gray-400">L'IA analyse votre niche pour trouver des concepts à fort potentiel. Cliquez pour générer.</p>
                         
@@ -551,7 +447,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                      </div>
                 );
             case 'plan':
-                // ... (Plan content remains same)
                 return (
                     <div className="space-y-6 pb-20">
                         <h2 className="text-2xl font-bold">Formules & Bonus</h2>
@@ -589,20 +484,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                     </div>
                 );
-            case 'sync':
-                // ... (Sync content remains same)
-                return (
-                    <div className="space-y-6 pb-20">
-                         <h2 className="text-2xl font-bold">Synchronisation</h2>
-                         <p className="text-gray-400">Code de récupération pour synchroniser vos données sur un autre appareil.</p>
-                         <div className="flex space-x-2">
-                             <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)} placeholder="Code de récupération (ex: wys2323)" className="flex-1 bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none"/>
-                             <Button onClick={handleSync}>Sync</Button>
-                         </div>
-                    </div>
-                );
             case 'feedback':
-                // ... (Feedback content remains same)
                 return (
                     <div className="space-y-4 pb-20">
                         <h2 className="text-2xl font-bold">Feedback</h2>
@@ -610,7 +492,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                          <textarea 
                             value={feedbackMsg}
                             onChange={e => setFeedbackMsg(e.target.value)}
-                            className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none" 
+                            className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none text-white" 
                             placeholder="Idées, bugs, ou encouragements..."
                          />
                          <Button onClick={handleSendFeedback}>Envoyer à l'Admin</Button>
@@ -651,14 +533,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
                     {[
                         {id: 'account', label: 'Compte', icon: <UserIcon className="h-5 w-5"/>},
-                        {id: 'ideas', label: 'Idées', icon: <LightBulbIcon className="h-5 w-5 text-yellow-400"/>},
+                        {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-400"/>},
                         {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
                         {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
                         {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
-                        {id: 'storage', label: 'Stockage', icon: <ArrowDownTrayIcon className="h-5 w-5 text-blue-400"/>},
                         {id: 'plan', label: 'Formules', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
                         {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
-                        {id: 'sync', label: 'Sync', icon: <RefreshIcon className="h-5 w-5"/>},
                     ].map(item => (
                         <button 
                             key={item.id} 

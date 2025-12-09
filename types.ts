@@ -1,4 +1,5 @@
 
+
 export interface Placeholder {}
 
 export interface User {
@@ -11,9 +12,10 @@ export interface User {
   profilePicture?: string;
   isPro?: boolean;
   apiKey?: string;
-  storagePreference?: 'local' | 'drive' | 'firebase';
+  storagePreference?: 'local';
   firebaseConfig?: string;
   lastSyncedAt?: string;
+  theme?: 'dark' | 'light';
 }
 
 export interface ScriptSection {

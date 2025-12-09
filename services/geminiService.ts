@@ -367,10 +367,12 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
     Content Summary: "${scriptContent.substring(0, 1000)}..."
     Platforms: ${platforms} (e.g., LinkedIn, Twitter, Instagram).
     
+    IMPORTANT: Every single hashtag MUST start with the '#' symbol.
+    
     Return a JSON object with a property "posts", which is an array of objects:
     - platform: string
     - content: string (the post text with emojis)
-    - hashtags: array of strings
+    - hashtags: array of strings (e.g., ["#YouTube", "#Growth"])
     - visualNote: description of visual asset
     `;
 

@@ -11,18 +11,47 @@ export const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('Dashboard');
   const [isAuthFlow, setIsAuthFlow] = useState(false);
   const [pendingGenConfig, setPendingGenConfig] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    console.log("WySlider App Mounted V3.1");
+    console.log("WySlider App Mounted V3.2");
+    
+    // Theme Init
+    const savedTheme = localStorage.getItem('wyslider_theme');
+    if (savedTheme) {
+        const isDark = savedTheme === 'dark';
+        setIsDarkMode(isDark);
+        if(isDark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+    } else {
+        document.documentElement.classList.add('dark');
+    }
+
     const savedUser = localStorage.getItem('wyslider_user');
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
       } catch (e) {
         console.error("Failed to parse user session");
       }
     }
   }, []);
+
+  const toggleTheme = () => {
+      const newMode = !isDarkMode;
+      setIsDarkMode(newMode);
+      if(newMode) {
+          document.documentElement.classList.add('dark');
+          localStorage.setItem('wyslider_theme', 'dark');
+      } else {
+          document.documentElement.classList.remove('dark');
+          localStorage.setItem('wyslider_theme', 'light');
+      }
+      if (user) {
+          updateUserSession({...user, theme: newMode ? 'dark' : 'light'});
+      }
+  }
 
   const handleLogin = async (email: string, _pass: string) => {
     const mockUser: User = {
@@ -33,7 +62,8 @@ export const App: React.FC = () => {
       niche: 'Education',
       generationsLeft: 6,
       storagePreference: 'local',
-      lastSyncedAt: undefined
+      lastSyncedAt: undefined,
+      theme: isDarkMode ? 'dark' : 'light'
     };
     updateUserSession(mockUser);
     setIsAuthFlow(false);
@@ -47,7 +77,8 @@ export const App: React.FC = () => {
       youtubeUrl,
       niche,
       generationsLeft: 6,
-      storagePreference: 'local'
+      storagePreference: 'local',
+      theme: isDarkMode ? 'dark' : 'light'
     };
     updateUserSession(mockUser);
     setIsAuthFlow(false);
@@ -73,7 +104,8 @@ export const App: React.FC = () => {
           youtubeUrl: '',
           niche: 'System',
           generationsLeft: 9999,
-          isPro: true
+          isPro: true,
+          theme: 'dark'
       };
       updateUserSession(adminUser);
       setIsAuthFlow(false);
@@ -119,6 +151,8 @@ export const App: React.FC = () => {
             onBack={() => setCurrentScreen('Dashboard')}
             onNavigateToAdmin={() => setCurrentScreen('Admin')}
             onUseIdea={handleUseIdea}
+            isDarkMode={isDarkMode}
+            toggleTheme={toggleTheme}
         />
       );
   }
@@ -131,6 +165,8 @@ export const App: React.FC = () => {
             onLogout={handleLogout}
             pendingGenConfig={pendingGenConfig}
             clearPendingConfig={() => setPendingGenConfig(null)}
+            isDarkMode={isDarkMode}
+            toggleTheme={toggleTheme}
        />
   );
 };
