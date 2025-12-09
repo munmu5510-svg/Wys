@@ -10,8 +10,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // Polyfill process.env.GEMINI_API_KEY so the application code can read it
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      // Polyfill process.env.API_KEY so the application code can read it.
+      // Support standard API_KEY or fallback to GEMINI_API_KEY if present in env.
+      'process.env.API_KEY': JSON.stringify(env.API_KEY || env.GEMINI_API_KEY)
     },
     build: {
       rollupOptions: {

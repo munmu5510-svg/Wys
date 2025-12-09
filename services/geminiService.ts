@@ -9,13 +9,13 @@ const getAi = (apiKey?: string) => {
       return new GoogleGenAI({ apiKey });
   }
   if (!aiInstance) {
-    const envKey = process.env.GEMINI_API_KEY;
+    const envKey = process.env.API_KEY;
     
     if (!envKey) {
-        console.warn("GEMINI_API_KEY appears to be missing.");
+        console.warn("API_KEY appears to be missing.");
     }
     
-    aiInstance = new GoogleGenAI({ apiKey: envKey || 'MISSING_KEY' });
+    aiInstance = new GoogleGenAI({ apiKey: envKey || '' });
   }
   return aiInstance;
 };
@@ -133,7 +133,7 @@ export const generateScript = async (
        - \`title\`: Section header (e.g., "0:00 Intro", "1:30 Partie 1").
        - \`estimatedTime\`: Duration (e.g., "30s").
        - \`content\`: The spoken script (Verbatim). Natural, engaging flow. Avoid repetition.
-       - \`visualNote\`: Detailed visual direction.
+       - \`visualNote\`: Detailed visual direction (Mandatory).
   5. **socialPosts**: Promotional posts for the specified platforms.
      *Each post object must contain:*
        - \`platform\`: Platform name.
@@ -154,7 +154,7 @@ export const generateScript = async (
         contents: prompt,
         config: {
             systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
-            maxOutputTokens: 25000, 
+            // maxOutputTokens: 25000, // Removed to avoid API errors on standard quotas
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
@@ -196,6 +196,13 @@ export const generateScript = async (
         const data = parseResponse(response.text);
         if (data && (!data.sections || data.sections.length === 0)) {
             return null;
+        }
+        // Sanitize socialPosts to ensure hashtags is always an array
+        if (data && data.socialPosts) {
+            data.socialPosts = data.socialPosts.map((post: any) => ({
+                ...post,
+                hashtags: Array.isArray(post.hashtags) ? post.hashtags : []
+            }));
         }
         return data;
     }
@@ -406,7 +413,12 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
 
         if (response.text) {
              const data = parseResponse(response.text);
-             return data?.posts || [];
+             // Sanitize posts to ensure hashtags is always an array
+             const posts = data?.posts || [];
+             return posts.map((post: any) => ({
+                 ...post,
+                 hashtags: Array.isArray(post.hashtags) ? post.hashtags : []
+             }));
         }
         return [];
     } catch(e) {

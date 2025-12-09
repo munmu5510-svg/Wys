@@ -771,7 +771,7 @@ const Studio: React.FC<{
                                          <span className="text-xs font-bold uppercase text-brand-blue mb-2 block">{post.platform}</span>
                                          <p className="text-sm text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
                                          {post.visualNote && <p className="text-xs text-blue-300 italic mb-2">[Asset: {post.visualNote}]</p>}
-                                         <div className="text-xs text-blue-400">{post.hashtags.join(' ')}</div>
+                                         <div className="text-xs text-blue-400">{post.hashtags?.join(' ')}</div>
                                      </div>
                                  ))}
                              </div>
