@@ -95,6 +95,20 @@ const parseResponse = (text: string) => {
 
 export const checkServiceStatus = () => "Ready";
 
+// Retry helper
+async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
+    try {
+        return await fn();
+    } catch (error: any) {
+        if (retries > 0 && (error.toString().includes('xhr') || error.toString().includes('500') || error.status === 503)) {
+            console.warn(`Retrying operation... Attempts left: ${retries}. Error: ${error}`);
+            await new Promise(res => setTimeout(res, delay));
+            return withRetry(fn, retries - 1, delay * 2);
+        }
+        throw error;
+    }
+}
+
 export const generateScript = async (
     topic: string, 
     tone: string, 
@@ -149,47 +163,61 @@ export const generateScript = async (
 
   try {
     const ai = getAi();
-    const response = await ai.models.generateContent({
-        model: MODEL_NAME,
-        contents: prompt,
-        config: {
-            systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
-            // maxOutputTokens: 25000, // Removed to avoid API errors on standard quotas
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    title: { type: Type.STRING },
-                    youtubeDescription: { type: Type.STRING },
-                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                    sections: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                title: { type: Type.STRING },
-                                estimatedTime: { type: Type.STRING },
-                                content: { type: Type.STRING },
-                                visualNote: { type: Type.STRING }
-                            },
-                            required: ["title", "estimatedTime", "content", "visualNote"]
-                        }
-                    },
-                    socialPosts: {
-                        type: Type.ARRAY,
-                        items: {
-                            type: Type.OBJECT,
-                            properties: {
-                                platform: { type: Type.STRING },
-                                content: { type: Type.STRING },
-                                hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                visualNote: { type: Type.STRING }
+    
+    // Safety settings to prevent blocking legitimate content
+    const safetySettings = [
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+    ];
+
+    const response = await withRetry(async () => {
+        return await ai.models.generateContent({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: {
+                systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
+                maxOutputTokens: 8192,
+                responseMimeType: "application/json",
+                // @ts-ignore - safetySettings types might vary in SDK versions, using string literal is safe for REST mapping
+                safetySettings: safetySettings,
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        title: { type: Type.STRING },
+                        youtubeDescription: { type: Type.STRING },
+                        hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        sections: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    title: { type: Type.STRING },
+                                    estimatedTime: { type: Type.STRING },
+                                    content: { type: Type.STRING },
+                                    visualNote: { type: Type.STRING }
+                                },
+                                // Relaxed requirements to avoid validation errors
+                                required: ["title", "estimatedTime", "content"]
+                            }
+                        },
+                        socialPosts: {
+                            type: Type.ARRAY,
+                            items: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    platform: { type: Type.STRING },
+                                    content: { type: Type.STRING },
+                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                    visualNote: { type: Type.STRING }
+                                }
                             }
                         }
                     }
                 }
             }
-        }
+        });
     });
 
     if (response.text) {
@@ -203,7 +231,15 @@ export const generateScript = async (
                 ...post,
                 hashtags: Array.isArray(post.hashtags) ? post.hashtags : []
             }));
+        } else if (data && !data.socialPosts) {
+            data.socialPosts = [];
         }
+        
+        // Sanitize hashtags on root
+        if (data && !Array.isArray(data.hashtags)) {
+            data.hashtags = [];
+        }
+
         return data;
     }
     return null;
@@ -233,28 +269,30 @@ export const generateSeriesOutlines = async (
 
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-            config: {
-                maxOutputTokens: 8192,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        episodes: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    title: { type: Type.STRING },
-                                    summary: { type: Type.STRING }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+                config: {
+                    maxOutputTokens: 8192,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            episodes: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        summary: { type: Type.STRING }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         });
 
         if (response.text) {
@@ -276,29 +314,31 @@ export const generateViralIdeas = async (niche: string) => {
 
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-            config: {
-                maxOutputTokens: 4096,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        ideas: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    title: { type: Type.STRING },
-                                    hook: { type: Type.STRING },
-                                    difficulty: { type: Type.STRING }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+                config: {
+                    maxOutputTokens: 4096,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            ideas: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        title: { type: Type.STRING },
+                                        hook: { type: Type.STRING },
+                                        difficulty: { type: Type.STRING }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         });
 
         if (response.text) {
@@ -326,30 +366,32 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
 
     try {
          const ai = getAi();
-         const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-             config: {
-                maxOutputTokens: 8192,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        events: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    date: { type: Type.STRING },
-                                    title: { type: Type.STRING },
-                                    format: { type: Type.STRING },
-                                    status: { type: Type.STRING }
+         const response = await withRetry(async () => {
+             return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+                 config: {
+                    maxOutputTokens: 8192,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            events: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        date: { type: Type.STRING },
+                                        title: { type: Type.STRING },
+                                        format: { type: Type.STRING },
+                                        status: { type: Type.STRING }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+             });
          });
          
          if(response.text) {
@@ -385,30 +427,32 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
 
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: prompt,
-            config: {
-                maxOutputTokens: 4096,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        posts: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    platform: { type: Type.STRING },
-                                    content: { type: Type.STRING },
-                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    visualNote: { type: Type.STRING }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+                config: {
+                    maxOutputTokens: 4096,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            posts: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        platform: { type: Type.STRING },
+                                        content: { type: Type.STRING },
+                                        hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                        visualNote: { type: Type.STRING }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         });
 
         if (response.text) {
@@ -430,22 +474,24 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
 export const verifyPostContent = async (url: string) => {
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: `Analyze this URL or text representation of a social media post: "${url}". 
-            Does it look like a valid social media link (YouTube, Instagram, TikTok, LinkedIn, Twitter/X) that could be about a product named "WySlider"?
-            Return JSON: { "isValid": boolean, "reason": "string" }`,
-            config: {
-                maxOutputTokens: 1024,
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        isValid: { type: Type.BOOLEAN },
-                        reason: { type: Type.STRING }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: `Analyze this URL or text representation of a social media post: "${url}". 
+                Does it look like a valid social media link (YouTube, Instagram, TikTok, LinkedIn, Twitter/X) that could be about a product named "WySlider"?
+                Return JSON: { "isValid": boolean, "reason": "string" }`,
+                config: {
+                    maxOutputTokens: 1024,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            isValid: { type: Type.BOOLEAN },
+                            reason: { type: Type.STRING }
+                        }
                     }
                 }
-            }
+            });
         });
         
         const text = response.text || "{}";
@@ -460,12 +506,14 @@ export const verifyPostContent = async (url: string) => {
 export const generateAdminInsights = async (metrics: string): Promise<string> => {
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`,
-            config: {
-                maxOutputTokens: 1024
-            }
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`,
+                config: {
+                    maxOutputTokens: 1024
+                }
+            });
         });
         return response.text || "NO_DATA_AVAILABLE";
     } catch (error) {
@@ -559,7 +607,7 @@ export const startChatSession = (context: string): Chat => {
 
 export const sendMessageToChat = async (chatSession: Chat, message: string): Promise<string> => {
     try {
-        const result = await chatSession.sendMessage({ message });
+        const result = await withRetry(async () => await chatSession.sendMessage({ message }));
         return result.text;
     } catch (error) {
         console.error("Chat error:", error);
@@ -570,9 +618,11 @@ export const sendMessageToChat = async (chatSession: Chat, message: string): Pro
 export const generatePitch = async (brand: string, url: string, objective: string) => {
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-            model: MODEL_NAME,
-            contents: `Write a cold email pitch (in French) to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: `Write a cold email pitch (in French) to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`
+            });
         });
         return response.text || "";
     } catch (error) {
@@ -583,9 +633,11 @@ export const generatePitch = async (brand: string, url: string, objective: strin
 export const analyzeSEO = async (scriptTitle: string, scriptContent: string) => {
     try {
         const ai = getAi();
-        const response = await ai.models.generateContent({
-             model: MODEL_NAME,
-             contents: `Analyze the SEO potential and CTR for a YouTube video. Language: French. \nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: `Analyze the SEO potential and CTR for a YouTube video. Language: French. \nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`
+            });
         });
         return response.text || "";
     } catch { return "" }
