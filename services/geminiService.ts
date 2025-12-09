@@ -12,7 +12,7 @@ const getAi = (apiKey?: string) => {
     const envKey = process.env.API_KEY;
     
     if (!envKey) {
-        console.warn("API_KEY appears to be missing.");
+        console.warn("API_KEY appears to be missing. Calls will likely fail.");
     }
     
     aiInstance = new GoogleGenAI({ apiKey: envKey || '' });
@@ -100,6 +100,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Pr
     try {
         return await fn();
     } catch (error: any) {
+        // Retry on 500, 503, or XHR errors
         if (retries > 0 && (error.toString().includes('xhr') || error.toString().includes('500') || error.status === 503)) {
             console.warn(`Retrying operation... Attempts left: ${retries}. Error: ${error}`);
             await new Promise(res => setTimeout(res, delay));
@@ -135,25 +136,28 @@ export const generateScript = async (
   The output MUST be in French (Français).
   Ensure the response is valid JSON. Do not repeat sections endlessly. Keep it concise and professional.
   
-  1. **title**: Catchy, High CTR (Click-Through Rate).
-  2. **youtubeDescription**: 3-4 lines optimized for SEO with keywords.
-  3. **hashtags**: 5-10 relevant hashtags.
-  4. **sections**: An array of script sections. 
-     - **Intro**: Must include a "Hook Pertinent" (catchy opening) and "Intro".
-     - **Main Content**: Must be divided into clearly NUMBERED sections (e.g., "1. Le Problème", "2. La Solution"). Limit to 3-5 main points max.
-     - **Conclusion**: Brief summary.
-     - **CTA**: The specific Call to Action.
-     *Each section object must contain:*
-       - \`title\`: Section header (e.g., "0:00 Intro", "1:30 Partie 1").
-       - \`estimatedTime\`: Duration (e.g., "30s").
-       - \`content\`: The spoken script (Verbatim). Natural, engaging flow. Avoid repetition.
-       - \`visualNote\`: Detailed visual direction (Mandatory).
-  5. **socialPosts**: Promotional posts for the specified platforms.
-     *Each post object must contain:*
-       - \`platform\`: Platform name.
-       - \`content\`: Engaging caption with emojis.
-       - \`hashtags\`: Platform-specific tags.
-       - \`visualNote\`: Description of the visual asset.
+  Return a JSON object with this exact structure:
+  {
+      "title": "Catchy title",
+      "youtubeDescription": "SEO optimized description",
+      "hashtags": ["#tag1", "#tag2"],
+      "sections": [
+          {
+              "title": "Section Title",
+              "estimatedTime": "30s",
+              "content": "Verbatim script content...",
+              "visualNote": "Visual direction..."
+          }
+      ],
+      "socialPosts": [
+          {
+              "platform": "Platform Name",
+              "content": "Post content...",
+              "hashtags": ["#tag1"],
+              "visualNote": "Visual asset description..."
+          }
+      ]
+  }
 
   **IMPORTANT:**
   - STRICTLY Output valid JSON.
@@ -180,51 +184,27 @@ export const generateScript = async (
                 systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
                 maxOutputTokens: 8192,
                 responseMimeType: "application/json",
-                // @ts-ignore - safetySettings types might vary in SDK versions, using string literal is safe for REST mapping
+                // @ts-ignore - safetySettings types might vary in SDK versions
                 safetySettings: safetySettings,
-                responseSchema: {
-                    type: Type.OBJECT,
-                    properties: {
-                        title: { type: Type.STRING },
-                        youtubeDescription: { type: Type.STRING },
-                        hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                        sections: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    title: { type: Type.STRING },
-                                    estimatedTime: { type: Type.STRING },
-                                    content: { type: Type.STRING },
-                                    visualNote: { type: Type.STRING }
-                                },
-                                // Relaxed requirements to avoid validation errors
-                                required: ["title", "estimatedTime", "content"]
-                            }
-                        },
-                        socialPosts: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    platform: { type: Type.STRING },
-                                    content: { type: Type.STRING },
-                                    hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                    visualNote: { type: Type.STRING }
-                                }
-                            }
-                        }
-                    }
-                }
+                // REMOVED STRICT SCHEMA to prevent RPC/XHR errors on complex generation
             }
         });
     });
 
     if (response.text) {
         const data = parseResponse(response.text);
-        if (data && (!data.sections || data.sections.length === 0)) {
+        
+        // Basic Validation
+        if (!data || typeof data !== 'object') {
+            console.error("Invalid JSON data returned");
             return null;
         }
+
+        // Sanitize sections
+        if (!data.sections || !Array.isArray(data.sections)) {
+             data.sections = [];
+        }
+
         // Sanitize socialPosts to ensure hashtags is always an array
         if (data && data.socialPosts) {
             data.socialPosts = data.socialPosts.map((post: any) => ({
@@ -276,21 +256,7 @@ export const generateSeriesOutlines = async (
                 config: {
                     maxOutputTokens: 8192,
                     responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            episodes: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        title: { type: Type.STRING },
-                                        summary: { type: Type.STRING }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // No strict schema to improve reliability
                 }
             });
         });
@@ -321,22 +287,7 @@ export const generateViralIdeas = async (niche: string) => {
                 config: {
                     maxOutputTokens: 4096,
                     responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            ideas: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        title: { type: Type.STRING },
-                                        hook: { type: Type.STRING },
-                                        difficulty: { type: Type.STRING }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // No strict schema
                 }
             });
         });
@@ -353,7 +304,6 @@ export const generateViralIdeas = async (niche: string) => {
 };
 
 export const generateEditorialCalendar = async (niche: string, tasks?: string) => {
-    // Simplified prompt for reliability
     const prompt = `Create a 4-week content calendar for a YouTube channel in the niche: "${niche}".
     Language: French.
     Tasks to include: ${tasks || 'General trends'}.
@@ -373,23 +323,6 @@ export const generateEditorialCalendar = async (niche: string, tasks?: string) =
                  config: {
                     maxOutputTokens: 8192,
                     responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            events: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        date: { type: Type.STRING },
-                                        title: { type: Type.STRING },
-                                        format: { type: Type.STRING },
-                                        status: { type: Type.STRING }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
              });
          });
@@ -434,23 +367,6 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
                 config: {
                     maxOutputTokens: 4096,
                     responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            posts: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        platform: { type: Type.STRING },
-                                        content: { type: Type.STRING },
-                                        hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                        visualNote: { type: Type.STRING }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             });
         });
@@ -483,13 +399,6 @@ export const verifyPostContent = async (url: string) => {
                 config: {
                     maxOutputTokens: 1024,
                     responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            isValid: { type: Type.BOOLEAN },
-                            reason: { type: Type.STRING }
-                        }
-                    }
                 }
             });
         });
@@ -498,7 +407,6 @@ export const verifyPostContent = async (url: string) => {
         const json = parseResponse(text) || {};
         return !!json.isValid;
     } catch (e) {
-        // Fallback for demo if URL is generic or analysis fails
         return url.includes("http") && url.length > 15;
     }
 }
