@@ -43,7 +43,12 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, onNaviga
             </div>
             
             <div className="flex items-center space-x-4">
-                <div className="hidden md:flex px-3 py-1 bg-brand-purple/10 rounded-full text-brand-purple text-sm font-semibold">
+                {user?.isPro && (
+                   <div className="hidden md:flex items-center justify-center bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide shadow-lg shadow-orange-500/20 mr-1 border border-yellow-300/50">
+                      PRO+
+                   </div>
+                )}
+                <div className="hidden md:flex px-3 py-1 bg-brand-purple/10 rounded-full text-brand-purple text-sm font-semibold border border-brand-purple/20">
                     {user?.generationsLeft} credits
                 </div>
                 

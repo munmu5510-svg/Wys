@@ -26,7 +26,16 @@ const MODEL_NAME = 'gemini-2.5-flash';
 const cleanJson = (text: string) => {
     if (!text) return "";
     let clean = text.trim();
-    // Remove markdown code blocks if present
+    
+    // Find JSON start and end
+    const firstBrace = clean.indexOf('{');
+    const lastBrace = clean.lastIndexOf('}');
+    
+    if (firstBrace !== -1 && lastBrace !== -1) {
+        clean = clean.substring(firstBrace, lastBrace + 1);
+    }
+
+    // Remove markdown code blocks if still present (fallback)
     if (clean.startsWith("```json")) {
         clean = clean.replace(/^```json/, "").replace(/```$/, "");
     } else if (clean.startsWith("```")) {
@@ -161,6 +170,7 @@ export const generateScript = async (
 
   **IMPORTANT:**
   - STRICTLY Output valid JSON.
+  - DO NOT OUTPUT MARKDOWN.
   - Do not truncate the JSON.
   - Total script length should fit within ${format}.
   `;
@@ -176,23 +186,28 @@ export const generateScript = async (
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
     ];
 
-    const response = await withRetry(async () => {
-        return await ai.models.generateContent({
+    // Use Streaming to avoid timeouts/XHR errors on large payloads
+    const resultStream = await withRetry(async () => {
+        return await ai.models.generateContentStream({
             model: MODEL_NAME,
             contents: prompt,
             config: {
                 systemInstruction: "You are WySlider. You generate structured JSON scripts. You NEVER repeat text endlessly.",
                 maxOutputTokens: 8192,
                 responseMimeType: "application/json",
-                // @ts-ignore - safetySettings types might vary in SDK versions
+                // @ts-ignore
                 safetySettings: safetySettings,
-                // REMOVED STRICT SCHEMA to prevent RPC/XHR errors on complex generation
             }
         });
     });
 
-    if (response.text) {
-        const data = parseResponse(response.text);
+    let fullText = "";
+    for await (const chunk of resultStream) {
+        fullText += chunk.text;
+    }
+
+    if (fullText) {
+        const data = parseResponse(fullText);
         
         // Basic Validation
         if (!data || typeof data !== 'object') {
