@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Script, ChatSession, ChatMessage, AppNotification, CalendarEvent, BrandPitch, Series } from '../types';
 import { Button } from './Button';
@@ -68,7 +69,7 @@ const ChatOverlay: React.FC<{
         <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
             <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
                 <div className="flex items-center space-x-2">
-                    <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="Historique">
+                    <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="History">
                         <ClockIcon className="h-5 w-5"/>
                     </button>
                     <span className="font-bold text-lg text-white">AI Assistant</span>
@@ -79,8 +80,8 @@ const ChatOverlay: React.FC<{
             <div className="flex-1 overflow-hidden flex flex-col relative">
                 {view === 'history' ? (
                     <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
-                        <Button onClick={() => { onNewChat(); setView('chat'); }} className="w-full mb-4 bg-gray-800 hover:bg-gray-700 border border-gray-700">+ Nouvelle Discussion</Button>
-                        {sessions.length === 0 && <p className="text-center text-gray-500 mt-10">Aucun historique.</p>}
+                        <Button onClick={() => { onNewChat(); setView('chat'); }} className="w-full mb-4 bg-gray-800 hover:bg-gray-700 border border-gray-700">+ New Chat</Button>
+                        {sessions.length === 0 && <p className="text-center text-gray-500 mt-10">No history.</p>}
                         {sessions.map(session => (
                             <div key={session.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700 hover:border-brand-purple group cursor-pointer" onClick={() => onSelectSession(session.id)}>
                                 <div className="flex justify-between items-start">
@@ -96,15 +97,15 @@ const ChatOverlay: React.FC<{
                             </div>
                         ))}
                         {sessions.length > 0 && (
-                            <button onClick={() => { if(window.confirm("Tout supprimer ?")) onDeleteAllHistory(); }} className="w-full text-xs text-red-500 hover:text-red-400 mt-8 underline">
-                                Supprimer tout l'historique
+                            <button onClick={() => { if(window.confirm("Delete all?")) onDeleteAllHistory(); }} className="w-full text-xs text-red-500 hover:text-red-400 mt-8 underline">
+                                Delete All History
                             </button>
                         )}
                     </div>
                 ) : (
                     <>
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {!activeSession && <div className="text-center text-gray-500 mt-10">Commencez une nouvelle discussion.</div>}
+                            {!activeSession && <div className="text-center text-gray-500 mt-10">Start a new chat.</div>}
                             {activeSession?.messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700'}`}>
@@ -129,7 +130,7 @@ const ChatOverlay: React.FC<{
                                     value={input} 
                                     onChange={e => setInput(e.target.value)} 
                                     onKeyDown={e => e.key === 'Enter' && handleSend()}
-                                    placeholder="Posez une question..." 
+                                    placeholder="Ask anything..." 
                                     className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"
                                 />
                                 <button onClick={handleSend} disabled={isProcessing} className="bg-brand-purple text-white p-2 rounded-full hover:bg-purple-600 disabled:opacity-50">
@@ -248,22 +249,23 @@ const Dashboard: React.FC<{
         setSelectedIds(new Set());
     };
 
+    const soloScriptsCount = scripts.filter(s => !s.seriesId).length;
+
     return (
         <div className="h-full overflow-y-auto p-4 md:p-6 animate-fade-in scroll-smooth bg-gray-900">
              <div className="max-w-6xl mx-auto space-y-8 pb-20">
                 <div className="flex items-center space-x-4 bg-gray-800 p-4 rounded-xl border border-gray-700 relative z-20">
                     <div className="flex-1 relative">
-                        <input type="text" placeholder="Rechercher..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"/>
+                        <input type="text" placeholder="Search..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"/>
                     </div>
                     <div className="flex space-x-2">
                         {selectionMode ? (
                              <div className="flex space-x-2">
-                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-900/50 text-red-400 rounded hover:bg-red-900 border border-red-800" title="Supprimer Sélection"><TrashIcon className="h-5 w-5"/></button>
-                                <button onClick={() => handleBulkAction('share')} className="p-2 bg-blue-900/50 text-blue-400 rounded hover:bg-blue-900 border border-blue-800" title="Partager Sélection"><ShareIcon className="h-5 w-5"/></button>
-                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600">Annuler</button>
+                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-900/50 text-red-400 rounded hover:bg-red-900 border border-red-800" title="Delete Selection"><TrashIcon className="h-5 w-5"/></button>
+                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600">Cancel</button>
                              </div>
                         ) : (
-                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-700 text-gray-400 hover:text-white" title="Sélectionner...">
+                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-700 text-gray-400 hover:text-white" title="Select...">
                                 <Bars3Icon className="h-5 w-5"/>
                             </button>
                         )}
@@ -271,10 +273,13 @@ const Dashboard: React.FC<{
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><PencilSquareIcon className="h-5 w-5 text-brand-purple"/> <span>Mes Scripts</span></h2>
-                    <button onClick={onOpenStudio} className="bg-brand-purple hover:bg-purple-600 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
-                        <PlusIcon className="h-6 w-6"/>
-                    </button>
+                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><PencilSquareIcon className="h-5 w-5 text-brand-purple"/> <span>My Scripts</span></h2>
+                    <div className="flex items-center space-x-3">
+                         <span className="text-sm font-mono text-gray-500">{soloScriptsCount} Scripts</span>
+                         <button onClick={onOpenStudio} className="bg-brand-purple hover:bg-purple-600 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
+                            <PlusIcon className="h-6 w-6"/>
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -301,21 +306,21 @@ const Dashboard: React.FC<{
                                      <h3 className="font-bold truncate pr-2 text-white">{script.title}</h3>
                                      {script.isTemplate && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">TEMPLATE</span>}
                                  </div>
-                                 <p className="text-xs text-gray-500 mb-2 truncate">{script.youtubeDescription || "Pas de description"}</p>
+                                 <p className="text-xs text-gray-500 mb-2 truncate">{script.youtubeDescription || "No description"}</p>
                                  <div className="flex justify-between items-center text-xs text-gray-400">
                                      <span>{new Date(script.createdAt).toLocaleDateString()}</span>
-                                     <span className="bg-gray-700 px-2 py-0.5 rounded">{script.niche || "Général"}</span>
+                                     <span className="bg-gray-700 px-2 py-0.5 rounded">{script.niche || "General"}</span>
                                  </div>
                              </div>
                          </div>
                     ))}
-                    {scripts.length === 0 && series.length === 0 && <div className="col-span-full text-center py-10 text-gray-500">Aucun script. Cliquez sur + pour commencer.</div>}
+                    {scripts.length === 0 && series.length === 0 && <div className="col-span-full text-center py-10 text-gray-500">No scripts yet.</div>}
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-gray-800">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>Mes Séries</span></h2>
+                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>My Series</span></h2>
                      <div className="flex items-center space-x-3">
-                        <span className="hidden md:inline text-sm font-mono text-gray-500">{series.length} Séries</span>
+                        <span className="hidden md:inline text-sm font-mono text-gray-500">{series.length} Series</span>
                         <button onClick={onOpenSerial} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
                             <PlusIcon className="h-6 w-6"/>
                         </button>
@@ -324,7 +329,7 @@ const Dashboard: React.FC<{
 
                 {series.length === 0 ? (
                     <div className="bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:bg-gray-800/50 transition cursor-pointer" onClick={onOpenSerial}>
-                        Vous n'avez pas encore créé de série. Cliquez ici pour lancer Serial Prod.
+                        No series yet. Click to launch Serial Prod.
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -333,7 +338,7 @@ const Dashboard: React.FC<{
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
                                         <h3 className="font-bold text-lg text-white">{s.title}</h3>
-                                        <span className="text-xs text-gray-400">{s.episodeCount} épisodes | {new Date(s.createdAt).toLocaleDateString()}</span>
+                                        <span className="text-xs text-gray-400">{s.episodeCount} episodes | {new Date(s.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     <button className={`text-red-500 hover:text-red-400 transition`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
                                 </div>
@@ -354,7 +359,7 @@ const Dashboard: React.FC<{
     );
 };
 
-const AVAILABLE_TONES = ["Personal brand", "Humour", "Energique", "Professionnel", "Critique", "Colere", "Empathie"];
+const AVAILABLE_TONES = ["Personal brand", "Humour", "Energetic", "Professional", "Critical", "Angry", "Empathetic"];
 const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
 
 const SerialProd: React.FC<{
@@ -368,7 +373,7 @@ const SerialProd: React.FC<{
     const [theme, setTheme] = useState('');
     const [config, setConfig] = useState({ 
         niche: user.niche, 
-        tone: 'Professionnel', 
+        tone: 'Professional', 
         duration: '8-15min', 
         platforms: 'YouTube, TikTok, Instagram',
         goal: '',
@@ -384,10 +389,10 @@ const SerialProd: React.FC<{
     
     const handlePropose = async () => {
          if (!user.isPro) {
-             alert("Abonnement WYS Pro+ requis pour Serial Prod.");
+             alert("WYS Pro+ required for Serial Prod.");
              return;
          }
-         if (!theme) return alert("Veuillez entrer un thème.");
+         if (!theme) return alert("Please enter a theme.");
          setIsLoading(true);
          const episodes = await geminiService.generateSeriesOutlines(theme, config.count, config.tone, config.niche, config.goal);
          setProposedEpisodes(episodes);
@@ -412,7 +417,8 @@ const SerialProd: React.FC<{
                 config.goal, 
                 config.needs, 
                 config.cta, 
-                config.platforms
+                config.platforms,
+                user.styleDNA // Pass styleDNA
             );
             if (scriptData) {
                 generatedScripts.push({
@@ -446,7 +452,7 @@ const SerialProd: React.FC<{
 
         onSaveSeries(newSeries);
         setIsLoading(false);
-        onNotify("Série Terminée", "Vos scripts sont prêts !");
+        onNotify("Series Complete", "Your scripts are ready!");
         onClose();
     }
 
@@ -461,14 +467,14 @@ const SerialProd: React.FC<{
                  <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Thème de la série</label>
-                            <input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Ex: Cuisine pour débutants" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Series Theme</label>
+                            <input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Ex: Cooking for beginners" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Nombre d'Épisodes</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Episode Count</label>
                             <select value={config.count} onChange={e => setConfig({...config, count: parseInt(e.target.value)})} className="w-full bg-gray-800 rounded border border-gray-700 p-3 text-white">
                                 {Array.from({length: 18}, (_, i) => i + 3).map(num => (
-                                    <option key={num} value={num}>{num} Épisodes</option>
+                                    <option key={num} value={num}>{num} Episodes</option>
                                 ))}
                             </select>
                         </div>
@@ -477,23 +483,23 @@ const SerialProd: React.FC<{
                             <input value={config.niche} onChange={e => setConfig({...config, niche: e.target.value})} className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Objectif (But)</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Ex: Vendre une formation..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Goal</label>
+                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Ex: Sell course..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Besoins Spécifiques</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Ex: Mentionner le lien en bio..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Needs</label>
+                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Ex: Mention bio link..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Call To Action (CTA)</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="Ex: Abonnez-vous !" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">CTA</label>
+                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="Ex: Subscribe!" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Plateformes</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Platforms</label>
                             <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Ton</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Tone</label>
                             <div className="flex space-x-2">
                                 <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-800 rounded border border-gray-700 p-3 text-white">
                                     {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
@@ -503,25 +509,25 @@ const SerialProd: React.FC<{
                             </div>
                             {isAddingTone && (
                                 <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="Nouveau ton..." className="flex-1 bg-gray-900 border border-gray-700 p-2 rounded text-sm text-white"/>
+                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-900 border border-gray-700 p-2 rounded text-sm text-white"/>
                                     <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-3 rounded text-sm font-bold">OK</button>
                                 </div>
                             )}
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Durée</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Duration</label>
                             <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-3 text-white">
                                 {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
                             </select>
                         </div>
                     </div>
-                    <Button onClick={handlePropose} isLoading={isLoading} className="py-4 text-lg">Proposer les Épisodes</Button>
+                    <Button onClick={handlePropose} isLoading={isLoading} className="py-4 text-lg">Propose Episodes</Button>
                  </>
              )}
 
              {step === 'preview' && (
                  <div className="space-y-4">
-                     <h3 className="font-bold text-lg mb-4">Proposition de l'IA ({proposedEpisodes.length} épisodes)</h3>
+                     <h3 className="font-bold text-lg mb-4">AI Proposal ({proposedEpisodes.length} episodes)</h3>
                      <div className="grid gap-3 mb-6">
                          {proposedEpisodes.map((ep, i) => (
                              <div key={i} className="bg-gray-800 p-4 rounded border border-gray-700">
@@ -532,8 +538,8 @@ const SerialProd: React.FC<{
                          ))}
                      </div>
                      <div className="flex space-x-4">
-                         <Button onClick={handleGenerateFinal} isLoading={isLoading} className="flex-1 py-3 text-lg">Générer les Scripts</Button>
-                         <Button onClick={() => setStep('config')} variant="secondary">Modifier</Button>
+                         <Button onClick={handleGenerateFinal} isLoading={isLoading} className="flex-1 py-3 text-lg">Generate Scripts</Button>
+                         <Button onClick={() => setStep('config')} variant="secondary">Edit</Button>
                      </div>
                  </div>
              )}
@@ -541,8 +547,8 @@ const SerialProd: React.FC<{
              {step === 'generating' && (
                  <div className="flex-1 flex flex-col items-center justify-center text-center">
                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-purple mb-4"></div>
-                     <h3 className="text-xl font-bold mb-2">Génération de la série en cours...</h3>
-                     <p className="text-gray-400">L'IA rédige les scripts complets pour chaque épisode. Cela peut prendre une minute.</p>
+                     <h3 className="text-xl font-bold mb-2">Generating Series...</h3>
+                     <p className="text-gray-400">The AI is writing full scripts for each episode. This may take a minute.</p>
                  </div>
              )}
         </div>
@@ -561,7 +567,7 @@ const Studio: React.FC<{
      const [config, setConfig] = useState({ 
          topic: '', 
          niche: user.niche, 
-         tone: 'Professionnel', 
+         tone: 'Professional', 
          duration: '8-15min', 
          platforms: 'YouTube, TikTok, Instagram',
          goal: '',
@@ -603,10 +609,78 @@ const Studio: React.FC<{
 
      const handleDownloadPDF = () => {
         if (!selectedScript) return;
-        const doc = new jsPDF();
-        // ... (PDF logic same as before, abbreviated for brevity, assuming import is handled)
-        // For simplicity in this prompt context, I will just call alert if not fully implemented in snippet
-        alert("Downloading PDF...");
+        
+        try {
+            const doc = new jsPDF();
+            
+            // PDF Styling Colors
+            const primaryColor = [79, 70, 229]; // Indigo-600
+            const secondaryColor = [107, 114, 128]; // Gray-500
+            const blackColor = [0, 0, 0];
+            
+            let yPos = 20;
+
+            // Title
+            doc.setFontSize(22);
+            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            doc.setFont("helvetica", "bold");
+            const titleSplit = doc.splitTextToSize(selectedScript.title, 180);
+            doc.text(titleSplit, 15, yPos);
+            yPos += (10 * titleSplit.length) + 10;
+
+            // Metadata
+            doc.setFontSize(10);
+            doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Format: ${selectedScript.format} | Tone: ${selectedScript.tone}`, 15, yPos);
+            yPos += 15;
+
+            // Divider
+            doc.setDrawColor(200, 200, 200);
+            doc.line(15, yPos, 195, yPos);
+            yPos += 10;
+
+            // Sections
+            selectedScript.sections.forEach((section) => {
+                // Check page break
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+
+                // Section Header
+                doc.setFontSize(14);
+                doc.setTextColor(blackColor[0], blackColor[1], blackColor[2]);
+                doc.setFont("helvetica", "bold");
+                doc.text(`${section.title} (${section.estimatedTime})`, 15, yPos);
+                yPos += 8;
+
+                // Section Content
+                doc.setFontSize(11);
+                doc.setFont("helvetica", "normal");
+                const contentText = section.content.replace(/\*\*/g, '').replace(/\[(.*?)\]/g, 'Visual: $1');
+                const splitContent = doc.splitTextToSize(contentText, 180);
+                doc.text(splitContent, 15, yPos);
+                yPos += (6 * splitContent.length) + 5;
+
+                // Visual Note
+                if (section.visualNote) {
+                    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+                    doc.setFont("helvetica", "italic");
+                    const visNote = `Note: ${section.visualNote}`;
+                    const splitVis = doc.splitTextToSize(visNote, 180);
+                    doc.text(splitVis, 15, yPos);
+                    yPos += (6 * splitVis.length) + 5;
+                }
+                
+                yPos += 5; // Extra spacing between sections
+            });
+
+            doc.save(`${selectedScript.title.substring(0, 20)}_script.pdf`);
+        } catch (e) {
+            console.error("PDF Error", e);
+            alert("Error generating PDF. Please ensure content is loaded.");
+        }
      }
 
      if (!selectedScript) {
@@ -616,15 +690,15 @@ const Studio: React.FC<{
                      <h2 className="font-bold text-lg mb-4 text-white">Studio Config</h2>
                      <div className="space-y-4">
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Sujet</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Sujet de la vidéo..."/>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Topic</label>
+                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Video topic..."/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Objectif (But)</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Goal</label>
                             <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Besoins</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Needs</label>
                             <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
                         <div>
@@ -633,7 +707,7 @@ const Studio: React.FC<{
                         </div>
                         
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Ton</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Tone</label>
                             <div className="flex space-x-1 mt-1">
                                 <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-800 rounded border border-gray-700 p-2 text-sm text-white">
                                     {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
@@ -643,31 +717,31 @@ const Studio: React.FC<{
                             </div>
                             {isAddingTone && (
                                 <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="Nouveau ton..." className="flex-1 bg-gray-900 border border-gray-700 p-1 rounded text-xs text-white"/>
+                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-900 border border-gray-700 p-1 rounded text-xs text-white"/>
                                     <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-2 rounded text-xs font-bold">OK</button>
                                 </div>
                             )}
                         </div>
 
                          <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Durée</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Duration</label>
                             <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white">
                                 {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Plateformes</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Platforms</label>
                             <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
                      </div>
 
-                     <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Générer Script</Button>
-                     <Button variant="secondary" onClick={onBack}>Annuler</Button>
+                     <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Generate Script</Button>
+                     <Button variant="secondary" onClick={onBack}>Cancel</Button>
                   </div>
                   <div className="hidden md:flex flex-1 bg-gray-800 items-center justify-center text-gray-500">
                       <div className="text-center">
                           <PencilSquareIcon className="h-16 w-16 mx-auto mb-4 opacity-20"/>
-                          <p>Configurez votre script à gauche pour commencer.</p>
+                          <p>Configure your script on the left to start.</p>
                       </div>
                   </div>
              </div>
@@ -683,34 +757,34 @@ const Studio: React.FC<{
              `}>
                  <div className="h-full overflow-y-auto p-6 text-white">
                      <div className="flex justify-between items-center mb-4">
-                        <button onClick={onBack} className="text-sm text-gray-400 hover:text-white">&larr; Retour</button>
+                        <button onClick={onBack} className="text-sm text-gray-400 hover:text-white">&larr; Back</button>
                         <button onClick={() => setIsConfigOpen(false)} className="md:hidden"><XMarkIcon className="h-6 w-6"/></button>
                      </div>
                      
                      <div className="space-y-4 mb-6">
-                        <h3 className="font-bold text-lg">Modifier Config</h3>
+                        <h3 className="font-bold text-lg">Edit Config</h3>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Sujet</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Sujet de la vidéo..."/>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Topic</label>
+                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Topic..."/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Objectif (But)</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Goal</label>
                             <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Besoins</label>
+                            <label className="text-xs text-gray-400 font-bold uppercase">Needs</label>
                             <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
                         <div>
                             <label className="text-xs text-gray-400 font-bold uppercase">CTA</label>
                             <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
                         </div>
-                        <Button onClick={() => { onGenerate(config); setIsConfigOpen(false); }} isLoading={isGenerating}>Régénérer</Button>
+                        <Button onClick={() => { onGenerate(config); setIsConfigOpen(false); }} isLoading={isGenerating}>Regenerate</Button>
                      </div>
 
                      <div className="mt-8 pt-4 border-t border-gray-700">
                          <Button onClick={handleDownloadPDF} variant="secondary" className="w-full flex items-center justify-center">
-                             <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Télécharger PDF
+                             <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Export PDF
                          </Button>
                      </div>
                  </div>
@@ -718,7 +792,7 @@ const Studio: React.FC<{
              
              {/* Main Content Area - SCRIPT PREVIEW MODE */}
              <div className="flex-1 bg-gray-900 overflow-y-auto p-4 md:p-8 scroll-smooth text-white">
-                 <div className="max-w-4xl mx-auto">
+                 <div className="max-w-4xl mx-auto pb-20">
                      <div className="flex justify-between items-start mb-6">
                         <div className="flex-1 mr-4">
                             <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full outline-none placeholder-gray-600"/>
@@ -737,8 +811,8 @@ const Studio: React.FC<{
                      <div className="space-y-1">
                          {selectedScript.sections.length === 0 && (
                             <div className="text-gray-400 p-8 border border-dashed border-gray-600 rounded text-center">
-                                <p className="mb-4">Contenu vide ou incomplet.</p>
-                                <Button onClick={() => setIsConfigOpen(true)}>Ouvrir Config</Button>
+                                <p className="mb-4">Empty content.</p>
+                                <Button onClick={() => setIsConfigOpen(true)}>Open Config</Button>
                             </div>
                          )}
                          
@@ -761,10 +835,10 @@ const Studio: React.FC<{
                          {/* Social Posts Section */}
                          <div className="mt-12 pt-8 border-t border-gray-800">
                              <div className="flex justify-between items-center mb-6">
-                                 <h3 className="text-xl font-bold flex items-center text-white"><ShareIcon className="h-5 w-5 mr-2 text-green-400"/> Mes Posts</h3>
-                                 <Button onClick={handleGeneratePosts} isLoading={isGeneratingPosts} className="text-sm py-1 px-3">Générer Posts</Button>
+                                 <h3 className="text-xl font-bold flex items-center text-white"><ShareIcon className="h-5 w-5 mr-2 text-green-400"/> Social Posts</h3>
+                                 <Button onClick={handleGeneratePosts} isLoading={isGeneratingPosts} className="text-sm py-1 px-3">Generate Posts</Button>
                              </div>
-                             {!selectedScript.socialPosts && <p className="text-gray-500 italic text-sm">Aucun post généré.</p>}
+                             {!selectedScript.socialPosts && <p className="text-gray-500 italic text-sm">No posts generated yet.</p>}
                              <div className="grid gap-4 md:grid-cols-2">
                                  {selectedScript.socialPosts?.map((post, i) => (
                                      <div key={i} className="bg-gray-800 border border-gray-700 p-5 rounded-xl">
@@ -837,7 +911,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                  id: `s_${Date.now()}`,
                  title: pendingGenConfig.topic,
                  topic: pendingGenConfig.topic,
-                 tone: pendingGenConfig.tone || 'Professionnel',
+                 tone: pendingGenConfig.tone || 'Professional',
                  format: pendingGenConfig.duration || '8-15min',
                  createdAt: new Date().toISOString(),
                  sections: [],
@@ -886,9 +960,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
     const handleCreateScript = () => {
         const newScript: Script = {
             id: `s_${Date.now()}`,
-            title: 'Nouveau Script',
+            title: 'New Script',
             topic: '',
-            tone: 'Professionnel',
+            tone: 'Professional',
             format: '8-15min',
             createdAt: new Date().toISOString(),
             sections: [],
@@ -902,7 +976,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
     const handleGenerateScript = async (config: any) => {
         if (!currentScript) return;
         if (user.generationsLeft <= 0) {
-            alert("Plus de crédits ! Partagez l'app ou passez pro.");
+            alert("No more credits! Upgrade to Pro.");
             return;
         }
 
@@ -915,7 +989,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
             config.goal, 
             config.needs, 
             config.cta, 
-            config.platforms
+            config.platforms,
+            user.styleDNA // Pass styleDNA to service
         );
         
         if (scriptData) {
@@ -938,9 +1013,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
             setScripts(newScripts);
             setCurrentScript(updatedScript);
             onUpdateUser({ ...user, generationsLeft: user.generationsLeft - 1 });
-            notify("Script généré !", "Votre script est prêt.");
+            notify("Script Generated!", "Your script is ready.");
         } else {
-            notify("Erreur", "L'IA n'a pas pu générer le script.", "warning");
+            notify("Error", "AI failed to generate script.", "warning");
         }
         setIsGenerating(false);
     };
@@ -949,7 +1024,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
     const handleNewChat = () => {
         const newSession: ChatSession = {
             id: `chat_${Date.now()}`,
-            title: 'Nouvelle Discussion',
+            title: 'New Chat',
             messages: [],
             createdAt: new Date().toISOString()
         };
@@ -1046,10 +1121,10 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                 isProcessing={isChatProcessing}
             />
 
-             {/* Floating Chat Button (Above bottom bar on mobile) */}
+             {/* Floating Chat Button */}
              <button 
                 onClick={() => setIsChatOpen(true)}
-                className="fixed bottom-20 right-6 md:bottom-10 md:right-10 bg-brand-purple hover:bg-purple-600 text-white p-4 rounded-full shadow-2xl z-40 transition-transform transform hover:scale-110 flex items-center justify-center"
+                className="fixed bottom-6 right-6 bg-brand-purple hover:bg-purple-600 text-white p-4 rounded-full shadow-2xl z-40 transition-transform transform hover:scale-110 flex items-center justify-center"
             >
                 <ChatBubbleLeftRightIcon className="h-8 w-8" />
                 {isChatProcessing && <span className="absolute top-0 right-0 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span></span>}
@@ -1061,17 +1136,17 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                     series={series}
                     onSelect={(s) => { setCurrentScript(s); setView('studio'); }} 
                     onDelete={(id) => {
-                         if(window.confirm("Supprimer ce script/série ?")) {
+                         if(window.confirm("Delete this script/series?")) {
                              setScripts(prev => prev.filter(s => s.id !== id));
                              setSeries(prev => prev.filter(s => s.id !== id));
                          }
                     }}
                     onBulkDelete={(ids) => {
-                         if(window.confirm(`Supprimer ${ids.length} éléments ?`)) {
+                         if(window.confirm(`Delete ${ids.length} items?`)) {
                              setScripts(prev => prev.filter(s => !ids.includes(s.id)));
                          }
                     }}
-                    onBulkShare={() => alert("Fonctionnalité 'Partage en masse' à venir.")}
+                    onBulkShare={() => alert("Bulk share coming soon.")}
                     onOpenStudio={() => { setCurrentScript(null); handleCreateScript(); }}
                     onOpenSerial={() => setView('serial')}
                 />

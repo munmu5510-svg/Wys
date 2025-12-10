@@ -1,185 +1,190 @@
 
-import React from 'react';
+
+import React, { useState } from 'react';
 import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon, Squares2x2Icon, FacebookIcon, WhatsappIcon } from './icons';
 import { Button } from './Button';
-import { PRICING } from '../constants';
+import { PRICING, COMMUNITY_PHONE } from '../constants';
 
 interface LandingPageProps {
     onNavigateToAuth: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) => {
+  const [lang, setLang] = useState<'en' | 'fr'>('en');
+
+  const t = {
+    en: {
+        heroTitle: "Professional YouTube Scripts, Powered by AI",
+        heroSubtitle: "Stop overthinking. Start creating. Turn ideas into viral-ready scripts in seconds.",
+        cta: "Start Creating Now",
+        whyTitle: "Why WySlider?",
+        whyDesc: "Creating engaging content is hard. WySlider makes it effortless. Our AI understands pacing, tone, and retention, giving you a competitive edge.",
+        features: [
+            { title: "Smart Context", desc: "AI that adapts to your niche and unique voice." },
+            { title: "Retention Focused", desc: "Hooks and structures designed to keep viewers watching." },
+            { title: "Visual Direction", desc: "Get camera angles and B-roll suggestions automatically." }
+        ],
+        communityTitle: "Community Blueprints",
+        pricingTitle: "Simple, Transparent Pricing",
+        footer: "Join the WySlider Revolution"
+    },
+    fr: {
+        heroTitle: "Scripts YouTube Professionnels, Propulsés par l'IA",
+        heroSubtitle: "Arrêtez de réfléchir. Créez. Transformez vos idées en scripts viraux en quelques secondes.",
+        cta: "Commencer Maintenant",
+        whyTitle: "Pourquoi WySlider ?",
+        whyDesc: "Créer du contenu engageant est difficile. WySlider rend cela facile. Notre IA comprend le rythme, le ton et la rétention.",
+        features: [
+            { title: "Contexte Intelligent", desc: "Une IA qui s'adapte à votre niche et votre voix." },
+            { title: "Focus Rétention", desc: "Des hooks et structures conçus pour garder l'audience." },
+            { title: "Direction Visuelle", desc: "Suggestions d'angles de caméra et B-roll automatiques." }
+        ],
+        communityTitle: "Modèles Communautaires",
+        pricingTitle: "Tarifs Simples et Transparents",
+        footer: "Rejoignez la Révolution WySlider"
+    }
+  };
+
+  const text = t[lang];
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans animate-fade-in flex flex-col">
-        {/* Splash/Hero */}
-        <section className="min-h-screen md:min-h-[90vh] flex flex-col justify-center items-center relative overflow-hidden bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] pt-24 pb-12 px-4">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/80 via-gray-900 to-blue-900/80"></div>
-            <div className="relative z-10 text-center max-w-4xl mx-auto w-full">
-                <LogoIcon className="h-20 md:h-32 w-auto mb-6 md:mb-8 mx-auto" />
-                <h1 className="text-4xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 leading-tight">
-                    WySlider
+    <div className="min-h-screen bg-gray-900 text-white font-sans animate-fade-in flex flex-col relative">
+        {/* REVERTED BACKGROUND: Texture + Gradient */}
+        <div className="fixed inset-0 z-0">
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/40 via-purple-900/40 to-black"></div>
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+        </div>
+
+        {/* Navigation / Language Toggle */}
+        <nav className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-50 max-w-7xl mx-auto">
+            <div className="flex items-center space-x-2">
+                <LogoIcon className="h-10 w-auto text-white" />
+                <span className="font-bold text-xl tracking-tight hidden sm:block">WySlider</span>
+            </div>
+            <div className="flex items-center space-x-4">
+                <div className="bg-gray-800/80 backdrop-blur rounded-full p-1 flex space-x-1 border border-gray-700">
+                    <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-full text-xs font-bold transition ${lang === 'en' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>EN</button>
+                    <button onClick={() => setLang('fr')} className={`px-3 py-1 rounded-full text-xs font-bold transition ${lang === 'fr' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'}`}>FR</button>
+                </div>
+                <Button onClick={onNavigateToAuth} variant="secondary" className="px-4 py-2 text-sm bg-gray-800/80 backdrop-blur hover:bg-gray-700">Login</Button>
+            </div>
+        </nav>
+
+        {/* Hero Section */}
+        <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden px-6 z-10">
+            <div className="max-w-4xl mx-auto text-center relative">
+                <div className="inline-flex items-center space-x-2 bg-indigo-500/10 border border-indigo-500/30 rounded-full px-4 py-1.5 mb-8 backdrop-blur-sm">
+                    <SparklesIcon className="h-4 w-4 text-indigo-400" />
+                    <span className="text-sm font-medium text-indigo-300">New: Viral Idea Generator V2</span>
+                </div>
+                <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-tight drop-shadow-lg">
+                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-indigo-200 to-purple-200">
+                        {text.heroTitle}
+                    </span>
                 </h1>
-                <p className="text-xl md:text-3xl font-light text-white mb-2">
-                    Votre Générateur de scripts YouTube professionnels, boosté par l’IA
+                <p className="text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+                    {text.heroSubtitle}
                 </p>
-                <p className="text-lg md:text-xl text-brand-purple font-semibold tracking-wide uppercase mb-8 md:mb-12">
-                    Pensez moins, créez plus.
-                </p>
-                <Button onClick={onNavigateToAuth} className="text-lg md:text-xl px-12 py-5 shadow-2xl shadow-purple-500/50 rounded-full w-full md:w-auto">
-                    Rejoindre la bêta maintenant
-                </Button>
-            </div>
-        </section>
-
-        {/* Why WySlider */}
-        <section className="py-24 bg-gray-800">
-            <div className="container mx-auto px-6">
-                <div className="max-w-3xl mx-auto text-center mb-16">
-                    <h2 className="text-4xl font-bold mb-6">Pourquoi WySlider ?</h2>
-                    <p className="text-gray-300 text-lg leading-relaxed">
-                        Créer des vidéos YouTube captivantes prend du temps : trouver l’idée, écrire, structurer, garder le rythme… 
-                        WySlider simplifie tout. En quelques clics, votre idée devient un script professionnel prêt à tourner, 
-                        parfaitement adapté à votre ton et à votre audience.
-                    </p>
-                </div>
-                <div className="grid md:grid-cols-2 gap-12">
-                     <div className="bg-gray-700/50 p-8 rounded-2xl">
-                        <h3 className="text-2xl font-bold mb-4 flex items-center"><SparklesIcon className="h-6 w-6 mr-2 text-brand-purple"/> Une IA qui vous comprend</h3>
-                        <p className="text-gray-400">WySlider ne se contente pas d’écrire. Il s’adapte à votre ton et à votre niche : énergique, inspirant, professionnel ou humoristique.</p>
-                     </div>
-                     <div className="bg-gray-700/50 p-8 rounded-2xl">
-                        <h3 className="text-2xl font-bold mb-4 flex items-center"><RocketLaunchIcon className="h-6 w-6 mr-2 text-blue-500"/> Co-Pilot Contextuel</h3>
-                        <p className="text-gray-400">Grâce à son Co-Pilot Contextuel, chaque section de votre script bénéficie de conseils ciblés : hooks percutants, transitions naturelles, et idées visuelles prêtes à filmer.</p>
-                     </div>
+                <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <Button onClick={onNavigateToAuth} className="text-lg px-8 py-4 rounded-full shadow-xl shadow-indigo-600/20 w-full sm:w-auto">
+                        {text.cta}
+                    </Button>
+                    <button onClick={onNavigateToAuth} className="text-gray-300 hover:text-white font-medium px-6 py-4 flex items-center transition">
+                        <RocketLaunchIcon className="h-5 w-5 mr-2" />
+                        View Demo
+                    </button>
                 </div>
             </div>
         </section>
 
-        {/* How it works */}
-        <section className="py-24 bg-gray-900">
+        {/* Value Proposition */}
+        <section className="py-24 bg-black/30 border-y border-white/5 backdrop-blur-sm z-10">
             <div className="container mx-auto px-6">
-                <h2 className="text-4xl font-bold text-center mb-16">Comment ça marche ?</h2>
-                <div className="grid md:grid-cols-4 gap-8">
-                    {[
-                        {step: "1", title: "Créez un compte", desc: "Entrez votre adresse e-mail, le nom et le lien de votre chaîne YouTube."},
-                        {step: "2", title: "Soumettez une idée", desc: "Ex. “5 astuces pour booster sa productivité” ou “Les erreurs qui tuent votre chaîne”."},
-                        {step: "3", title: "Magie WySlider", desc: "Obtenez un script clair, structuré, avec Hook, Main Content, CTA et suggestions visuelles."},
-                        {step: "4", title: "Optimisez et exportez", desc: "Téléchargez votre script, vos notes de montage ou votre description YouTube."}
-                    ].map((item, i) => (
-                        <div key={i} className="text-center relative">
-                            {/* Visual Badge Number */}
-                            <div className="w-12 h-12 mx-auto bg-gradient-to-br from-brand-purple to-brand-blue rounded-full flex items-center justify-center text-xl font-bold mb-6 shadow-lg shadow-purple-900/50">
-                                {item.step}
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6">{text.whyTitle}</h2>
+                    <p className="text-gray-400 text-lg">{text.whyDesc}</p>
+                </div>
+                <div className="grid md:grid-cols-3 gap-8">
+                    {text.features.map((f, i) => (
+                        <div key={i} className="bg-gray-800/40 p-8 rounded-2xl border border-white/10 hover:border-indigo-500/50 transition group backdrop-blur-md">
+                            <div className="w-12 h-12 bg-gray-700/50 rounded-lg flex items-center justify-center mb-6 group-hover:bg-indigo-600 transition">
+                                <ChartBarIcon className="h-6 w-6 text-white"/>
                             </div>
-                            
-                            {/* Faint Background Number (Optional, kept for style but reduced opacity) */}
-                            <div className="text-8xl font-bold text-gray-800/50 absolute top-4 left-1/2 -translate-x-1/2 -z-10 select-none">
-                                {item.step}
-                            </div>
-
-                            <div className="relative z-10">
-                                <h3 className="text-xl font-bold mb-2">{item.title}</h3>
-                                <p className="text-sm text-gray-400">{item.desc}</p>
-                            </div>
+                            <h3 className="text-xl font-bold mb-3">{f.title}</h3>
+                            <p className="text-gray-400">{f.desc}</p>
                         </div>
                     ))}
                 </div>
             </div>
         </section>
 
-        {/* Community Templates */}
-        <section className="py-24 bg-gray-800">
-            <div className="container mx-auto px-6">
-                <h2 className="text-4xl font-bold text-center mb-4 flex items-center justify-center"><Squares2x2Icon className="h-8 w-8 mr-3 text-pink-500"/> Templates de la Communauté</h2>
-                <p className="text-center text-gray-400 mb-16">Découvrez ce que les autres créateurs utilisent.</p>
-                
-                <div className="grid md:grid-cols-4 gap-6">
-                    {[
-                        {title: "Le Vlog Storytelling", niche: "Lifestyle", user: "SarahVlogs"},
-                        {title: "Review Tech Express", niche: "Tech", user: "GeekMasters"},
-                        {title: "Tuto Cuisine ASMR", niche: "Food", user: "ChefLeo"},
-                        {title: "Analyse Crypto Daily", niche: "Finance", user: "CryptoKing"}
-                    ].map((t, i) => (
-                        <div key={i} className="bg-gray-900 border border-gray-700 p-6 rounded-xl hover:border-pink-500 transition group cursor-pointer" onClick={onNavigateToAuth}>
-                            <h3 className="font-bold text-lg mb-2 group-hover:text-pink-400 transition">{t.title}</h3>
-                            <div className="flex justify-between items-center text-xs text-gray-500">
-                                <span className="bg-gray-800 px-2 py-1 rounded">{t.niche}</span>
-                                <span>@{t.user}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                <div className="text-center mt-12">
-                    <Button variant="outline" onClick={onNavigateToAuth}>Voir plus de templates</Button>
-                </div>
-            </div>
-        </section>
-
-        {/* Beta CTA */}
-        <section className="py-20 bg-gradient-to-r from-brand-purple to-brand-blue text-white">
-            <div className="container mx-auto px-6 text-center">
-                <h2 className="text-4xl font-bold mb-6">Devenez bêta testeur officiel</h2>
-                <div className="max-w-2xl mx-auto text-left bg-white/10 p-8 rounded-xl backdrop-blur-sm mb-8">
-                    <ul className="space-y-3">
-                        <li className="flex items-start"><CheckIcon className="h-6 w-6 mr-2 flex-shrink-0"/> Accès anticipé à toutes les fonctionnalités.</li>
-                        <li className="flex items-start"><CheckIcon className="h-6 w-6 mr-2 flex-shrink-0"/> 6 générations gratuites dès votre inscription.</li>
-                        <li className="flex items-start"><CheckIcon className="h-6 w-6 mr-2 flex-shrink-0"/> Influencez l’évolution du produit.</li>
-                        <li className="flex items-start"><CheckIcon className="h-6 w-6 mr-2 flex-shrink-0"/> Cité comme contributeur officiel lors du lancement.</li>
-                    </ul>
-                </div>
-                <Button onClick={onNavigateToAuth} className="bg-white text-brand-purple hover:bg-gray-100 font-bold px-8 py-4">
-                    Rejoindre la bêta maintenant
-                </Button>
-            </div>
-        </section>
-
-        {/* Pricing */}
-        <section className="py-24 bg-gray-900">
+        {/* Pricing Section - UPDATED TIERS */}
+        <section className="py-24 relative z-10">
              <div className="container mx-auto px-6">
-                <h2 className="text-4xl font-bold text-center mb-16">Des tarifs simples et transparents</h2>
-                <div className="grid md:grid-cols-4 gap-6">
-                    <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
-                        <h3 className="text-xl font-bold text-white mb-2">Freemium</h3>
-                        <p className="text-3xl font-bold text-brand-purple mb-4">Gratuit</p>
-                        <p className="text-sm text-gray-400">6 générations offertes pour tester l’IA.</p>
+                <h2 className="text-4xl font-bold text-center mb-16">{text.pricingTitle}</h2>
+                <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    {/* Starter */}
+                    <div className="bg-gray-800/60 backdrop-blur p-8 rounded-3xl border border-gray-700 flex flex-col">
+                        <h3 className="text-xl font-bold text-gray-300 mb-2">Starter</h3>
+                        <div className="flex items-baseline mb-6">
+                            <span className="text-4xl font-bold text-white">${PRICING.starter}</span>
+                        </div>
+                        <ul className="space-y-4 mb-8 flex-1">
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> 10 Scripts</li>
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> Social Posts</li>
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> Viral Idea Generator</li>
+                        </ul>
+                        <Button onClick={onNavigateToAuth} variant="secondary" className="w-full">Get Started</Button>
                     </div>
-                    <div className="bg-gray-800 p-6 rounded-2xl border border-brand-purple shadow-lg shadow-brand-purple/20 relative">
-                        <div className="absolute top-0 right-0 bg-brand-purple text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">POPULAIRE</div>
-                        <h3 className="text-xl font-bold text-white mb-2">Premium</h3>
-                        <p className="text-3xl font-bold text-brand-purple mb-4">$49<span className="text-sm text-gray-500">/script</span></p>
-                        <p className="text-sm text-gray-400">Accès complet à toutes les fonctionnalités avancées.</p>
+
+                    {/* Creator - Highlighted */}
+                    <div className="bg-gray-800/80 backdrop-blur p-8 rounded-3xl border border-indigo-500 shadow-2xl shadow-indigo-900/20 relative flex flex-col transform scale-105 z-10">
+                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl">POPULAR</div>
+                        <h3 className="text-xl font-bold text-indigo-400 mb-2">Creator</h3>
+                        <div className="flex items-baseline mb-6">
+                            <span className="text-5xl font-bold text-white">${PRICING.creator}</span>
+                        </div>
+                        <ul className="space-y-4 mb-8 flex-1">
+                            <li className="flex items-center text-white"><CheckIcon className="h-5 w-5 text-indigo-400 mr-3"/> 30 Scripts</li>
+                            <li className="flex items-center text-white"><CheckIcon className="h-5 w-5 text-indigo-400 mr-3"/> Social Posts</li>
+                            <li className="flex items-center text-white"><CheckIcon className="h-5 w-5 text-indigo-400 mr-3"/> Viral Idea Generator</li>
+                            <li className="flex items-center text-white font-bold"><CheckIcon className="h-5 w-5 text-indigo-400 mr-3"/> Serial Prod (5 Eps)</li>
+                        </ul>
+                        <Button onClick={onNavigateToAuth} className="w-full py-4 text-lg font-bold">Choose Creator</Button>
                     </div>
-                    <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
-                        <h3 className="text-xl font-bold text-white mb-2">Offre Corp Use</h3>
-                        <p className="text-3xl font-bold text-blue-400 mb-4">Gratuit</p>
-                        <p className="text-sm text-gray-400">8 générations gratuites en partageant WySlider avec 2 créateurs.</p>
-                    </div>
-                    <div className="bg-gray-800 p-6 rounded-2xl border border-gray-700">
-                        <h3 className="text-xl font-bold text-white mb-2">Offre Post Use</h3>
-                        <p className="text-3xl font-bold text-green-400 mb-4">Gratuit</p>
-                        <p className="text-sm text-gray-400">Postez votre création et obtenez 10 générations gratuites.</p>
+
+                    {/* Pro */}
+                    <div className="bg-gray-800/60 backdrop-blur p-8 rounded-3xl border border-gray-700 flex flex-col">
+                        <h3 className="text-xl font-bold text-gray-300 mb-2">Pro Authority</h3>
+                        <div className="flex items-baseline mb-6">
+                            <span className="text-4xl font-bold text-white">${PRICING.pro}</span>
+                        </div>
+                        <ul className="space-y-4 mb-8 flex-1">
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> 50 Scripts</li>
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> Everything in Creator</li>
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> Serial Prod (3-20 Eps)</li>
+                            <li className="flex items-center text-gray-300"><CheckIcon className="h-5 w-5 text-indigo-500 mr-3"/> Priority Support</li>
+                        </ul>
+                        <Button onClick={onNavigateToAuth} variant="secondary" className="w-full">Go Pro</Button>
                     </div>
                 </div>
-                <p className="text-center text-gray-500 mt-8 italic">Pas d’abonnement caché. Vous payez uniquement pour ce que vous créez.</p>
              </div>
         </section>
         
-        <footer className="py-12 bg-black border-t border-gray-800">
+        <footer className="py-12 bg-black border-t border-gray-800 relative z-10">
             <div className="container mx-auto px-6 text-center">
                 <div className="mb-8">
-                    <h4 className="text-xl font-bold mb-4">Rejoignez la communauté WySlider</h4>
+                    <h4 className="text-xl font-bold mb-4">{text.footer}</h4>
+                    <p className="text-gray-500 mb-6">Community Support: {COMMUNITY_PHONE}</p>
                     <div className="flex justify-center space-x-6">
-                        <a href="https://facebook.com/WySlider" target="_blank" className="text-gray-400 hover:text-blue-500 transition transform hover:scale-110">
-                            <FacebookIcon className="h-8 w-8" />
+                        <a href="https://facebook.com/WySlider" target="_blank" className="text-gray-400 hover:text-indigo-500 transition">
+                            <FacebookIcon className="h-6 w-6" />
                         </a>
-                        <a href="https://whatsapp.com/channel/0029Vb6jpTK9WtC3oJokm72B" target="_blank" className="text-gray-400 hover:text-green-500 transition transform hover:scale-110">
-                            <WhatsappIcon className="h-8 w-8" />
-                        </a>
+                        {/* Whatsapp removed per request */}
                     </div>
                 </div>
                 <div className="text-gray-600 text-sm">
-                    &copy; 2024 WySlider. All rights reserved. <br/>
-                    Sécurité & confidentialité : Vos données vous appartiennent.
+                    &copy; {new Date().getFullYear()} WySlider. All rights reserved.
                 </div>
             </div>
         </footer>

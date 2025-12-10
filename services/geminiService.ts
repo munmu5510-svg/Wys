@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, Type, Chat } from "@google/genai";
 
 // Lazy initialization of AI client
@@ -98,7 +99,8 @@ export const generateScript = async (
     goal?: string,
     needs?: string,
     cta?: string,
-    platforms?: string
+    platforms?: string,
+    styleDNA?: string
 ) => {
   const prompt = `You are a world-class YouTube Scriptwriter (WySlider AI).
   
@@ -111,8 +113,9 @@ export const generateScript = async (
   - Specific Needs: ${needs || 'None'}
   - CTA: ${cta || 'Subscribe'}
   - Social Platforms: ${platforms || 'YouTube, Instagram, TikTok, LinkedIn'}
+  ${styleDNA ? `- **USER STYLE DNA (FORGE):** ${styleDNA}` : ''}
 
-  Generate a full structured script in French (Français).
+  Generate a full structured script in English.
   Ensure the response adheres to the JSON schema.
   `;
 
@@ -124,7 +127,7 @@ export const generateScript = async (
             model: MODEL_NAME,
             contents: prompt,
             config: {
-                systemInstruction: "You are WySlider. You generate structured JSON scripts. Use French language for content.",
+                systemInstruction: `You are WySlider. You generate structured JSON scripts. Use English language for content.${styleDNA ? ` Important: Adapt your writing style to match this Style DNA: ${styleDNA}` : ''}`,
                 maxOutputTokens: 8192,
                 responseMimeType: "application/json",
                 // @ts-ignore
@@ -228,7 +231,7 @@ export const generateSeriesOutlines = async (
     Niche: ${niche}.
     Tone: ${tone}.
     ${goal ? `Goal: ${goal}` : ''}
-    Language: French.
+    Language: English.
     `;
 
     try {
@@ -276,7 +279,7 @@ export const generateSeriesOutlines = async (
 
 export const generateViralIdeas = async (niche: string) => {
     const prompt = `Generate 6 viral video ideas for the niche: "${niche}". 
-    Language: French.
+    Language: English.
     For each idea, provide a catchy title, a hook, and a difficulty level (Easy, Medium, Hard).
     `;
 
@@ -324,64 +327,9 @@ export const generateViralIdeas = async (niche: string) => {
     }
 };
 
-export const generateEditorialCalendar = async (niche: string, tasks?: string) => {
-    const prompt = `Create a 4-week content calendar for a YouTube channel in the niche: "${niche}".
-    Language: French.
-    Tasks to include: ${tasks || 'General trends'}.
-    `;
-
-    try {
-         const ai = getAi();
-         const response = await withRetry(async () => {
-             return await ai.models.generateContent({
-                model: MODEL_NAME,
-                contents: prompt,
-                 config: {
-                    maxOutputTokens: 8192,
-                    responseMimeType: "application/json",
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS,
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            events: {
-                                type: Type.ARRAY,
-                                items: {
-                                    type: Type.OBJECT,
-                                    properties: {
-                                        date: { type: Type.STRING },
-                                        title: { type: Type.STRING },
-                                        format: { type: Type.STRING },
-                                        status: { type: Type.STRING }
-                                    },
-                                    required: ["date", "title"]
-                                }
-                            }
-                        },
-                        required: ["events"]
-                    }
-                }
-             });
-         });
-         
-         if(response.text) {
-             const data = parseResponse(response.text);
-             if (data) {
-                 if (Array.isArray(data)) return data;
-                 if (data.events && Array.isArray(data.events)) return data.events;
-                 return [];
-             }
-         }
-         return [];
-    } catch (e) {
-        console.error("Error generating calendar", e);
-        return [];
-    }
-}
-
 export const generateSocialPosts = async (scriptTitle: string, scriptContent: string, platforms: string) => {
     const prompt = `Based on this YouTube script, write promotional social media posts.
-    Language: French.
+    Language: English.
     Title: "${scriptTitle}"
     Content Summary: "${scriptContent.substring(0, 1000)}..."
     Platforms: ${platforms} (e.g., LinkedIn, Twitter, Instagram).
@@ -476,7 +424,7 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
         const response = await withRetry(async () => {
             return await ai.models.generateContent({
                 model: MODEL_NAME,
-                contents: `Analyze the following application metrics and provide a short, futuristic, cyberpunk-style system status report. Data: ${metrics}`,
+                contents: `Analyze the following application metrics and provide a short, professional business status report. Data: ${metrics}`,
                 config: {
                     maxOutputTokens: 1024,
                     // @ts-ignore
@@ -491,10 +439,9 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
 };
 
 const APP_KNOWLEDGE_BASE = `
-CONTEXTE GLOBAL & RÔLE :
-Tu es WYS AI, l'assistant intelligent officiel de l'application WySlider (Version 2). 
-Ton rôle est d'être un guide expert pour l'utilisateur, à la fois sur la création de contenu YouTube et sur l'utilisation de l'application elle-même.
-// ... (Content truncated for brevity, assume full KB string remains)
+GLOBAL CONTEXT & ROLE:
+You are WYS AI, the official intelligent assistant for the WySlider App (Version 2). 
+Your role is to guide the user in creating professional YouTube content and navigating the app.
 `;
 
 export const startChatSession = (context: string): Chat => {
@@ -502,7 +449,7 @@ export const startChatSession = (context: string): Chat => {
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `${APP_KNOWLEDGE_BASE}\n\nCONTEXTE ACTUEL DE L'UTILISATEUR (SCRIPT EN COURS) :\n${context}`,
+            systemInstruction: `${APP_KNOWLEDGE_BASE}\n\nUSER CONTEXT (CURRENT SCRIPT):\n${context}`,
             // @ts-ignore
             safetySettings: SAFETY_SETTINGS
         }
@@ -519,13 +466,17 @@ export const sendMessageToChat = async (chatSession: Chat, message: string): Pro
     }
 };
 
-export const generatePitch = async (brand: string, url: string, objective: string) => {
+export const generatePitch = async (targetName: string, description: string, objective: string): Promise<string> => {
     try {
         const ai = getAi();
         const response = await withRetry(async () => {
             return await ai.models.generateContent({
                 model: MODEL_NAME,
-                contents: `Write a cold email pitch (in French) to the brand "${brand}" (Website: ${url}) with the objective: ${objective}. Keep it under 200 words, professional and persuasive.`,
+                contents: `Write a cold email/message pitch (in English) to "${targetName}".
+                Target Description: ${description}.
+                My Objective: ${objective}.
+                
+                Keep it under 200 words, professional, persuasive, and use a structure that grabs attention.`,
                 config: {
                      // @ts-ignore
                     safetySettings: SAFETY_SETTINGS
@@ -534,27 +485,11 @@ export const generatePitch = async (brand: string, url: string, objective: strin
         });
         return response.text || "";
     } catch (error) {
-        return "";
+        return "Error generating pitch.";
     }
 };
 
-export const analyzeSEO = async (scriptTitle: string, scriptContent: string) => {
-    try {
-        const ai = getAi();
-        const response = await withRetry(async () => {
-            return await ai.models.generateContent({
-                model: MODEL_NAME,
-                contents: `Analyze the SEO potential and CTR for a YouTube video. Language: French. \nTitle: ${scriptTitle}\nScript Snippet: ${scriptContent.substring(0, 500)}\n\nProvide a Score out of 100, 3 strengths, and 3 improvements.`,
-                config: {
-                     // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS
-                }
-            });
-        });
-        return response.text || "";
-    } catch { return "" }
-}
-
-export const extractStyleFromRef = async (_ref: string) => {
-    return "Analysis complete. Detected style: High energy, fast cuts, empathetic undertone.";
+export const extractStyleFromRef = async (ref: string) => {
+     // Simulated analysis for now, but could use video/text processing if available
+    return "High energy, fast pacing, retention-focused editing style.";
 }

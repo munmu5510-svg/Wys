@@ -1,10 +1,11 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ForgeItem, Script, ViralIdea } from '../types';
 import { Button } from './Button';
-import { FEEDBACK_EMAIL, CORP_USE_REWARD, POST_USE_REWARD } from '../constants';
+import { PRICING } from '../constants';
 import * as geminiService from '../services/geminiService';
-import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon, TrendingUpIcon, SunIcon, MoonIcon } from './icons';
+import { DiamondIcon, VideoIcon, RobotIcon, UserIcon, PencilSquareIcon, ShareIcon, ChartBarIcon, RefreshIcon, FireIcon, PaperClipIcon, PlusIcon, ArrowDownTrayIcon, BoltIcon, CloudArrowUpIcon, CheckIcon, LightBulbIcon, XMarkIcon, Squares2x2Icon, TrendingUpIcon, SunIcon, MoonIcon, BriefcaseIcon } from './icons';
 import { MainLayout } from './MainLayout';
 
 interface AccountPageProps {
@@ -19,8 +20,7 @@ interface AccountPageProps {
 }
 
 export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, onBack, onNavigateToAdmin, onNavigateToStudio, onUseIdea, isDarkMode, toggleTheme }) => {
-    // Removed 'sync' and 'storage', renamed 'ideas' to 'growth'
-    const [section, setSection] = useState<'account'|'templates'|'share'|'growth'|'plan'|'feedback'|'forge'>('account');
+    const [section, setSection] = useState<'account'|'templates'|'share'|'growth'|'plan'|'feedback'|'forge'|'pitch'>('account');
     const [promoCode, setPromoCode] = useState('');
     
     // File Input Ref for Profile Pic
@@ -30,6 +30,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     const [forgeUrl, setForgeUrl] = useState('');
     const [forgeItems, setForgeItems] = useState<ForgeItem[]>([]);
     
+    // Pitch Mark State
+    const [pitchTarget, setPitchTarget] = useState('');
+    const [pitchDesc, setPitchDesc] = useState('');
+    const [pitchObj, setPitchObj] = useState('');
+    const [generatedPitch, setGeneratedPitch] = useState('');
+    const [isPitching, setIsPitching] = useState(false);
+    
     // Share/Template State
     const [userScripts, setUserScripts] = useState<Script[]>([]);
     const [communityTemplates, setCommunityTemplates] = useState<Script[]>([]);
@@ -37,11 +44,6 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     // Viral Ideas State (Growth)
     const [viralIdeas, setViralIdeas] = useState<ViralIdea[]>([]);
     const [isLoadingIdeas, setIsLoadingIdeas] = useState(false);
-
-    // Post Use Verification State
-    const [postUrl, setPostUrl] = useState('');
-    const [isVerifyingPost, setIsVerifyingPost] = useState(false);
-    const [showPostModal, setShowPostModal] = useState(false);
 
     // Feedback State
     const [feedbackMsg, setFeedbackMsg] = useState('');
@@ -57,47 +59,25 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             const realTemplates: Script[] = [
                 { 
                     id: 't1', 
-                    title: 'Structure Review Tech (MKBHD Style)', 
+                    title: 'Tech Review Structure (MKBHD Style)', 
                     topic: 'Tech Review',
-                    tone: 'Professionnel',
+                    tone: 'Professional',
                     format: '8-15min',
                     niche: 'Tech', 
                     isTemplate: true, 
                     createdAt: new Date().toISOString(),
-                    sections: [
-                        { id: 's1', title: 'The Hook', estimatedTime: '30s', content: "**Visual:** B-roll of the product in a cinematic macro shot.\n**Audio:** 'This might be the most controversial phone of the year, and here is why...'"},
-                        { id: 's2', title: 'Specs & Design', estimatedTime: '2min', content: "Let's talk about the build quality. [Show edges]. It feels premium..."},
-                        { id: 's3', title: 'The Verdict', estimatedTime: '1min', content: "Should you buy it? If you are in the ecosystem, yes. If not..."}
-                    ] 
+                    sections: []
                 },
                 { 
                     id: 't2', 
                     title: 'Vlog Storytelling (Casey Neistat)', 
                     topic: 'Vlog',
-                    tone: 'Energique',
+                    tone: 'Energetic',
                     format: '8-15min',
                     niche: 'Lifestyle', 
                     isTemplate: true, 
                     createdAt: new Date().toISOString(),
-                    sections: [
-                        { id: 'v1', title: 'The Setup (Timelapse)', estimatedTime: '15s', content: "**Visual:** Time lapse of city sunrise.\n**Audio:** Good morning. Today is a big day."},
-                        { id: 'v2', title: 'The Conflict', estimatedTime: '3min', content: "I forgot my camera gear at the studio... so we have to improvise."},
-                    ] 
-                },
-                { 
-                    id: 't3', 
-                    title: 'Tuto Rapide (Format Shorts)', 
-                    topic: 'Tutorial',
-                    tone: 'Educatif',
-                    format: '60s',
-                    niche: 'Education', 
-                    isTemplate: true, 
-                    createdAt: new Date().toISOString(),
-                    sections: [
-                        { id: 'sh1', title: 'Problem', estimatedTime: '5s', content: "Stop doing this mistake in Excel!"},
-                        { id: 'sh2', title: 'Solution', estimatedTime: '40s', content: "Instead, press ALT + F1. Look at that chart!"},
-                        { id: 'sh3', title: 'CTA', estimatedTime: '5s', content: "Subscribe for more tips."}
-                    ] 
+                    sections: []
                 }
             ];
 
@@ -122,17 +102,17 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             onNavigateToAdmin();
         } else if (promoCode === 'wys2301') {
             onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
-            alert("Code accepté ! 10 Générations offertes.");
+            alert("Code accepted! 10 Credits added.");
         } else if (promoCode === 'PROPLUS' || promoCode === 'pro2301') {
             handleUpgradePro();
         } else {
-            alert("Code invalide");
+            alert("Invalid Code");
         }
     };
 
     const handleUpgradePro = () => {
         onUpdateUser({...user, isPro: true, generationsLeft: 999});
-        alert("Mode Pro+ Activé avec succès !");
+        alert("Pro+ Mode Activated!");
     }
 
     const handleAddToForge = () => {
@@ -147,21 +127,32 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         setForgeItems([...forgeItems, newItem]);
         setForgeUrl('');
         
-        // Simulate analysis
+        // Simulate analysis then set generic DNA for now
         setTimeout(() => {
             setForgeItems(items => items.map(i => i.id === newItem.id ? {...i, styleDNA: 'High Energy • Fast Cuts'} : i));
-        }, 2000);
+        }, 1500);
     }
 
     const handleCustomizeAI = async () => {
-        alert("IA Personnalisée avec succès basés sur vos références !");
+        const dna = forgeItems.map(i => i.styleDNA).join(', ');
+        const finalDNA = dna || "Standard Professional";
+        onUpdateUser({...user, styleDNA: finalDNA});
+        alert(`AI Customized! Style DNA: ${finalDNA}`);
+    }
+
+    const handleGeneratePitch = async () => {
+        if(!pitchTarget || !pitchDesc || !pitchObj) return alert("Please fill all fields.");
+        setIsPitching(true);
+        const result = await geminiService.generatePitch(pitchTarget, pitchDesc, pitchObj);
+        setGeneratedPitch(result);
+        setIsPitching(false);
     }
 
     const handleShareTemplate = (scriptId: string) => {
         const updated = userScripts.map(s => s.id === scriptId ? {...s, isTemplate: true} : s);
         setUserScripts(updated);
         localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
-        alert("Script partagé comme template avec la communauté WySlider !");
+        alert("Script shared with community!");
     }
     
     const handleCopyTemplate = (tpl: Script) => {
@@ -175,7 +166,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         const updated = [newScript, ...userScripts];
         setUserScripts(updated);
         localStorage.setItem('wyslider_scripts', JSON.stringify(updated));
-        alert("Template ajouté à votre Studio !");
+        alert("Template added to Studio!");
         onBack();
     }
 
@@ -190,46 +181,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
         if (onUseIdea) {
             onUseIdea(idea);
         } else {
-            alert(`Copiez ce titre: "${idea.title}"`);
+            alert(`Copy this title: "${idea.title}"`);
             onBack();
-        }
-    }
-
-    const handleCorpUse = async () => {
-        const shareData = {
-            title: 'WySlider',
-            text: 'Découvre WySlider, le générateur de scripts IA pour YouTube !',
-            url: 'https://wyslider-v2.vercel.app',
-        };
-
-        if (navigator.share) {
-            try {
-                await navigator.share(shareData);
-                onUpdateUser({...user, generationsLeft: user.generationsLeft + 8});
-                alert("Merci pour le partage ! 8 crédits ajoutés.");
-            } catch (err) {
-                console.log('Error sharing:', err);
-            }
-        } else {
-            navigator.clipboard.writeText('https://wyslider-v2.vercel.app');
-            alert("Lien copié ! Envoyez-le à 2 amis et revenez pour vos crédits (Simulation: crédits ajoutés).");
-            onUpdateUser({...user, generationsLeft: user.generationsLeft + 8});
-        }
-    }
-
-    const handlePostUseSubmit = async () => {
-        if (!postUrl) return;
-        setIsVerifyingPost(true);
-        const isValid = await geminiService.verifyPostContent(postUrl);
-        setIsVerifyingPost(false);
-        
-        if (isValid) {
-            onUpdateUser({...user, generationsLeft: user.generationsLeft + 10});
-            alert("Post vérifié avec succès ! 10 crédits ajoutés.");
-            setShowPostModal(false);
-            setPostUrl('');
-        } else {
-            alert("L'IA n'a pas pu vérifier le lien ou le contenu ne semble pas correspondre à WySlider. Réessayez.");
         }
     }
 
@@ -243,7 +196,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             timestamp: new Date().toISOString()
         });
         localStorage.setItem('wyslider_feedback_box', JSON.stringify(currentFeedbacks));
-        alert("Feedback envoyé à l'équipe Admin !");
+        alert("Feedback sent!");
         setFeedbackMsg('');
     }
 
@@ -253,8 +206,8 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">Mon Compte</h2>
-                            <div className="text-sm text-gray-400">Local Storage Active</div>
+                            <h2 className="text-2xl font-bold">My Account</h2>
+                            <div className="text-sm text-gray-400">Local Storage</div>
                         </div>
                         <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
                              <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
@@ -262,7 +215,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                     {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
                                  </div>
                                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                     <span className="text-xs text-white font-bold">Modifier</span>
+                                     <span className="text-xs text-white font-bold">Edit</span>
                                  </div>
                                  <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden"/>
                              </div>
@@ -276,15 +229,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         </div>
                         
                         <div className="space-y-4">
-                            <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Détails de la chaîne</label>
-                            <input type="text" placeholder="Modifier Nom Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
-                            <input type="text" placeholder="Modifier URL Chaîne" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
-                            <input type="text" placeholder="Modifier Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
+                            <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Channel Details</label>
+                            <input type="text" placeholder="Channel Name" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
+                            <input type="text" placeholder="Channel URL" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
+                            <input type="text" placeholder="Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
                         </div>
 
                         {toggleTheme && (
                             <div className="pt-4 border-t border-gray-700">
-                                <h3 className="font-bold mb-2">Thème</h3>
+                                <h3 className="font-bold mb-2">Theme</h3>
                                 <Button onClick={toggleTheme} variant="secondary" className="w-full flex justify-center items-center">
                                     {isDarkMode ? <><SunIcon className="h-5 w-5 mr-2"/> Switch to Light Mode</> : <><MoonIcon className="h-5 w-5 mr-2"/> Switch to Dark Mode</>}
                                 </Button>
@@ -292,10 +245,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                         )}
 
                         <div className="pt-4 border-t border-gray-700">
-                             <h3 className="font-bold mb-2">Code Promo</h3>
+                             <h3 className="font-bold mb-2">Promo Code</h3>
                              <div className="flex space-x-2">
-                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" placeholder="Entrez un code (ex: wys2301)..."/>
-                                <Button onClick={handlePromoCode} variant="secondary">Appliquer</Button>
+                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" placeholder="Enter code..."/>
+                                <Button onClick={handlePromoCode} variant="secondary">Apply</Button>
                              </div>
                         </div>
                     </div>
@@ -307,16 +260,15 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              <Squares2x2Icon className="h-6 w-6 text-pink-400"/>
                              <h2 className="text-2xl font-bold">Community Templates</h2>
                         </div>
-                        <p className="text-gray-400">Découvrez les structures qui marchent pour les autres créateurs. (Contenu Réel)</p>
+                        <p className="text-gray-400">Discover structures that work for other creators.</p>
                         
                         <div className="grid gap-4 md:grid-cols-2">
                             {communityTemplates.map((tpl, i) => (
                                 <div key={i} className="bg-gray-800 p-4 rounded-xl border border-gray-700 hover:border-pink-500 transition cursor-pointer">
                                     <h3 className="font-bold text-lg mb-1">{tpl.title}</h3>
                                     <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{tpl.niche}</span>
-                                    <p className="text-xs text-gray-500 mt-2">{tpl.sections.length} Sections</p>
                                     <div className="mt-4 flex justify-end">
-                                        <Button variant="outline" className="text-xs py-1 px-3" onClick={() => handleCopyTemplate(tpl)}>Utiliser ce template</Button>
+                                        <Button variant="outline" className="text-xs py-1 px-3" onClick={() => handleCopyTemplate(tpl)}>Use Template</Button>
                                     </div>
                                 </div>
                             ))}
@@ -328,96 +280,87 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
                             <FireIcon className="h-8 w-8 text-orange-500" />
-                            <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">Forge (AI Lab)</h2>
+                            <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">Forge (Personalize AI)</h2>
                         </div>
-                        <p className="text-gray-400">Entraînez votre IA personnelle. Ajoutez des références pour capturer votre essence.</p>
+                        <p className="text-gray-400">Train the AI to write like you. Add references to extract your unique Style DNA.</p>
                         
                         <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                             <label className="block text-sm font-bold mb-2 text-gray-300">Ajouter une référence (Source Style)</label>
+                             <label className="block text-sm font-bold mb-2 text-gray-300">Add Reference (YouTube URL)</label>
                              <div className="flex space-x-2 mb-6">
                                 <div className="flex-1 relative">
                                     <input 
                                         type="text" 
                                         value={forgeUrl} 
                                         onChange={e => setForgeUrl(e.target.value)}
-                                        placeholder="Coller URL YouTube de référence..." 
+                                        placeholder="Paste reference link..." 
                                         className="w-full bg-gray-900 p-3 rounded border border-gray-700 pl-10 focus:ring-1 focus:ring-orange-500 outline-none transition text-white"
                                     />
                                     <div className="absolute left-3 top-3 text-gray-500">
                                         <VideoIcon className="h-5 w-5" />
                                     </div>
                                 </div>
-                                <button className="p-3 bg-gray-700 rounded hover:bg-gray-600 border border-gray-600 transition" title="Uploader un script (fichier)">
-                                    <PaperClipIcon className="h-5 w-5 text-gray-300" />
-                                </button>
-                                <Button onClick={handleAddToForge} className="bg-orange-600 hover:bg-orange-700 text-white">Ajouter</Button>
+                                <Button onClick={handleAddToForge} className="bg-orange-600 hover:bg-orange-700 text-white">Add</Button>
                              </div>
                              
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                {forgeItems.length === 0 && <div className="col-span-full text-center py-8 text-gray-500 border border-dashed border-gray-700 rounded-lg">Aucune référence. Commencez à forger votre style.</div>}
+                             <div className="space-y-3 mb-6">
+                                {forgeItems.length === 0 && <div className="text-center py-8 text-gray-500 border border-dashed border-gray-700 rounded-lg">No references added. Start forging your style.</div>}
                                 {forgeItems.map(item => (
-                                    <div key={item.id} className="relative bg-gray-900 rounded-lg border border-gray-800 p-4 group hover:border-orange-500/50 transition duration-300 overflow-hidden">
-                                        <div className="flex justify-between items-start mb-2 relative z-10">
-                                            <div className="flex items-center space-x-2">
-                                                <div className="p-2 bg-gray-800 rounded-full">
-                                                    {item.type === 'url' ? <VideoIcon className="h-4 w-4 text-red-500"/> : <PaperClipIcon className="h-4 w-4 text-blue-500"/>}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-sm text-gray-200">{item.name}</h4>
-                                                    <p className="text-xs text-gray-500 truncate max-w-[150px]">{item.value}</p>
-                                                </div>
-                                            </div>
-                                            <button onClick={() => setForgeItems(forgeItems.filter(i => i.id !== item.id))} className="text-gray-600 hover:text-red-400">
-                                                <XMarkIcon className="h-4 w-4"/>
-                                            </button>
+                                    <div key={item.id} className="bg-gray-900 rounded p-3 border border-gray-800 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold text-sm text-gray-200">{item.name}</p>
+                                            <p className="text-xs text-orange-400">{item.styleDNA}</p>
                                         </div>
-                                        
-                                        <div className="mt-3 pt-3 border-t border-gray-800 relative z-10">
-                                            <div className="flex justify-between items-center text-xs">
-                                                <span className="text-gray-400 uppercase font-bold tracking-wider">Style DNA</span>
-                                                <span className="text-orange-400">{item.styleDNA || "Pending..."}</span>
-                                            </div>
-                                            <div className="w-full h-1.5 bg-gray-800 rounded-full mt-1 overflow-hidden">
-                                                <div className={`h-full bg-gradient-to-r from-orange-600 to-red-600 rounded-full ${item.styleDNA ? 'w-3/4 animate-pulse' : 'w-0'}`}></div>
-                                            </div>
-                                        </div>
+                                        <button onClick={() => setForgeItems(forgeItems.filter(i => i.id !== item.id))} className="text-gray-500 hover:text-red-400"><XMarkIcon className="h-4 w-4"/></button>
                                     </div>
                                 ))}
                              </div>
+                             
+                             {user.styleDNA && (
+                                 <div className="mb-4 p-3 bg-green-900/20 border border-green-900 rounded text-sm text-green-400">
+                                     <strong>Current DNA:</strong> {user.styleDNA}
+                                 </div>
+                             )}
 
                              <Button onClick={handleCustomizeAI} className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 shadow-lg shadow-orange-900/20 py-4 text-lg">
                                  <FireIcon className="h-5 w-5 mr-2 inline" />
-                                 Fusionner & Personnaliser l'IA
+                                 Save & Personalize AI
                              </Button>
                         </div>
                     </div>
                 );
-            case 'share':
+            case 'pitch':
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
-                             <ShareIcon className="h-6 w-6 text-green-400"/>
-                             <h2 className="text-2xl font-bold">Partager des Templates</h2>
+                             <BriefcaseIcon className="h-6 w-6 text-blue-400"/>
+                             <h2 className="text-2xl font-bold">Pitch Mark</h2>
                         </div>
-                        <p className="text-gray-400">Sélectionnez vos meilleurs scripts pour les partager comme modèles avec la communauté.</p>
-                        
-                        <div className="space-y-3">
-                            {userScripts.length === 0 && <div className="text-gray-500 italic">Aucun script à partager.</div>}
-                            {userScripts.map(script => (
-                                <div key={script.id} className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex justify-between items-center">
-                                    <div>
-                                        <h3 className="font-bold">{script.title}</h3>
-                                        <span className="text-xs text-gray-500">{script.niche}</span>
-                                    </div>
-                                    {script.isTemplate ? (
-                                        <span className="text-green-500 text-xs font-bold border border-green-500 px-2 py-1 rounded">PARTAGÉ</span>
-                                    ) : (
-                                        <Button onClick={() => handleShareTemplate(script.id)} variant="outline" className="text-xs py-1 px-3">
-                                            Partager
-                                        </Button>
-                                    )}
+                        <p className="text-gray-400">Draft professional brand pitches instantly.</p>
+
+                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="text-xs text-gray-400 font-bold uppercase">Target Name (Company/Person)</label>
+                                    <input value={pitchTarget} onChange={e => setPitchTarget(e.target.value)} className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1"/>
                                 </div>
-                            ))}
+                                <div>
+                                    <label className="text-xs text-gray-400 font-bold uppercase">Target Description (What do they do?)</label>
+                                    <textarea value={pitchDesc} onChange={e => setPitchDesc(e.target.value)} className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1 h-20"/>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 font-bold uppercase">Your Objective</label>
+                                    <input value={pitchObj} onChange={e => setPitchObj(e.target.value)} placeholder="e.g. Sponsoring, Collaboration..." className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1"/>
+                                </div>
+                            </div>
+                            <Button onClick={handleGeneratePitch} isLoading={isPitching} className="w-full bg-blue-600 hover:bg-blue-700">Generate Pitch</Button>
+                            
+                            {generatedPitch && (
+                                <div className="mt-6 p-4 bg-gray-900 border border-gray-700 rounded-lg">
+                                    <h4 className="font-bold text-sm text-gray-400 mb-2">Generated Draft:</h4>
+                                    <p className="text-white whitespace-pre-wrap font-serif leading-relaxed">{generatedPitch}</p>
+                                    <Button onClick={() => navigator.clipboard.writeText(generatedPitch)} variant="secondary" className="mt-4 text-xs">Copy Text</Button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 );
@@ -426,12 +369,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                      <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
                              <TrendingUpIcon className="h-6 w-6 text-yellow-400"/>
-                             <h2 className="text-2xl font-bold">Growth Engine (Niche: {user.niche})</h2>
+                             <h2 className="text-2xl font-bold">Growth Engine</h2>
                         </div>
-                        <p className="text-gray-400">L'IA analyse votre niche pour trouver des concepts à fort potentiel. Cliquez pour générer.</p>
+                        <p className="text-gray-400">Generate viral concepts for {user.niche}.</p>
                         
                         <Button onClick={handleGenerateIdeas} isLoading={isLoadingIdeas} className="w-full mb-6 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold">
-                            <RefreshIcon className="h-5 w-5 mr-2 inline"/> Générer 6 nouvelles idées
+                            <RefreshIcon className="h-5 w-5 mr-2 inline"/> Generate 6 Ideas
                         </Button>
 
                         <div className="grid gap-4 md:grid-cols-2">
@@ -451,37 +394,46 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             case 'plan':
                 return (
                     <div className="space-y-6 pb-20">
-                        <h2 className="text-2xl font-bold">Formules & Bonus</h2>
-                        <div className="p-4 border border-brand-purple bg-brand-purple/10 rounded-xl">
+                        <h2 className="text-2xl font-bold">Plans & Pricing</h2>
+                        <div className="p-4 border border-brand-purple bg-brand-purple/10 rounded-xl mb-6">
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-lg">{user.isPro ? 'WySlider Pro+' : 'Freemium'}</span>
-                                <span className="text-sm bg-brand-purple px-2 py-1 rounded">Actif</span>
+                                <span className="font-bold text-lg">{user.isPro ? 'Creator Pro' : 'Free Trial'}</span>
+                                <span className="text-sm bg-brand-purple px-2 py-1 rounded">Active</span>
                             </div>
-                            <p className="text-gray-400 mt-2">Générations restantes: {user.generationsLeft}</p>
+                            <p className="text-gray-400 mt-2">Credits: {user.generationsLeft}</p>
                         </div>
                         
-                        <div className="grid gap-4">
-                            <div 
-                                onClick={handleCorpUse}
-                                className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-blue-500 transition group"
-                            >
-                                <h3 className="font-bold text-blue-400">Corp Use (+8 Crédits)</h3>
-                                <p className="text-sm text-gray-400 group-hover:text-white transition">Partagez WySlider avec 2 amis via vos applis.</p>
+                        <div className="grid gap-4 md:grid-cols-3">
+                             <div className="bg-gray-800 p-6 rounded border border-gray-700">
+                                <h3 className="font-bold text-white mb-2">Starter</h3>
+                                <p className="text-2xl font-bold text-white mb-4">${PRICING.starter}</p>
+                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                                    <li>10 Scripts</li>
+                                    <li>Social Posts</li>
+                                    <li>Viral Idea Gen</li>
+                                </ul>
+                                <Button onClick={() => alert("Simulated Payment")} variant="outline" className="w-full">Buy Now</Button>
                             </div>
-                            
-                            <div 
-                                onClick={() => setShowPostModal(true)}
-                                className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-green-500 transition group"
-                            >
-                                <h3 className="font-bold text-green-400">Post Use (+10 Crédits)</h3>
-                                <p className="text-sm text-gray-400 group-hover:text-white transition">Collez le lien de votre post parlant de nous.</p>
+                             <div className="bg-gray-800 p-6 rounded border border-indigo-500 relative">
+                                <div className="absolute top-0 right-0 bg-indigo-600 text-xs px-2 py-1 rounded-bl text-white font-bold">BEST</div>
+                                <h3 className="font-bold text-white mb-2">Creator</h3>
+                                <p className="text-2xl font-bold text-white mb-4">${PRICING.creator}</p>
+                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                                    <li>30 Scripts</li>
+                                    <li>Serial Prod (5 Eps)</li>
+                                    <li>All Starter features</li>
+                                </ul>
+                                <Button onClick={() => alert("Simulated Payment")} className="w-full">Buy Now</Button>
                             </div>
-
-                             <div className="bg-gray-800 p-4 rounded border border-gray-700 cursor-pointer hover:border-gray-500 relative overflow-hidden group">
-                                <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs font-bold px-2 py-1">POPULAIRE</div>
-                                <h3 className="font-bold text-yellow-400">WYS Pro+ ($49)</h3>
-                                <p className="text-sm text-gray-400">50 scripts + Serial Prod + Veo</p>
-                                <Button className="mt-2 w-full text-xs" onClick={handleUpgradePro}>Simuler Upgrade</Button>
+                             <div className="bg-gray-800 p-6 rounded border border-gray-700">
+                                <h3 className="font-bold text-white mb-2">Pro Authority</h3>
+                                <p className="text-2xl font-bold text-white mb-4">${PRICING.pro}</p>
+                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                                    <li>50 Scripts</li>
+                                    <li>Serial Prod (20 Eps)</li>
+                                    <li>Priority Support</li>
+                                </ul>
+                                <Button onClick={() => alert("Simulated Payment")} variant="outline" className="w-full">Buy Now</Button>
                             </div>
                         </div>
                     </div>
@@ -490,18 +442,18 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-4 pb-20">
                         <h2 className="text-2xl font-bold">Feedback</h2>
-                         <p className="text-sm text-gray-400">Votre avis aide à améliorer WySlider. L'admin lit tous les messages.</p>
+                         <p className="text-sm text-gray-400">Help us improve WySlider.</p>
                          <textarea 
                             value={feedbackMsg}
                             onChange={e => setFeedbackMsg(e.target.value)}
                             className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none text-white" 
-                            placeholder="Idées, bugs, ou encouragements..."
+                            placeholder="Ideas, bugs, or thoughts..."
                          />
-                         <Button onClick={handleSendFeedback}>Envoyer à l'Admin</Button>
+                         <Button onClick={handleSendFeedback}>Send</Button>
                     </div>
                 )
             default:
-                return <div className="text-center py-10 text-gray-500">Section en construction</div>;
+                return <div className="text-center py-10 text-gray-500">Construction Area</div>;
         }
     };
 
@@ -514,47 +466,28 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
     return (
         <MainLayout
             user={user} 
-            onLogout={() => {}} // Logout handled by MainLayout generally via props, but AccountPage usually doesn't need to pass logout if header handles it. Wait, MainLayout header has logout button.
-            onNavigateToAccount={() => {}} // Already on account
+            onLogout={() => {}} 
+            onNavigateToAccount={() => {}} 
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
             activeTab="account"
             onTabChange={handleTabChange}
         >
             <div className="flex flex-col md:flex-row h-full text-white animate-fade-in overflow-hidden relative">
-                {/* Post Use Modal */}
-                {showPostModal && (
-                    <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-gray-900 border border-green-500 p-6 rounded-xl max-w-md w-full shadow-2xl shadow-green-900/50">
-                            <h3 className="text-xl font-bold text-green-400 mb-4">Vérification Post Use</h3>
-                            <p className="text-sm text-gray-300 mb-4">Collez le lien de votre post (Twitter, LinkedIn, YouTube, etc.) parlant de WySlider.</p>
-                            <input 
-                                value={postUrl} 
-                                onChange={e => setPostUrl(e.target.value)} 
-                                placeholder="https://..." 
-                                className="w-full bg-black border border-gray-700 p-3 rounded text-white mb-4"
-                            />
-                            <div className="flex space-x-3">
-                                <Button onClick={handlePostUseSubmit} isLoading={isVerifyingPost} className="flex-1 bg-green-600 hover:bg-green-700">Vérifier</Button>
-                                <Button onClick={() => setShowPostModal(false)} variant="secondary">Annuler</Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Sidebar (Top nav on mobile, Left sidebar on desktop) */}
+                {/* Sidebar */}
                 <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
                     <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-800 flex items-center md:block">
-                        <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Retour</span></Button>
+                        <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Back</span></Button>
                     </div>
                     <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
                         {[
-                            {id: 'account', label: 'Compte', icon: <UserIcon className="h-5 w-5"/>},
+                            {id: 'account', label: 'Account', icon: <UserIcon className="h-5 w-5"/>},
                             {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-400"/>},
+                            {id: 'pitch', label: 'Pitch Mark', icon: <BriefcaseIcon className="h-5 w-5 text-blue-400"/>},
                             {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
                             {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
-                            {id: 'share', label: 'Partager', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
-                            {id: 'plan', label: 'Formules', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                            {id: 'share', label: 'Share', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
+                            {id: 'plan', label: 'Plans', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
                             {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
                         ].map(item => (
                             <button 

@@ -16,6 +16,7 @@ export interface User {
   firebaseConfig?: string;
   lastSyncedAt?: string;
   theme?: 'dark' | 'light';
+  styleDNA?: string; // Added for Forge customization
 }
 
 export interface ScriptSection {

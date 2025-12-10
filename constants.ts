@@ -1,9 +1,11 @@
 
-export const APP_NAME = "WySlider V2";
+
+export const APP_NAME = "WySlider";
 
 export const PRICING = {
-  single: 5,
-  bulk: 3,
+  starter: 25,
+  creator: 50,
+  pro: 150,
 };
 
 export const TESTIMONIALS = [
@@ -13,6 +15,7 @@ export const TESTIMONIALS = [
 ];
 
 export const FEEDBACK_EMAIL = "support@wyslider.com";
+export const COMMUNITY_PHONE = "+240 555 320 354";
 export const CORP_USE_REWARD = 10;
 export const POST_USE_REWARD = 5;
 export const PAYMENT_LINK = "https://example.com/checkout";

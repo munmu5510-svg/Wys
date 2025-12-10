@@ -1,17 +1,26 @@
 
+
 import React from 'react';
 
 type IconProps = { className?: string };
 
 export const LogoIcon = ({ className = 'h-8 w-auto' }: IconProps) => (
-  <svg viewBox="0 0 170 50" className={className} xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#8B5CF6" />
-        <stop offset="100%" stopColor="#3B82F6" />
+      <linearGradient id="logoG" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#6366f1" />
+        <stop offset="100%" stopColor="#a855f7" />
       </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+        <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
     </defs>
-    <text x="50%" y="50%" dominantBaseline="middle" textAnchor="middle" fontSize="48" fontWeight="800" letterSpacing="-0.05em" fill="url(#logoGradient)" style={{fontFamily: 'system-ui'}}>WYS</text>
+    <path d="M15 25 L30 80 L50 45 L70 80 L85 25" stroke="url(#logoG)" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)" />
+    <circle cx="50" cy="45" r="6" fill="#a855f7" filter="url(#glow)" />
   </svg>
 );
 
@@ -68,7 +77,6 @@ export const ItalicIcon = ({ className = 'h-6 w-6' }: IconProps) => (<svg xmlns=
 export const ListBulletIcon = ({ className = 'h-6 w-6' }: IconProps) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 17.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" /></svg>);
 export const PlayIcon = ({ className = 'h-6 w-6' }: IconProps) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" /></svg>);
 
-// New Icons
 export const FacebookIcon = ({ className = 'h-6 w-6' }: IconProps) => (
   <svg fill="currentColor" viewBox="0 0 24 24" className={className}><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" /></svg>
 );
