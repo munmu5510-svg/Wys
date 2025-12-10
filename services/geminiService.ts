@@ -23,14 +23,6 @@ const getAi = (apiKey?: string) => {
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
-// Shared Permissive Safety Settings
-const SAFETY_SETTINGS = [
-    { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-    { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-    { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-    { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
-];
-
 // Helper to clean Markdown code blocks from JSON response
 const cleanJson = (text: string) => {
     if (!text) return "";
@@ -52,9 +44,9 @@ const cleanJson = (text: string) => {
 
     // Remove markdown code blocks if still present (fallback)
     if (clean.startsWith("```json")) {
-        clean = clean.replace(/^```json/, "").replace(/```$/, "");
+        clean = clean.replace(/^```json/, "").replace(/```\s*$/, "");
     } else if (clean.startsWith("```")) {
-         clean = clean.replace(/^```/, "").replace(/```$/, "");
+         clean = clean.replace(/^```/, "").replace(/```\s*$/, "");
     }
     return clean.trim();
 };
@@ -130,8 +122,6 @@ export const generateScript = async (
                 systemInstruction: `You are WySlider. You generate structured JSON scripts. Use English language for content.${styleDNA ? ` Important: Adapt your writing style to match this Style DNA: ${styleDNA}` : ''}`,
                 maxOutputTokens: 8192,
                 responseMimeType: "application/json",
-                // @ts-ignore
-                safetySettings: SAFETY_SETTINGS,
                 responseSchema: {
                     type: Type.OBJECT,
                     properties: {
@@ -243,8 +233,6 @@ export const generateSeriesOutlines = async (
                 config: {
                     maxOutputTokens: 8192,
                     responseMimeType: "application/json",
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS,
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -292,8 +280,6 @@ export const generateViralIdeas = async (niche: string) => {
                 config: {
                     maxOutputTokens: 4096,
                     responseMimeType: "application/json",
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS,
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -344,8 +330,6 @@ export const generateSocialPosts = async (scriptTitle: string, scriptContent: st
                 config: {
                     maxOutputTokens: 4096,
                     responseMimeType: "application/json",
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS,
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -396,8 +380,6 @@ export const verifyPostContent = async (url: string) => {
                 config: {
                     maxOutputTokens: 1024,
                     responseMimeType: "application/json",
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS,
                     responseSchema: {
                         type: Type.OBJECT,
                         properties: {
@@ -426,9 +408,7 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
                 model: MODEL_NAME,
                 contents: `Analyze the following application metrics and provide a short, professional business status report. Data: ${metrics}`,
                 config: {
-                    maxOutputTokens: 1024,
-                    // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS
+                    maxOutputTokens: 1024
                 }
             });
         });
@@ -449,9 +429,7 @@ export const startChatSession = (context: string): Chat => {
     return ai.chats.create({
         model: MODEL_NAME,
         config: {
-            systemInstruction: `${APP_KNOWLEDGE_BASE}\n\nUSER CONTEXT (CURRENT SCRIPT):\n${context}`,
-            // @ts-ignore
-            safetySettings: SAFETY_SETTINGS
+            systemInstruction: `${APP_KNOWLEDGE_BASE}\n\nUSER CONTEXT (CURRENT SCRIPT):\n${context}`
         }
     });
 };
@@ -477,10 +455,7 @@ export const generatePitch = async (targetName: string, description: string, obj
                 My Objective: ${objective}.
                 
                 Keep it under 200 words, professional, persuasive, and use a structure that grabs attention.`,
-                config: {
-                     // @ts-ignore
-                    safetySettings: SAFETY_SETTINGS
-                }
+                config: {}
             });
         });
         return response.text || "";
