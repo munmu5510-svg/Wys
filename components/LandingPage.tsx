@@ -124,7 +124,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                 <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 md:mb-16">{text.pricingTitle}</h2>
                 <div className="grid md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
                     {/* Starter */}
-                    <div className="bg-gray-800/60 backdrop-blur p-6 md:p-8 rounded-3xl border border-gray-700 flex flex-col order-2 md:order-1">
+                    <div className="bg-gray-800/60 backdrop-blur p-6 md:p-8 rounded-3xl border border-gray-700 flex flex-col">
                         <h3 className="text-xl font-bold text-gray-300 mb-2">Starter</h3>
                         <div className="flex items-baseline mb-6">
                             <span className="text-4xl font-bold text-white">${PRICING.starter}</span>
@@ -138,7 +138,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                     </div>
 
                     {/* Creator - Highlighted */}
-                    <div className="bg-gray-800/80 backdrop-blur p-6 md:p-8 rounded-3xl border border-indigo-500 shadow-2xl shadow-indigo-900/20 relative flex flex-col transform md:scale-105 z-10 order-1 md:order-2">
+                    <div className="bg-gray-800/80 backdrop-blur p-6 md:p-8 rounded-3xl border border-indigo-500 shadow-2xl shadow-indigo-900/20 relative flex flex-col transform md:scale-105 z-10">
                         <div className="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl">POPULAR</div>
                         <h3 className="text-xl font-bold text-indigo-400 mb-2">Creator</h3>
                         <div className="flex items-baseline mb-6">
@@ -154,7 +154,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                     </div>
 
                     {/* Pro */}
-                    <div className="bg-gray-800/60 backdrop-blur p-6 md:p-8 rounded-3xl border border-gray-700 flex flex-col order-3">
+                    <div className="bg-gray-800/60 backdrop-blur p-6 md:p-8 rounded-3xl border border-gray-700 flex flex-col">
                         <h3 className="text-xl font-bold text-gray-300 mb-2">Pro Authority</h3>
                         <div className="flex items-baseline mb-6">
                             <span className="text-4xl font-bold text-white">${PRICING.pro}</span>
