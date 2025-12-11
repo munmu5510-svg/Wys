@@ -1,5 +1,6 @@
 
 
+
 export interface Placeholder {}
 
 export interface User {
@@ -40,6 +41,7 @@ export interface Script {
   topic: string;
   tone: string;
   format: string;
+  strategy?: string; // Added: Masterclass Strategy
   sections: ScriptSection[];
   createdAt: string;
   youtubeDescription?: string;

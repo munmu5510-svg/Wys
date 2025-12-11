@@ -23,6 +23,43 @@ const getAi = (apiKey?: string) => {
 
 const MODEL_NAME = 'gemini-2.5-flash';
 
+// --- MASTERCLASS STRATEGIES (Expert Tips Injection) ---
+const STRATEGIES: Record<string, string> = {
+    'Standard': "Create a balanced, professional YouTube script with a clear introduction, body, and conclusion.",
+    
+    'Retention Beast': `
+        **STRATEGY: HIGH RETENTION (MrBeast Style)**
+        1. **0:00-0:30 Hook:** Must be visually explosive. State the payoff immediately. No "Hey guys", no logo intro. Jump straight into the action.
+        2. **Pacing:** Remove all fluff. Every sentence must drive the narrative forward. Use "Jenga Pacing" (remove blocks of silence).
+        3. **Structure:** Create a "Open Loop" at the start and only close it at the very end.
+        4. **Visuals:** Visual notes must change every 3-5 seconds. High energy.
+    `,
+    
+    'The Storyteller': `
+        **STRATEGY: EMOTIONAL STORYTELLING (Casey Neistat / Pixar Style)**
+        1. **The Arc:** Follow the Hero's Journey (Status Quo -> Inciting Incident -> Conflict -> Resolution).
+        2. **The Conflict:** Establish clearly what is at stake. Why does this matter?
+        3. **Show, Don't Tell:** Use visual notes to convey emotion rather than dialogue where possible.
+        4. **Tone:** Personal, vulnerable, and narrative-driven.
+    `,
+    
+    'The Educator': `
+        **STRATEGY: CURIOSITY GAP (Veritasium / Vsauce Style)**
+        1. **The Counter-Intuitive Start:** Begin with a fact or question that challenges common belief.
+        2. **The Investigation:** The script should feel like a journey of discovery, not a lecture.
+        3. **Visual Analogies:** Use complex concepts explained through simple, physical visual metaphors.
+        4. **The Twist:** Reveal a deeper layer of truth near the end.
+    `,
+    
+    'The Salesman': `
+        **STRATEGY: CONVERSION & AUTHORITY (Hormozi / Russell Brunson)**
+        1. **The Promise:** Start with the specific value proposition. "By the end of this video, you will have..."
+        2. **The Framework:** Break the content into a proprietary step-by-step system (Step 1, Step 2...).
+        3. **Social Proof:** Subtle mentions of results/authority throughout.
+        4. **The CTA:** A strong, logical Call to Action based on value received.
+    `
+};
+
 // Helper to clean Markdown code blocks from JSON response
 const cleanJson = (text: string) => {
     if (!text) return "";
@@ -106,8 +143,12 @@ export const generateScript = async (
     needs?: string,
     cta?: string,
     platforms?: string,
-    styleDNA?: string
+    styleDNA?: string,
+    strategy: string = 'Standard'
 ) => {
+  
+  const strategyInstruction = STRATEGIES[strategy] || STRATEGIES['Standard'];
+
   const prompt = `You are a world-class YouTube Scriptwriter (WySlider AI).
   
   **CONFIGURATION:**
@@ -119,7 +160,10 @@ export const generateScript = async (
   - Specific Needs: ${needs || 'None'}
   - CTA: ${cta || 'Subscribe'}
   - Social Platforms: ${platforms || 'YouTube, Instagram, TikTok, LinkedIn'}
-  ${styleDNA ? `- **USER STYLE DNA (FORGE):** ${styleDNA}` : ''}
+  ${styleDNA ? `- **USER VOICE (FORGE):** ${styleDNA}` : ''}
+
+  **NARRATIVE STRATEGY TO APPLY:**
+  ${strategyInstruction}
 
   Generate a full structured script in English.
   Ensure the response adheres to the JSON schema.
@@ -133,7 +177,7 @@ export const generateScript = async (
             model: MODEL_NAME,
             contents: prompt,
             config: {
-                systemInstruction: `You are WySlider. You generate structured JSON scripts. Use English language for content.${styleDNA ? ` Important: Adapt your writing style to match this Style DNA: ${styleDNA}` : ''}`,
+                systemInstruction: `You are WySlider. You generate structured JSON scripts. Use English language for content.${styleDNA ? ` Important: Adapt your writing style to match this Style DNA: ${styleDNA}` : ''}. Apply the requested Narrative Strategy strictly.`,
                 maxOutputTokens: 8192,
                 responseMimeType: "application/json",
                 responseSchema: {

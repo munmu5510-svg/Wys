@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, Script, ChatSession, ChatMessage, AppNotification, CalendarEvent, BrandPitch, Series } from '../types';
 import { Button } from './Button';
-import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon, CheckIcon } from './icons';
+import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon, CheckIcon, SparklesIcon } from './icons';
 import { MainLayout } from './MainLayout';
 import * as geminiService from '../services/geminiService';
 import { Chat } from '@google/genai';
@@ -361,6 +361,7 @@ const Dashboard: React.FC<{
 
 const AVAILABLE_TONES = ["Personal brand", "Humour", "Energetic", "Professional", "Critical", "Angry", "Empathetic"];
 const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
+const AVAILABLE_STRATEGIES = ["Standard", "Retention Beast", "The Storyteller", "The Educator", "The Salesman"];
 
 const SerialProd: React.FC<{
     user: User;
@@ -572,7 +573,8 @@ const Studio: React.FC<{
          platforms: 'YouTube, TikTok, Instagram',
          goal: '',
          needs: '',
-         cta: ''
+         cta: '',
+         strategy: 'Standard'
      });
      const [customTone, setCustomTone] = useState('');
      const [isAddingTone, setIsAddingTone] = useState(false);
@@ -589,7 +591,8 @@ const Studio: React.FC<{
                  topic: selectedScript.topic,
                  goal: selectedScript.goal || prev.goal,
                  needs: selectedScript.needs || prev.needs,
-                 cta: selectedScript.cta || prev.cta
+                 cta: selectedScript.cta || prev.cta,
+                 strategy: selectedScript.strategy || prev.strategy
              }));
              // On mobile, auto-open config if script is empty
              if (window.innerWidth < 768) setIsConfigOpen(true);
@@ -766,6 +769,24 @@ const Studio: React.FC<{
                             <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
                             <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Video topic..."/>
                         </div>
+                        
+                        {/* STRATEGY SELECTOR */}
+                        <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20">
+                            <label className="text-xs text-brand-purple font-bold uppercase flex items-center mb-1">
+                                <SparklesIcon className="h-3 w-3 mr-1"/> Masterclass Strategy
+                            </label>
+                            <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
+                                {AVAILABLE_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <p className="text-[10px] text-gray-500 mt-1 italic">
+                                {config.strategy === 'Retention Beast' && "Fast pacing, rapid cuts, immediate hook (MrBeast style)."}
+                                {config.strategy === 'The Storyteller' && "Emotional arc, hero's journey, conflict (Casey Neistat style)."}
+                                {config.strategy === 'The Educator' && "Curiosity gap, investigation, twist (Veritasium style)."}
+                                {config.strategy === 'The Salesman' && "High value, authority, strong CTA (Hormozi style)."}
+                                {config.strategy === 'Standard' && "Balanced professional structure."}
+                            </p>
+                        </div>
+
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
                             <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
@@ -840,6 +861,17 @@ const Studio: React.FC<{
                             <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
                             <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Topic..."/>
                         </div>
+                        
+                        {/* STRATEGY SELECTOR MOBILE/EDIT */}
+                        <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20">
+                            <label className="text-xs text-brand-purple font-bold uppercase flex items-center mb-1">
+                                <SparklesIcon className="h-3 w-3 mr-1"/> Strategy
+                            </label>
+                            <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
+                                {AVAILABLE_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+
                         <div>
                             <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
                             <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
@@ -870,6 +902,7 @@ const Studio: React.FC<{
                         <div className="flex-1 mr-4">
                             <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full outline-none placeholder-gray-400 dark:placeholder-gray-600 text-gray-900 dark:text-white"/>
                             <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 flex space-x-3">
+                                {selectedScript.strategy && <span className="bg-brand-purple/10 text-brand-purple px-2 py-1 rounded font-bold border border-brand-purple/20">{selectedScript.strategy}</span>}
                                 <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.format}</span>
                                 <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.tone}</span>
                             </div>
@@ -1071,7 +1104,8 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                 config.needs, 
                 config.cta, 
                 config.platforms,
-                user.styleDNA // Pass styleDNA to service
+                user.styleDNA, // Pass styleDNA to service
+                config.strategy // Pass Masterclass Strategy
             );
             
             if (scriptData) {
@@ -1081,6 +1115,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                     topic: config.topic,
                     tone: config.tone,
                     format: config.duration,
+                    strategy: config.strategy,
                     youtubeDescription: scriptData.youtubeDescription,
                     hashtags: scriptData.hashtags,
                     sections: scriptData.sections,
