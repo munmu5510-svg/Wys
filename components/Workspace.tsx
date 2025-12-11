@@ -676,6 +676,70 @@ const Studio: React.FC<{
                 yPos += 5; // Extra spacing between sections
             });
 
+            // --- ADD SOCIAL POSTS LOGIC HERE ---
+            if (selectedScript.socialPosts && selectedScript.socialPosts.length > 0) {
+                 // Check page break for header
+                 if (yPos > 250) {
+                    doc.addPage();
+                    yPos = 20;
+                } else {
+                    yPos += 10;
+                    doc.setDrawColor(200, 200, 200);
+                    doc.line(15, yPos, 195, yPos);
+                    yPos += 15;
+                }
+
+                doc.setFontSize(18);
+                doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                doc.setFont("helvetica", "bold");
+                doc.text("Social Media Posts", 15, yPos);
+                yPos += 15;
+
+                selectedScript.socialPosts.forEach(post => {
+                     // Check page break
+                    if (yPos > 260) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+
+                    // Platform
+                    doc.setFontSize(12);
+                    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(post.platform.toUpperCase(), 15, yPos);
+                    yPos += 6;
+
+                    // Content
+                    doc.setFontSize(10);
+                    doc.setTextColor(blackColor[0], blackColor[1], blackColor[2]);
+                    doc.setFont("helvetica", "normal");
+                    const splitPost = doc.splitTextToSize(post.content, 180);
+                    doc.text(splitPost, 15, yPos);
+                    yPos += (5 * splitPost.length) + 4;
+
+                    // Hashtags
+                    if (post.hashtags && post.hashtags.length > 0) {
+                        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+                        const tags = post.hashtags.join(' ');
+                        const splitTags = doc.splitTextToSize(tags, 180);
+                        doc.text(splitTags, 15, yPos);
+                        yPos += (5 * splitTags.length) + 4;
+                    }
+
+                    // Visual Note for post
+                    if (post.visualNote) {
+                         doc.setFont("helvetica", "italic");
+                         doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+                         const vNote = `Asset: ${post.visualNote}`;
+                         const splitV = doc.splitTextToSize(vNote, 180);
+                         doc.text(splitV, 15, yPos);
+                         yPos += (5 * splitV.length) + 4;
+                    }
+
+                    yPos += 8; // Spacing between posts
+                });
+            }
+
             doc.save(`${selectedScript.title.substring(0, 20)}_script.pdf`);
         } catch (e) {
             console.error("PDF Error", e);
