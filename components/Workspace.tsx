@@ -149,7 +149,7 @@ const ScriptPreview: React.FC<{
     content: string, 
     visualNote?: string, 
     onEdit: (newContent: string) => void,
-    title: string,
+    title: string, 
     time: string 
 }> = ({ content, visualNote, onEdit, title, time }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -361,7 +361,7 @@ const Dashboard: React.FC<{
 
 const AVAILABLE_TONES = ["Personal brand", "Humour", "Energetic", "Professional", "Critical", "Angry", "Empathetic"];
 const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
-const AVAILABLE_STRATEGIES = ["Standard", "Retention Beast", "The Storyteller", "The Educator", "The Salesman"];
+const STANDARD_STRATEGIES = ["Standard", "Retention Beast", "The Storyteller", "The Educator", "The Salesman"];
 
 const SerialProd: React.FC<{
     user: User;
@@ -592,7 +592,7 @@ const Studio: React.FC<{
                  goal: selectedScript.goal || prev.goal,
                  needs: selectedScript.needs || prev.needs,
                  cta: selectedScript.cta || prev.cta,
-                 strategy: selectedScript.strategy || prev.strategy
+                 strategy: selectedScript.strategy || prev.strategy || 'Standard'
              }));
              // On mobile, auto-open config if script is empty
              if (window.innerWidth < 768) setIsConfigOpen(true);
@@ -758,6 +758,36 @@ const Studio: React.FC<{
             alert("Error generating PDF. Please ensure content is loaded.");
         }
      }
+     
+     // Resolve available strategies (Standard + Custom)
+     const customStrategies = useMemo(() => {
+         return (user.customStrategies || []).map(s => ({
+             name: s.name,
+             instruction: s.instruction,
+             type: 'Custom'
+         }));
+     }, [user.customStrategies]);
+     
+     const allStrategies = useMemo(() => {
+         return [
+             ...STANDARD_STRATEGIES,
+             ...customStrategies.map(s => s.name)
+         ];
+     }, [customStrategies]);
+     
+     const handleGenerateClick = () => {
+         // Resolve instruction
+         const customStrat = customStrategies.find(s => s.name === config.strategy);
+         let instruction = '';
+         
+         if (customStrat) {
+             instruction = customStrat.instruction;
+         } else {
+             instruction = geminiService.STRATEGIES[config.strategy] || geminiService.STRATEGIES['Standard'];
+         }
+         
+         onGenerate({ ...config, strategyInstruction: instruction });
+     }
 
      if (!selectedScript) {
          return (
@@ -773,10 +803,10 @@ const Studio: React.FC<{
                         {/* STRATEGY SELECTOR */}
                         <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20">
                             <label className="text-xs text-brand-purple font-bold uppercase flex items-center mb-1">
-                                <SparklesIcon className="h-3 w-3 mr-1"/> Masterclass Strategy
+                                <SparklesIcon className="h-3 w-3 mr-1"/> Narrative Strategy
                             </label>
                             <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
-                                {AVAILABLE_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                                {allStrategies.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <p className="text-[10px] text-gray-500 mt-1 italic">
                                 {config.strategy === 'Retention Beast' && "Fast pacing, rapid cuts, immediate hook (MrBeast style)."}
@@ -784,6 +814,7 @@ const Studio: React.FC<{
                                 {config.strategy === 'The Educator' && "Curiosity gap, investigation, twist (Veritasium style)."}
                                 {config.strategy === 'The Salesman' && "High value, authority, strong CTA (Hormozi style)."}
                                 {config.strategy === 'Standard' && "Balanced professional structure."}
+                                {customStrategies.find(s => s.name === config.strategy) && "Your custom forged strategy."}
                             </p>
                         </div>
 
@@ -829,7 +860,7 @@ const Studio: React.FC<{
                         </div>
                      </div>
 
-                     <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Generate Script</Button>
+                     <Button onClick={handleGenerateClick} isLoading={isGenerating}>Generate Script</Button>
                      <Button variant="secondary" onClick={onBack}>Cancel</Button>
                   </div>
                   <div className="hidden md:flex flex-1 bg-gray-100 dark:bg-gray-800 items-center justify-center text-gray-500 dark:text-gray-500">
@@ -868,7 +899,7 @@ const Studio: React.FC<{
                                 <SparklesIcon className="h-3 w-3 mr-1"/> Strategy
                             </label>
                             <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
-                                {AVAILABLE_STRATEGIES.map(s => <option key={s} value={s}>{s}</option>)}
+                                {allStrategies.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
 
@@ -884,7 +915,7 @@ const Studio: React.FC<{
                             <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">CTA</label>
                             <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
-                        <Button onClick={() => { onGenerate(config); setIsConfigOpen(false); }} isLoading={isGenerating}>Regenerate</Button>
+                        <Button onClick={() => { handleGenerateClick(); setIsConfigOpen(false); }} isLoading={isGenerating}>Regenerate</Button>
                      </div>
 
                      <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1105,7 +1136,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                 config.cta, 
                 config.platforms,
                 user.styleDNA, // Pass styleDNA to service
-                config.strategy // Pass Masterclass Strategy
+                config.strategyInstruction // Pass Raw Strategy Instruction
             );
             
             if (scriptData) {

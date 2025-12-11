@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
 
 // Lazy initialization of AI client
@@ -24,7 +23,7 @@ const getAi = (apiKey?: string) => {
 const MODEL_NAME = 'gemini-2.5-flash';
 
 // --- MASTERCLASS STRATEGIES (Expert Tips Injection) ---
-const STRATEGIES: Record<string, string> = {
+export const STRATEGIES: Record<string, string> = {
     'Standard': "Create a balanced, professional YouTube script with a clear introduction, body, and conclusion.",
     
     'Retention Beast': `
@@ -134,6 +133,48 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 1, delay = 1000): Pr
     }
 }
 
+export const generateCustomStrategy = async (styleDNA: string): Promise<{ name: string; instruction: string }> => {
+    const prompt = `Based on this User Style DNA/Reference analysis: "${styleDNA}", create a narrative strategy.
+    
+    1. **Name**: A catchy, short title for this strategy (max 4 words, e.g. "Fast-Paced Vlog", "Deep Dive Docu").
+    2. **Instruction**: A strict structural guide for a YouTube scriptwriter to replicate this specific style. Define Hook, Pacing, Structure, and Visuals.
+    
+    Return JSON.`;
+
+    try {
+        const ai = getAi();
+        const response = await withRetry(async () => {
+            return await ai.models.generateContent({
+                model: MODEL_NAME,
+                contents: prompt,
+                config: { 
+                    maxOutputTokens: 1024,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            instruction: { type: Type.STRING }
+                        },
+                        required: ["name", "instruction"]
+                    }
+                }
+            });
+        });
+        
+        if (response.text) {
+            const data = parseResponse(response.text);
+            if (data && data.name && data.instruction) {
+                return data;
+            }
+        }
+        return { name: "Custom Strategy", instruction: "Create a script based on the user's style." };
+    } catch (e) {
+        console.error("Failed to generate strategy", e);
+        return { name: "Custom Strategy (Error)", instruction: "Create a professional script." };
+    }
+}
+
 export const generateScript = async (
     topic: string, 
     tone: string, 
@@ -144,11 +185,9 @@ export const generateScript = async (
     cta?: string,
     platforms?: string,
     styleDNA?: string,
-    strategy: string = 'Standard'
+    strategyInstruction: string = 'Create a balanced, professional YouTube script.'
 ) => {
   
-  const strategyInstruction = STRATEGIES[strategy] || STRATEGIES['Standard'];
-
   const prompt = `You are a world-class YouTube Scriptwriter (WySlider AI).
   
   **CONFIGURATION:**
@@ -169,7 +208,6 @@ export const generateScript = async (
   Ensure the response adheres to the JSON schema.
   `;
 
-  // Removed internal try/catch that swallowed errors. Now it propagates to Workspace.tsx
   const ai = getAi();
     
   const resultStream = await withRetry(async () => {

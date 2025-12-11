@@ -1,6 +1,4 @@
 
-
-
 export interface Placeholder {}
 
 export interface User {
@@ -18,6 +16,7 @@ export interface User {
   lastSyncedAt?: string;
   theme?: 'dark' | 'light';
   styleDNA?: string; // Added for Forge customization
+  customStrategies?: { id: string; name: string; instruction: string }[]; // Added for Forge Custom Strategies
 }
 
 export interface ScriptSection {
@@ -41,7 +40,7 @@ export interface Script {
   topic: string;
   tone: string;
   format: string;
-  strategy?: string; // Added: Masterclass Strategy
+  strategy?: string; 
   sections: ScriptSection[];
   createdAt: string;
   youtubeDescription?: string;
