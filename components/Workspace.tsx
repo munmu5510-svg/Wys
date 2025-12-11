@@ -19,12 +19,12 @@ const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id:
     }, [notification.id, onClose]);
 
     return (
-        <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-[60]`}>
+        <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-white dark:bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-[60]`}>
             <div className="flex-1">
-                <h4 className="font-bold text-sm text-gray-200">{notification.title}</h4>
-                <p className="text-xs text-gray-400 mt-1">{notification.message}</p>
+                <h4 className="font-bold text-sm text-gray-900 dark:text-gray-200">{notification.title}</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{notification.message}</p>
             </div>
-            <button onClick={() => onClose(notification.id)} className="text-gray-500 hover:text-white ml-3"><XMarkIcon className="h-4 w-4"/></button>
+            <button onClick={() => onClose(notification.id)} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white ml-3"><XMarkIcon className="h-4 w-4"/></button>
         </div>
     );
 };
@@ -66,29 +66,29 @@ const ChatOverlay: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-[70] flex flex-col">
-            <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
+        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 z-[70] flex flex-col">
+            <div className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 bg-white dark:bg-gray-900">
                 <div className="flex items-center space-x-2">
-                    <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="History">
+                    <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${view === 'history' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`} title="History">
                         <ClockIcon className="h-5 w-5"/>
                     </button>
-                    <span className="font-bold text-lg text-white">AI Assistant</span>
+                    <span className="font-bold text-lg text-gray-900 dark:text-white">AI Assistant</span>
                 </div>
-                <button onClick={onClose} className="text-gray-500 hover:text-white"><XMarkIcon className="h-6 w-6"/></button>
+                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-white"><XMarkIcon className="h-6 w-6"/></button>
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col relative">
                 {view === 'history' ? (
                     <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
-                        <Button onClick={() => { onNewChat(); setView('chat'); }} className="w-full mb-4 bg-gray-800 hover:bg-gray-700 border border-gray-700">+ New Chat</Button>
+                        <Button onClick={() => { onNewChat(); setView('chat'); }} className="w-full mb-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white">+ New Chat</Button>
                         {sessions.length === 0 && <p className="text-center text-gray-500 mt-10">No history.</p>}
                         {sessions.map(session => (
-                            <div key={session.id} className="bg-gray-800 p-3 rounded-lg border border-gray-700 hover:border-brand-purple group cursor-pointer" onClick={() => onSelectSession(session.id)}>
+                            <div key={session.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-purple dark:hover:border-brand-purple group cursor-pointer" onClick={() => onSelectSession(session.id)}>
                                 <div className="flex justify-between items-start">
-                                    <h4 className="font-bold text-sm text-gray-200 truncate pr-2">{session.title}</h4>
+                                    <h4 className="font-bold text-sm text-gray-900 dark:text-gray-200 truncate pr-2">{session.title}</h4>
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }} 
-                                        className="text-gray-600 hover:text-red-500"
+                                        className="text-gray-400 hover:text-red-500"
                                     >
                                         <TrashIcon className="h-4 w-4"/>
                                     </button>
@@ -108,30 +108,30 @@ const ChatOverlay: React.FC<{
                             {!activeSession && <div className="text-center text-gray-500 mt-10">Start a new chat.</div>}
                             {activeSession?.messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none border border-gray-200 dark:border-gray-700'}`}>
                                         {msg.content}
                                     </div>
                                 </div>
                             ))}
                             {isProcessing && activeSession?.messages[activeSession.messages.length - 1]?.role === 'user' && (
                                 <div className="flex justify-start">
-                                    <div className="bg-gray-800 rounded-2xl rounded-bl-none px-4 py-2 text-sm text-gray-400 flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100"></div>
-                                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200"></div>
+                                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-none px-4 py-2 text-sm text-gray-400 flex items-center space-x-2">
+                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
+                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-100"></div>
+                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-200"></div>
                                     </div>
                                 </div>
                             )}
                             <div ref={messagesEndRef} />
                         </div>
-                        <div className="p-4 bg-gray-900 border-t border-gray-800 pb-safe">
+                        <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pb-safe">
                             <div className="flex space-x-2">
                                 <input 
                                     value={input} 
                                     onChange={e => setInput(e.target.value)} 
                                     onKeyDown={e => e.key === 'Enter' && handleSend()}
                                     placeholder="Ask anything..." 
-                                    className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-3 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"
+                                    className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full px-4 py-3 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-gray-900 dark:text-white placeholder-gray-500"
                                 />
                                 <button onClick={handleSend} disabled={isProcessing} className="bg-brand-purple text-white p-2.5 rounded-full hover:bg-purple-600 disabled:opacity-50 flex-shrink-0">
                                     <PaperAirplaneIcon className="h-5 w-5"/>
@@ -163,22 +163,22 @@ const ScriptPreview: React.FC<{
     // Format Markdown to cleaner HTML-like preview
     const formattedContent = useMemo(() => {
         return content
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white font-bold">$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em class="text-gray-300">$1</em>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900 dark:text-white font-bold">$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em class="text-gray-600 dark:text-gray-300">$1</em>')
             .replace(/\[Visual: (.*?)\]/g, '') // Remove inline visuals from speech text, handle separately if needed
-            .replace(/\[(.*?)\]/g, '<span class="text-green-400 text-xs uppercase font-bold tracking-wider">[$1]</span>');
+            .replace(/\[(.*?)\]/g, '<span class="text-green-600 dark:text-green-400 text-xs uppercase font-bold tracking-wider">[$1]</span>');
     }, [content]);
 
     if (isEditing) {
         return (
-            <div className="bg-gray-800 border border-gray-600 rounded-xl p-4 shadow-lg">
+            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-4 shadow-lg">
                 <div className="flex justify-between mb-2">
-                    <span className="text-gray-400 text-sm font-bold">Editing...</span>
+                    <span className="text-gray-500 dark:text-gray-400 text-sm font-bold">Editing...</span>
                 </div>
                 <textarea 
                     value={editValue} 
                     onChange={e => setEditValue(e.target.value)}
-                    className="w-full h-40 bg-gray-900 text-white p-3 rounded border border-gray-700 focus:border-brand-purple outline-none"
+                    className="w-full h-40 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-3 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none"
                 />
                 <div className="flex justify-end space-x-2 mt-3">
                     <Button variant="secondary" onClick={() => setIsEditing(false)} className="text-xs py-1">Cancel</Button>
@@ -190,29 +190,29 @@ const ScriptPreview: React.FC<{
 
     return (
         <div className="relative group mb-6">
-            <div className="absolute -left-3 top-6 bottom-6 w-0.5 bg-gray-700"></div>
+            <div className="absolute -left-3 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-700"></div>
             <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0 mt-1">
-                    <div className="bg-gray-800 text-brand-purple text-xs font-bold px-2 py-1 rounded border border-gray-700 shadow-sm whitespace-nowrap">
+                    <div className="bg-gray-100 dark:bg-gray-800 text-brand-purple text-xs font-bold px-2 py-1 rounded border border-gray-300 dark:border-gray-700 shadow-sm whitespace-nowrap">
                         {time}
                     </div>
                 </div>
                 
                 <div className="flex-1">
-                    <div className="bg-gray-800/80 border border-gray-700/50 rounded-xl p-5 shadow-sm hover:border-gray-600 transition group-hover:shadow-md cursor-pointer" onClick={() => setIsEditing(true)}>
+                    <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 shadow-sm hover:border-gray-400 dark:hover:border-gray-600 transition group-hover:shadow-md cursor-pointer" onClick={() => setIsEditing(true)}>
                         <h4 className="text-brand-purple font-bold text-lg mb-3 tracking-tight">{title}</h4>
                         
-                        <div className="text-gray-300 text-base leading-relaxed font-serif" dangerouslySetInnerHTML={{ __html: formattedContent }} />
+                        <div className="text-gray-700 dark:text-gray-300 text-base leading-relaxed font-serif" dangerouslySetInnerHTML={{ __html: formattedContent }} />
                         
                         {visualNote && (
-                            <div className="mt-4 flex items-start p-3 bg-gray-900/50 border-l-2 border-green-500 rounded-r-lg">
-                                <EyeIcon className="h-4 w-4 text-green-500 mt-1 mr-2 flex-shrink-0"/>
-                                <span className="text-sm text-gray-400 italic font-sans">{visualNote}</span>
+                            <div className="mt-4 flex items-start p-3 bg-green-50 dark:bg-gray-900/50 border-l-2 border-green-500 rounded-r-lg">
+                                <EyeIcon className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 mr-2 flex-shrink-0"/>
+                                <span className="text-sm text-gray-600 dark:text-gray-400 italic font-sans">{visualNote}</span>
                             </div>
                         )}
                         
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
-                            <button className="p-2 bg-gray-700 rounded-full text-gray-300 hover:text-white"><PencilSquareIcon className="h-4 w-4"/></button>
+                            <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"><PencilSquareIcon className="h-4 w-4"/></button>
                         </div>
                     </div>
                 </div>
@@ -252,20 +252,20 @@ const Dashboard: React.FC<{
     const soloScriptsCount = scripts.filter(s => !s.seriesId).length;
 
     return (
-        <div className="h-full overflow-y-auto p-4 md:p-6 animate-fade-in scroll-smooth bg-gray-900">
+        <div className="h-full overflow-y-auto p-4 md:p-6 animate-fade-in scroll-smooth bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
              <div className="max-w-6xl mx-auto space-y-8 pb-20">
-                <div className="flex items-center space-x-4 bg-gray-800 p-4 rounded-xl border border-gray-700 relative z-20">
+                <div className="flex items-center space-x-4 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 relative z-20">
                     <div className="flex-1 relative">
-                        <input type="text" placeholder="Search..." className="w-full bg-gray-900 border border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"/>
+                        <input type="text" placeholder="Search..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-gray-900 dark:text-white transition-colors duration-300"/>
                     </div>
                     <div className="flex space-x-2">
                         {selectionMode ? (
                              <div className="flex space-x-2">
-                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-900/50 text-red-400 rounded hover:bg-red-900 border border-red-800" title="Delete Selection"><TrashIcon className="h-5 w-5"/></button>
-                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-700 text-gray-300 rounded hover:bg-gray-600">Cancel</button>
+                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900 border border-red-200 dark:border-red-800" title="Delete Selection"><TrashIcon className="h-5 w-5"/></button>
+                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
                              </div>
                         ) : (
-                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-700 text-gray-400 hover:text-white" title="Select...">
+                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Select...">
                                 <Bars3Icon className="h-5 w-5"/>
                             </button>
                         )}
@@ -273,7 +273,7 @@ const Dashboard: React.FC<{
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><PencilSquareIcon className="h-5 w-5 text-brand-purple"/> <span>My Scripts</span></h2>
+                    <h2 className="text-xl font-bold flex items-center space-x-2 text-gray-900 dark:text-white"><PencilSquareIcon className="h-5 w-5 text-brand-purple"/> <span>My Scripts</span></h2>
                     <div className="flex items-center space-x-3">
                          <span className="text-sm font-mono text-gray-500">{soloScriptsCount} Scripts</span>
                          <button onClick={onOpenStudio} className="bg-brand-purple hover:bg-purple-600 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
@@ -287,15 +287,15 @@ const Dashboard: React.FC<{
                          <div 
                              key={script.id} 
                              onClick={() => selectionMode ? toggleSelection(script.id) : onSelect(script)} 
-                             className={`group bg-gray-800 rounded-xl overflow-hidden border cursor-pointer transition relative ${selectionMode && selectedIds.has(script.id) ? 'border-brand-purple ring-1 ring-brand-purple' : 'border-gray-700 hover:border-brand-purple'}`}
+                             className={`group bg-white dark:bg-gray-800 rounded-xl overflow-hidden border cursor-pointer transition relative ${selectionMode && selectedIds.has(script.id) ? 'border-brand-purple ring-1 ring-brand-purple' : 'border-gray-200 dark:border-gray-700 hover:border-brand-purple dark:hover:border-brand-purple'}`}
                          >
-                             <div className="h-32 bg-gray-700 relative overflow-hidden">
-                                 <div className="absolute inset-0 flex items-center justify-center text-gray-500 bg-gray-900">
+                             <div className="h-32 bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
+                                 <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-500 bg-gray-50 dark:bg-gray-900">
                                      <span className="text-4xl font-black opacity-20">WYS</span>
                                  </div>
                                  {selectionMode && (
                                      <div className="absolute top-2 right-2">
-                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'border-gray-400 bg-gray-800'}`}>
+                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'border-gray-400 bg-white dark:bg-gray-800'}`}>
                                              {selectedIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white"/>}
                                          </div>
                                      </div>
@@ -303,13 +303,13 @@ const Dashboard: React.FC<{
                              </div>
                              <div className="p-4">
                                  <div className="flex justify-between items-start mb-2">
-                                     <h3 className="font-bold truncate pr-2 text-white">{script.title}</h3>
-                                     {script.isTemplate && <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">TEMPLATE</span>}
+                                     <h3 className="font-bold truncate pr-2 text-gray-900 dark:text-white">{script.title}</h3>
+                                     {script.isTemplate && <span className="text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">TEMPLATE</span>}
                                  </div>
                                  <p className="text-xs text-gray-500 mb-2 truncate">{script.youtubeDescription || "No description"}</p>
                                  <div className="flex justify-between items-center text-xs text-gray-400">
                                      <span>{new Date(script.createdAt).toLocaleDateString()}</span>
-                                     <span className="bg-gray-700 px-2 py-0.5 rounded">{script.niche || "General"}</span>
+                                     <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">{script.niche || "General"}</span>
                                  </div>
                              </div>
                          </div>
@@ -317,8 +317,8 @@ const Dashboard: React.FC<{
                     {scripts.length === 0 && series.length === 0 && <div className="col-span-full text-center py-10 text-gray-500">No scripts yet.</div>}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-800">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-white"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>My Series</span></h2>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
+                    <h2 className="text-xl font-bold flex items-center space-x-2 text-gray-900 dark:text-white"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>My Series</span></h2>
                      <div className="flex items-center space-x-3">
                         <span className="hidden md:inline text-sm font-mono text-gray-500">{series.length} Series</span>
                         <button onClick={onOpenSerial} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
@@ -328,25 +328,25 @@ const Dashboard: React.FC<{
                 </div>
 
                 {series.length === 0 ? (
-                    <div className="bg-gray-800/30 border-2 border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:bg-gray-800/50 transition cursor-pointer" onClick={onOpenSerial}>
+                    <div className="bg-gray-100 dark:bg-gray-800/30 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800/50 transition cursor-pointer" onClick={onOpenSerial}>
                         No series yet. Click to launch Serial Prod.
                     </div>
                 ) : (
                     <div className="space-y-4">
                         {series.map(s => (
-                            <div key={s.id} className="bg-gray-800 border border-gray-700 rounded-xl p-4 relative">
+                            <div key={s.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative">
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
-                                        <h3 className="font-bold text-lg text-white">{s.title}</h3>
-                                        <span className="text-xs text-gray-400">{s.episodeCount} episodes | {new Date(s.createdAt).toLocaleDateString()}</span>
+                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{s.title}</h3>
+                                        <span className="text-xs text-gray-500">{s.episodeCount} episodes | {new Date(s.createdAt).toLocaleDateString()}</span>
                                     </div>
                                     <button className={`text-red-500 hover:text-red-400 transition`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
                                 </div>
-                                <div className="grid gap-2 pl-4 border-l-2 border-gray-700">
+                                <div className="grid gap-2 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                     {s.episodes.map(ep => (
-                                        <div key={ep.id} onClick={() => onSelect(ep)} className="flex items-center justify-between p-2 hover:bg-gray-700 rounded cursor-pointer group">
-                                            <span className="text-sm text-gray-300 group-hover:text-white truncate">{ep.title}</span>
-                                            <ArrowRightIcon className="h-4 w-4 text-gray-500"/>
+                                        <div key={ep.id} onClick={() => onSelect(ep)} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer group">
+                                            <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">{ep.title}</span>
+                                            <ArrowRightIcon className="h-4 w-4 text-gray-400 dark:text-gray-500"/>
                                         </div>
                                     ))}
                                 </div>
@@ -457,66 +457,66 @@ const SerialProd: React.FC<{
     }
 
     return (
-        <div className="absolute inset-0 bg-gray-900 z-50 flex flex-col p-6 animate-fade-in overflow-y-auto text-white">
+        <div className="absolute inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col p-6 animate-fade-in overflow-y-auto text-gray-900 dark:text-white transition-colors duration-300">
              <div className="flex justify-between items-center mb-6">
                  <h2 className="text-2xl font-bold">Serial Prod <span className="text-sm bg-yellow-500 text-black px-2 py-0.5 rounded font-bold ml-2">PRO+</span></h2>
-                 <button onClick={onClose}><XMarkIcon className="h-6 w-6"/></button>
+                 <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white"><XMarkIcon className="h-6 w-6"/></button>
              </div>
              
              {step === 'config' && (
                  <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Series Theme</label>
-                            <input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Ex: Cooking for beginners" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Series Theme</label>
+                            <input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Ex: Cooking for beginners" className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Episode Count</label>
-                            <select value={config.count} onChange={e => setConfig({...config, count: parseInt(e.target.value)})} className="w-full bg-gray-800 rounded border border-gray-700 p-3 text-white">
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Episode Count</label>
+                            <select value={config.count} onChange={e => setConfig({...config, count: parseInt(e.target.value)})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
                                 {Array.from({length: 18}, (_, i) => i + 3).map(num => (
                                     <option key={num} value={num}>{num} Episodes</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Niche</label>
-                            <input value={config.niche} onChange={e => setConfig({...config, niche: e.target.value})} className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Niche</label>
+                            <input value={config.niche} onChange={e => setConfig({...config, niche: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Ex: Sell course..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Goal</label>
+                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Ex: Sell course..." className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Ex: Mention bio link..." className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Needs</label>
+                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Ex: Mention bio link..." className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="Ex: Subscribe!" className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">CTA</label>
+                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="Ex: Subscribe!" className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Platforms</label>
-                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-800 p-3 rounded border border-gray-700 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Platforms</label>
+                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Tone</label>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Tone</label>
                             <div className="flex space-x-2">
-                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-800 rounded border border-gray-700 p-3 text-white">
+                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
                                     {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
                                     {customTone && <option>{customTone}</option>}
                                 </select>
-                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-700 p-3 rounded hover:bg-gray-600"><PlusIcon className="h-6 w-6"/></button>
+                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-200 dark:bg-gray-700 p-3 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white"><PlusIcon className="h-6 w-6"/></button>
                             </div>
                             {isAddingTone && (
                                 <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-900 border border-gray-700 p-2 rounded text-sm text-white"/>
-                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-3 rounded text-sm font-bold">OK</button>
+                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-2 rounded text-sm text-gray-900 dark:text-white"/>
+                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-3 rounded text-sm font-bold text-white">OK</button>
                                 </div>
                             )}
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase mb-1 block">Duration</label>
-                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-3 text-white">
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Duration</label>
+                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
                                 {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
                             </select>
                         </div>
@@ -527,13 +527,13 @@ const SerialProd: React.FC<{
 
              {step === 'preview' && (
                  <div className="space-y-4">
-                     <h3 className="font-bold text-lg mb-4">AI Proposal ({proposedEpisodes.length} episodes)</h3>
+                     <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">AI Proposal ({proposedEpisodes.length} episodes)</h3>
                      <div className="grid gap-3 mb-6">
                          {proposedEpisodes.map((ep, i) => (
-                             <div key={i} className="bg-gray-800 p-4 rounded border border-gray-700">
+                             <div key={i} className="bg-gray-100 dark:bg-gray-800 p-4 rounded border border-gray-300 dark:border-gray-700">
                                  <span className="font-bold text-brand-purple mr-2">Ep {i+1}:</span>
-                                 <span className="font-bold text-white">{ep.title}</span>
-                                 <p className="text-sm text-gray-400 mt-1">{ep.summary}</p>
+                                 <span className="font-bold text-gray-900 dark:text-white">{ep.title}</span>
+                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{ep.summary}</p>
                              </div>
                          ))}
                      </div>
@@ -547,8 +547,8 @@ const SerialProd: React.FC<{
              {step === 'generating' && (
                  <div className="flex-1 flex flex-col items-center justify-center text-center">
                      <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-purple mb-4"></div>
-                     <h3 className="text-xl font-bold mb-2">Generating Series...</h3>
-                     <p className="text-gray-400">The AI is writing full scripts for each episode. This may take a minute.</p>
+                     <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Generating Series...</h3>
+                     <p className="text-gray-500 dark:text-gray-400">The AI is writing full scripts for each episode. This may take a minute.</p>
                  </div>
              )}
         </div>
@@ -758,60 +758,60 @@ const Studio: React.FC<{
 
      if (!selectedScript) {
          return (
-             <div className="h-full flex overflow-hidden animate-fade-in bg-gray-900">
-                  <div className="w-full md:w-80 bg-gray-900 border-r border-gray-800 flex flex-col p-6 space-y-6 overflow-y-auto">
-                     <h2 className="font-bold text-lg mb-4 text-white">Studio Config</h2>
+             <div className="h-full flex overflow-hidden animate-fade-in bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+                  <div className="w-full md:w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col p-6 space-y-6 overflow-y-auto">
+                     <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Studio Config</h2>
                      <div className="space-y-4">
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Topic</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Video topic..."/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
+                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Video topic..."/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
+                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Needs</label>
+                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">CTA</label>
+                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Tone</label>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Tone</label>
                             <div className="flex space-x-1 mt-1">
-                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-800 rounded border border-gray-700 p-2 text-sm text-white">
+                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
                                     {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
                                     {customTone && <option>{customTone}</option>}
                                 </select>
-                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-700 px-2 rounded hover:bg-gray-600"><PlusIcon className="h-4 w-4"/></button>
+                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-200 dark:bg-gray-700 px-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white"><PlusIcon className="h-4 w-4"/></button>
                             </div>
                             {isAddingTone && (
                                 <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-900 border border-gray-700 p-1 rounded text-xs text-white"/>
-                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-2 rounded text-xs font-bold">OK</button>
+                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-1 rounded text-xs text-gray-900 dark:text-white"/>
+                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-2 rounded text-xs font-bold text-white">OK</button>
                                 </div>
                             )}
                         </div>
 
                          <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Duration</label>
-                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white">
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Duration</label>
+                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white outline-none">
                                 {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Platforms</label>
-                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Platforms</label>
+                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                      </div>
 
                      <Button onClick={() => onGenerate(config)} isLoading={isGenerating}>Generate Script</Button>
                      <Button variant="secondary" onClick={onBack}>Cancel</Button>
                   </div>
-                  <div className="hidden md:flex flex-1 bg-gray-800 items-center justify-center text-gray-500">
+                  <div className="hidden md:flex flex-1 bg-gray-100 dark:bg-gray-800 items-center justify-center text-gray-500 dark:text-gray-500">
                       <div className="text-center">
                           <PencilSquareIcon className="h-16 w-16 mx-auto mb-4 opacity-20"/>
                           <p>Configure your script on the left to start.</p>
@@ -822,40 +822,40 @@ const Studio: React.FC<{
      }
 
      return (
-         <div className="h-full flex overflow-hidden animate-fade-in relative bg-gray-900">
+         <div className="h-full flex overflow-hidden animate-fade-in relative bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
              {/* Sidebar: Fixed on Desktop, Toggleable Overlay on Mobile */}
              <div className={`
-                fixed inset-0 z-30 bg-gray-900 md:static md:inset-auto md:w-80 md:border-r border-gray-800 md:block transition-transform duration-300
+                fixed inset-0 z-30 bg-white dark:bg-gray-900 md:static md:inset-auto md:w-80 md:border-r border-gray-200 dark:border-gray-800 md:block transition-transform duration-300
                 ${isConfigOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
              `}>
-                 <div className="h-full overflow-y-auto p-6 text-white">
+                 <div className="h-full overflow-y-auto p-6 text-gray-900 dark:text-white">
                      <div className="flex justify-between items-center mb-4">
-                        <button onClick={onBack} className="text-sm text-gray-400 hover:text-white">&larr; Back</button>
-                        <button onClick={() => setIsConfigOpen(false)} className="md:hidden"><XMarkIcon className="h-6 w-6"/></button>
+                        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">&larr; Back</button>
+                        <button onClick={() => setIsConfigOpen(false)} className="md:hidden text-gray-500 dark:text-gray-400"><XMarkIcon className="h-6 w-6"/></button>
                      </div>
                      
                      <div className="space-y-4 mb-6">
                         <h3 className="font-bold text-lg">Edit Config</h3>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Topic</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 h-20 text-white" placeholder="Topic..."/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
+                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Topic..."/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
+                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Needs</label>
+                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-400 font-bold uppercase">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-800 rounded border border-gray-700 p-2 text-sm mt-1 text-white"/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">CTA</label>
+                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
                         </div>
                         <Button onClick={() => { onGenerate(config); setIsConfigOpen(false); }} isLoading={isGenerating}>Regenerate</Button>
                      </div>
 
-                     <div className="mt-8 pt-4 border-t border-gray-700">
+                     <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
                          <Button onClick={handleDownloadPDF} variant="secondary" className="w-full flex items-center justify-center">
                              <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Export PDF
                          </Button>
@@ -864,18 +864,18 @@ const Studio: React.FC<{
              </div>
              
              {/* Main Content Area - SCRIPT PREVIEW MODE */}
-             <div className="flex-1 bg-gray-900 overflow-y-auto p-4 md:p-8 scroll-smooth text-white">
+             <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto p-4 md:p-8 scroll-smooth text-gray-900 dark:text-white transition-colors duration-300">
                  <div className="max-w-4xl mx-auto pb-20">
                      <div className="flex justify-between items-start mb-6">
                         <div className="flex-1 mr-4">
-                            <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full outline-none placeholder-gray-600"/>
-                            <div className="text-sm text-gray-400 mt-2 flex space-x-3">
-                                <span className="bg-gray-800 px-2 py-1 rounded">{selectedScript.format}</span>
-                                <span className="bg-gray-800 px-2 py-1 rounded">{selectedScript.tone}</span>
+                            <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full outline-none placeholder-gray-400 dark:placeholder-gray-600 text-gray-900 dark:text-white"/>
+                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 flex space-x-3">
+                                <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.format}</span>
+                                <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.tone}</span>
                             </div>
                         </div>
                         <div className="flex space-x-2">
-                            <button onClick={() => setIsConfigOpen(true)} className="md:hidden p-2 bg-gray-700 rounded hover:bg-gray-600 text-sm flex items-center">
+                            <button onClick={() => setIsConfigOpen(true)} className="md:hidden p-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm flex items-center text-gray-700 dark:text-gray-300">
                                 <PencilSquareIcon className="h-5 w-5 mr-1"/> <span className="hidden sm:inline">Config</span>
                             </button>
                         </div>
@@ -883,7 +883,7 @@ const Studio: React.FC<{
                      
                      <div className="space-y-1">
                          {selectedScript.sections.length === 0 && (
-                            <div className="text-gray-400 p-8 border border-dashed border-gray-600 rounded text-center">
+                            <div className="text-gray-500 dark:text-gray-400 p-8 border border-dashed border-gray-300 dark:border-gray-600 rounded text-center">
                                 <p className="mb-4">Empty content.</p>
                                 <Button onClick={() => setIsConfigOpen(true)}>Open Config</Button>
                             </div>
@@ -906,19 +906,19 @@ const Studio: React.FC<{
                          ))}
 
                          {/* Social Posts Section */}
-                         <div className="mt-12 pt-8 border-t border-gray-800">
+                         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
                              <div className="flex justify-between items-center mb-6">
-                                 <h3 className="text-xl font-bold flex items-center text-white"><ShareIcon className="h-5 w-5 mr-2 text-green-400"/> Social Posts</h3>
+                                 <h3 className="text-xl font-bold flex items-center text-gray-900 dark:text-white"><ShareIcon className="h-5 w-5 mr-2 text-green-500"/> Social Posts</h3>
                                  <Button onClick={handleGeneratePosts} isLoading={isGeneratingPosts} className="text-sm py-1 px-3">Generate Posts</Button>
                              </div>
                              {!selectedScript.socialPosts && <p className="text-gray-500 italic text-sm">No posts generated yet.</p>}
                              <div className="grid gap-4 md:grid-cols-2">
                                  {selectedScript.socialPosts?.map((post, i) => (
-                                     <div key={i} className="bg-gray-800 border border-gray-700 p-5 rounded-xl">
+                                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
                                          <span className="text-xs font-bold uppercase text-brand-blue mb-2 block">{post.platform}</span>
-                                         <p className="text-sm text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
-                                         {post.visualNote && <p className="text-xs text-blue-300 italic mb-2">[Asset: {post.visualNote}]</p>}
-                                         <div className="text-xs text-blue-400">{post.hashtags?.join(' ')}</div>
+                                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
+                                         {post.visualNote && <p className="text-xs text-blue-500 dark:text-blue-300 italic mb-2">[Asset: {post.visualNote}]</p>}
+                                         <div className="text-xs text-blue-500 dark:text-blue-400">{post.hashtags?.join(' ')}</div>
                                      </div>
                                  ))}
                              </div>

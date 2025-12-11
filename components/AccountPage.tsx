@@ -206,12 +206,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex justify-between items-center">
-                            <h2 className="text-2xl font-bold">My Account</h2>
-                            <div className="text-sm text-gray-400">Local Storage</div>
+                            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">My Account</h2>
+                            <div className="text-sm text-gray-500">Local Storage</div>
                         </div>
-                        <div className="flex items-center space-x-4 bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <div className="flex items-center space-x-4 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
                              <div className="relative cursor-pointer group" onClick={() => fileInputRef.current?.click()}>
-                                 <div className="h-20 w-20 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
+                                 <div className="h-20 w-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden border-2 border-brand-purple relative">
                                     {user.profilePicture ? <img src={user.profilePicture} alt="Profile" className="h-full w-full object-cover"/> : <UserIcon className="h-10 w-10 text-gray-400"/>}
                                  </div>
                                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
@@ -221,33 +221,33 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              </div>
                              <div className="flex-1">
                                  <div className="flex items-center space-x-2">
-                                     <p className="font-bold text-lg break-all">{user.email}</p>
+                                     <p className="font-bold text-lg break-all text-gray-900 dark:text-white">{user.email}</p>
                                      {user.isPro && <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide">PRO+</span>}
                                  </div>
-                                 <p className="text-gray-400">{user.niche} | {user.channelName}</p>
+                                 <p className="text-gray-500 dark:text-gray-400">{user.niche} | {user.channelName}</p>
                              </div>
                         </div>
                         
                         <div className="space-y-4">
-                            <label className="text-xs text-gray-400 font-bold uppercase mt-4 block">Channel Details</label>
-                            <input type="text" placeholder="Channel Name" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
-                            <input type="text" placeholder="Channel URL" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
-                            <input type="text" placeholder="Niche" className="w-full bg-gray-800 p-3 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
+                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mt-4 block">Channel Details</label>
+                            <input type="text" placeholder="Channel Name" className="w-full bg-white dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none text-gray-900 dark:text-white transition" defaultValue={user.channelName} onChange={e => onUpdateUser({...user, channelName: e.target.value})}/>
+                            <input type="text" placeholder="Channel URL" className="w-full bg-white dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none text-gray-900 dark:text-white transition" defaultValue={user.youtubeUrl} onChange={e => onUpdateUser({...user, youtubeUrl: e.target.value})}/>
+                            <input type="text" placeholder="Niche" className="w-full bg-white dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none text-gray-900 dark:text-white transition" defaultValue={user.niche} onChange={e => onUpdateUser({...user, niche: e.target.value})}/>
                         </div>
 
                         {toggleTheme && (
-                            <div className="pt-4 border-t border-gray-700">
-                                <h3 className="font-bold mb-2">Theme</h3>
+                            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                <h3 className="font-bold mb-2 text-gray-900 dark:text-white">Theme</h3>
                                 <Button onClick={toggleTheme} variant="secondary" className="w-full flex justify-center items-center">
                                     {isDarkMode ? <><SunIcon className="h-5 w-5 mr-2"/> Switch to Light Mode</> : <><MoonIcon className="h-5 w-5 mr-2"/> Switch to Dark Mode</>}
                                 </Button>
                             </div>
                         )}
 
-                        <div className="pt-4 border-t border-gray-700">
-                             <h3 className="font-bold mb-2">Promo Code</h3>
+                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                             <h3 className="font-bold mb-2 text-gray-900 dark:text-white">Promo Code</h3>
                              <div className="flex space-x-2">
-                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-gray-800 p-2 rounded border border-gray-700 focus:border-brand-purple outline-none text-white" placeholder="Enter code..."/>
+                                <input type="text" value={promoCode} onChange={e => setPromoCode(e.target.value)} className="flex-1 bg-white dark:bg-gray-800 p-2 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none text-gray-900 dark:text-white transition" placeholder="Enter code..."/>
                                 <Button onClick={handlePromoCode} variant="secondary">Apply</Button>
                              </div>
                         </div>
@@ -257,16 +257,16 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
-                             <Squares2x2Icon className="h-6 w-6 text-pink-400"/>
-                             <h2 className="text-2xl font-bold">Community Templates</h2>
+                             <Squares2x2Icon className="h-6 w-6 text-pink-500"/>
+                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Community Templates</h2>
                         </div>
-                        <p className="text-gray-400">Discover structures that work for other creators.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Discover structures that work for other creators.</p>
                         
                         <div className="grid gap-4 md:grid-cols-2">
                             {communityTemplates.map((tpl, i) => (
-                                <div key={i} className="bg-gray-800 p-4 rounded-xl border border-gray-700 hover:border-pink-500 transition cursor-pointer">
-                                    <h3 className="font-bold text-lg mb-1">{tpl.title}</h3>
-                                    <span className="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300">{tpl.niche}</span>
+                                <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-pink-500 transition cursor-pointer">
+                                    <h3 className="font-bold text-lg mb-1 text-gray-900 dark:text-white">{tpl.title}</h3>
+                                    <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">{tpl.niche}</span>
                                     <div className="mt-4 flex justify-end">
                                         <Button variant="outline" className="text-xs py-1 px-3" onClick={() => handleCopyTemplate(tpl)}>Use Template</Button>
                                     </div>
@@ -282,10 +282,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                             <FireIcon className="h-8 w-8 text-orange-500" />
                             <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-red-600">Forge (Personalize AI)</h2>
                         </div>
-                        <p className="text-gray-400">Train the AI to write like you. Add references to extract your unique Style DNA.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Train the AI to write like you. Add references to extract your unique Style DNA.</p>
                         
-                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-xl">
-                             <label className="block text-sm font-bold mb-2 text-gray-300">Add Reference (YouTube URL)</label>
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl">
+                             <label className="block text-sm font-bold mb-2 text-gray-700 dark:text-gray-300">Add Reference (YouTube URL)</label>
                              <div className="flex space-x-2 mb-6">
                                 <div className="flex-1 relative">
                                     <input 
@@ -293,9 +293,9 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                                         value={forgeUrl} 
                                         onChange={e => setForgeUrl(e.target.value)}
                                         placeholder="Paste reference link..." 
-                                        className="w-full bg-gray-900 p-3 rounded border border-gray-700 pl-10 focus:ring-1 focus:ring-orange-500 outline-none transition text-white"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 p-3 rounded border border-gray-300 dark:border-gray-700 pl-10 focus:ring-1 focus:ring-orange-500 outline-none transition text-gray-900 dark:text-white"
                                     />
-                                    <div className="absolute left-3 top-3 text-gray-500">
+                                    <div className="absolute left-3 top-3 text-gray-400">
                                         <VideoIcon className="h-5 w-5" />
                                     </div>
                                 </div>
@@ -303,20 +303,20 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                              </div>
                              
                              <div className="space-y-3 mb-6">
-                                {forgeItems.length === 0 && <div className="text-center py-8 text-gray-500 border border-dashed border-gray-700 rounded-lg">No references added. Start forging your style.</div>}
+                                {forgeItems.length === 0 && <div className="text-center py-8 text-gray-500 border border-dashed border-gray-300 dark:border-gray-700 rounded-lg">No references added. Start forging your style.</div>}
                                 {forgeItems.map(item => (
-                                    <div key={item.id} className="bg-gray-900 rounded p-3 border border-gray-800 flex justify-between items-center">
+                                    <div key={item.id} className="bg-gray-50 dark:bg-gray-900 rounded p-3 border border-gray-200 dark:border-gray-800 flex justify-between items-center">
                                         <div>
-                                            <p className="font-bold text-sm text-gray-200">{item.name}</p>
-                                            <p className="text-xs text-orange-400">{item.styleDNA}</p>
+                                            <p className="font-bold text-sm text-gray-900 dark:text-gray-200">{item.name}</p>
+                                            <p className="text-xs text-orange-500 dark:text-orange-400">{item.styleDNA}</p>
                                         </div>
-                                        <button onClick={() => setForgeItems(forgeItems.filter(i => i.id !== item.id))} className="text-gray-500 hover:text-red-400"><XMarkIcon className="h-4 w-4"/></button>
+                                        <button onClick={() => setForgeItems(forgeItems.filter(i => i.id !== item.id))} className="text-gray-400 hover:text-red-500"><XMarkIcon className="h-4 w-4"/></button>
                                     </div>
                                 ))}
                              </div>
                              
                              {user.styleDNA && (
-                                 <div className="mb-4 p-3 bg-green-900/20 border border-green-900 rounded text-sm text-green-400">
+                                 <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-900 rounded text-sm text-green-600 dark:text-green-400">
                                      <strong>Current DNA:</strong> {user.styleDNA}
                                  </div>
                              )}
@@ -332,32 +332,32 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                     <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
-                             <BriefcaseIcon className="h-6 w-6 text-blue-400"/>
-                             <h2 className="text-2xl font-bold">Pitch Mark</h2>
+                             <BriefcaseIcon className="h-6 w-6 text-blue-500"/>
+                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pitch Mark</h2>
                         </div>
-                        <p className="text-gray-400">Draft professional brand pitches instantly.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Draft professional brand pitches instantly.</p>
 
-                        <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
                             <div className="space-y-4 mb-6">
                                 <div>
-                                    <label className="text-xs text-gray-400 font-bold uppercase">Target Name (Company/Person)</label>
-                                    <input value={pitchTarget} onChange={e => setPitchTarget(e.target.value)} className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1"/>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Target Name (Company/Person)</label>
+                                    <input value={pitchTarget} onChange={e => setPitchTarget(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-3 rounded text-gray-900 dark:text-white mt-1"/>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 font-bold uppercase">Target Description (What do they do?)</label>
-                                    <textarea value={pitchDesc} onChange={e => setPitchDesc(e.target.value)} className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1 h-20"/>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Target Description (What do they do?)</label>
+                                    <textarea value={pitchDesc} onChange={e => setPitchDesc(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-3 rounded text-gray-900 dark:text-white mt-1 h-20"/>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-gray-400 font-bold uppercase">Your Objective</label>
-                                    <input value={pitchObj} onChange={e => setPitchObj(e.target.value)} placeholder="e.g. Sponsoring, Collaboration..." className="w-full bg-gray-900 border border-gray-700 p-3 rounded text-white mt-1"/>
+                                    <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Your Objective</label>
+                                    <input value={pitchObj} onChange={e => setPitchObj(e.target.value)} placeholder="e.g. Sponsoring, Collaboration..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-3 rounded text-gray-900 dark:text-white mt-1"/>
                                 </div>
                             </div>
-                            <Button onClick={handleGeneratePitch} isLoading={isPitching} className="w-full bg-blue-600 hover:bg-blue-700">Generate Pitch</Button>
+                            <Button onClick={handleGeneratePitch} isLoading={isPitching} className="w-full bg-blue-600 hover:bg-blue-700 text-white">Generate Pitch</Button>
                             
                             {generatedPitch && (
-                                <div className="mt-6 p-4 bg-gray-900 border border-gray-700 rounded-lg">
-                                    <h4 className="font-bold text-sm text-gray-400 mb-2">Generated Draft:</h4>
-                                    <p className="text-white whitespace-pre-wrap font-serif leading-relaxed">{generatedPitch}</p>
+                                <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                    <h4 className="font-bold text-sm text-gray-500 dark:text-gray-400 mb-2">Generated Draft:</h4>
+                                    <p className="text-gray-800 dark:text-white whitespace-pre-wrap font-serif leading-relaxed">{generatedPitch}</p>
                                     <Button onClick={() => navigator.clipboard.writeText(generatedPitch)} variant="secondary" className="mt-4 text-xs">Copy Text</Button>
                                 </div>
                             )}
@@ -368,10 +368,10 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 return (
                      <div className="space-y-6 pb-20">
                         <div className="flex items-center space-x-2">
-                             <TrendingUpIcon className="h-6 w-6 text-yellow-400"/>
-                             <h2 className="text-2xl font-bold">Growth Engine</h2>
+                             <TrendingUpIcon className="h-6 w-6 text-yellow-500"/>
+                             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Growth Engine</h2>
                         </div>
-                        <p className="text-gray-400">Generate viral concepts for {user.niche}.</p>
+                        <p className="text-gray-500 dark:text-gray-400">Generate viral concepts for {user.niche}.</p>
                         
                         <Button onClick={handleGenerateIdeas} isLoading={isLoadingIdeas} className="w-full mb-6 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-black font-bold">
                             <RefreshIcon className="h-5 w-5 mr-2 inline"/> Generate 6 Ideas
@@ -379,13 +379,13 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
 
                         <div className="grid gap-4 md:grid-cols-2">
                             {viralIdeas.map(idea => (
-                                <div key={idea.id} onClick={() => handleUseIdea(idea)} className="bg-gray-800 p-5 rounded-xl border border-gray-700 hover:border-yellow-500 cursor-pointer group transition">
+                                <div key={idea.id} onClick={() => handleUseIdea(idea)} className="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-yellow-500 cursor-pointer group transition">
                                     <div className="flex justify-between items-start mb-2">
-                                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${idea.difficulty === 'Easy' ? 'bg-green-900 text-green-400' : idea.difficulty === 'Medium' ? 'bg-yellow-900 text-yellow-400' : 'bg-red-900 text-red-400'}`}>{idea.difficulty}</span>
-                                        <ArrowDownTrayIcon className="h-4 w-4 text-gray-600 group-hover:text-yellow-400 -rotate-90"/>
+                                        <span className={`text-[10px] px-2 py-1 rounded font-bold ${idea.difficulty === 'Easy' ? 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400' : idea.difficulty === 'Medium' ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400' : 'bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400'}`}>{idea.difficulty}</span>
+                                        <ArrowDownTrayIcon className="h-4 w-4 text-gray-400 group-hover:text-yellow-500 -rotate-90"/>
                                     </div>
-                                    <h3 className="font-bold text-lg mb-2 group-hover:text-yellow-400 transition">{idea.title}</h3>
-                                    <p className="text-sm text-gray-400 italic">"{idea.hook}"</p>
+                                    <h3 className="font-bold text-lg mb-2 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition text-gray-900 dark:text-white">{idea.title}</h3>
+                                    <p className="text-sm text-gray-500 italic">"{idea.hook}"</p>
                                 </div>
                             ))}
                         </div>
@@ -394,41 +394,41 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             case 'plan':
                 return (
                     <div className="space-y-6 pb-20">
-                        <h2 className="text-2xl font-bold">Plans & Pricing</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Plans & Pricing</h2>
                         <div className="p-4 border border-brand-purple bg-brand-purple/10 rounded-xl mb-6">
                             <div className="flex justify-between items-center">
-                                <span className="font-bold text-lg">{user.isPro ? 'Creator Pro' : 'Free Trial'}</span>
-                                <span className="text-sm bg-brand-purple px-2 py-1 rounded">Active</span>
+                                <span className="font-bold text-lg text-gray-900 dark:text-white">{user.isPro ? 'Creator Pro' : 'Free Trial'}</span>
+                                <span className="text-sm bg-brand-purple px-2 py-1 rounded text-white">Active</span>
                             </div>
-                            <p className="text-gray-400 mt-2">Credits: {user.generationsLeft}</p>
+                            <p className="text-gray-500 dark:text-gray-400 mt-2">Credits: {user.generationsLeft}</p>
                         </div>
                         
                         <div className="grid gap-4 md:grid-cols-3">
-                             <div className="bg-gray-800 p-6 rounded border border-gray-700">
-                                <h3 className="font-bold text-white mb-2">Starter</h3>
-                                <p className="text-2xl font-bold text-white mb-4">${PRICING.starter}</p>
-                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                             <div className="bg-white dark:bg-gray-800 p-6 rounded border border-gray-200 dark:border-gray-700">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Starter</h3>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">${PRICING.starter}</p>
+                                <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-2 mb-4">
                                     <li>10 Scripts</li>
                                     <li>Social Posts</li>
                                     <li>Viral Idea Gen</li>
                                 </ul>
                                 <Button onClick={() => alert("Simulated Payment")} variant="outline" className="w-full">Buy Now</Button>
                             </div>
-                             <div className="bg-gray-800 p-6 rounded border border-indigo-500 relative">
+                             <div className="bg-white dark:bg-gray-800 p-6 rounded border border-indigo-500 relative">
                                 <div className="absolute top-0 right-0 bg-indigo-600 text-xs px-2 py-1 rounded-bl text-white font-bold">BEST</div>
-                                <h3 className="font-bold text-white mb-2">Creator</h3>
-                                <p className="text-2xl font-bold text-white mb-4">${PRICING.creator}</p>
-                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Creator</h3>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">${PRICING.creator}</p>
+                                <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-2 mb-4">
                                     <li>30 Scripts</li>
                                     <li>Serial Prod (5 Eps)</li>
                                     <li>All Starter features</li>
                                 </ul>
-                                <Button onClick={() => alert("Simulated Payment")} className="w-full">Buy Now</Button>
+                                <Button onClick={() => alert("Simulated Payment")} className="w-full text-white">Buy Now</Button>
                             </div>
-                             <div className="bg-gray-800 p-6 rounded border border-gray-700">
-                                <h3 className="font-bold text-white mb-2">Pro Authority</h3>
-                                <p className="text-2xl font-bold text-white mb-4">${PRICING.pro}</p>
-                                <ul className="text-sm text-gray-400 space-y-2 mb-4">
+                             <div className="bg-white dark:bg-gray-800 p-6 rounded border border-gray-200 dark:border-gray-700">
+                                <h3 className="font-bold text-gray-900 dark:text-white mb-2">Pro Authority</h3>
+                                <p className="text-2xl font-bold text-gray-900 dark:text-white mb-4">${PRICING.pro}</p>
+                                <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-2 mb-4">
                                     <li>50 Scripts</li>
                                     <li>Serial Prod (20 Eps)</li>
                                     <li>Priority Support</li>
@@ -441,12 +441,12 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             case 'feedback':
                 return (
                     <div className="space-y-4 pb-20">
-                        <h2 className="text-2xl font-bold">Feedback</h2>
-                         <p className="text-sm text-gray-400">Help us improve WySlider.</p>
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Feedback</h2>
+                         <p className="text-sm text-gray-500 dark:text-gray-400">Help us improve WySlider.</p>
                          <textarea 
                             value={feedbackMsg}
                             onChange={e => setFeedbackMsg(e.target.value)}
-                            className="w-full bg-gray-800 p-3 rounded border border-gray-700 h-32 focus:border-brand-purple outline-none text-white" 
+                            className="w-full bg-white dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 h-32 focus:border-brand-purple outline-none text-gray-900 dark:text-white transition" 
                             placeholder="Ideas, bugs, or thoughts..."
                          />
                          <Button onClick={handleSendFeedback}>Send</Button>
@@ -473,27 +473,27 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
             activeTab="account"
             onTabChange={handleTabChange}
         >
-            <div className="flex flex-col md:flex-row h-full text-white animate-fade-in overflow-hidden relative">
+            <div className="flex flex-col md:flex-row h-full text-gray-900 dark:text-white animate-fade-in overflow-hidden relative transition-colors duration-300">
                 {/* Sidebar */}
-                <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-800 bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto">
-                    <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-800 flex items-center md:block">
+                <div className="w-full md:w-64 flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto transition-colors duration-300">
+                    <div className="p-4 md:p-6 border-r md:border-r-0 md:border-b border-gray-200 dark:border-gray-800 flex items-center md:block">
                         <Button onClick={onBack} variant="outline" className="w-auto md:w-full text-sm">← <span className="hidden md:inline">Back</span></Button>
                     </div>
                     <nav className="flex md:flex-col flex-1 p-2 md:p-4 space-x-2 md:space-x-0 md:space-y-1">
                         {[
                             {id: 'account', label: 'Account', icon: <UserIcon className="h-5 w-5"/>},
-                            {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-400"/>},
-                            {id: 'pitch', label: 'Pitch Mark', icon: <BriefcaseIcon className="h-5 w-5 text-blue-400"/>},
-                            {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-400"/>},
+                            {id: 'growth', label: 'Growth', icon: <TrendingUpIcon className="h-5 w-5 text-yellow-500"/>},
+                            {id: 'pitch', label: 'Pitch Mark', icon: <BriefcaseIcon className="h-5 w-5 text-blue-500"/>},
+                            {id: 'templates', label: 'Templates', icon: <Squares2x2Icon className="h-5 w-5 text-pink-500"/>},
                             {id: 'forge', label: 'Forge', icon: <FireIcon className="h-5 w-5 text-orange-500"/>},
-                            {id: 'share', label: 'Share', icon: <ShareIcon className="h-5 w-5 text-green-400"/>},
-                            {id: 'plan', label: 'Plans', icon: <DiamondIcon className="h-5 w-5 text-yellow-500"/>},
+                            {id: 'share', label: 'Share', icon: <ShareIcon className="h-5 w-5 text-green-500"/>},
+                            {id: 'plan', label: 'Plans', icon: <DiamondIcon className="h-5 w-5 text-yellow-600 dark:text-yellow-500"/>},
                             {id: 'feedback', label: 'Feedback', icon: <PencilSquareIcon className="h-5 w-5"/>},
                         ].map(item => (
                             <button 
                                 key={item.id} 
                                 onClick={() => setSection(item.id as any)}
-                                className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition whitespace-nowrap ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                                className={`flex-shrink-0 md:w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition whitespace-nowrap ${section === item.id ? 'bg-brand-purple text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'}`}
                             >
                                 {item.icon}
                                 <span className="hidden md:inline">{item.label}</span>
@@ -504,7 +504,7 @@ export const AccountPage: React.FC<AccountPageProps> = ({ user, onUpdateUser, on
                 </div>
 
                 {/* Center Content */}
-                <div className="flex-1 overflow-y-auto bg-gray-900 p-4 md:p-8 scroll-smooth">
+                <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 md:p-8 scroll-smooth transition-colors duration-300">
                     <div className="max-w-4xl mx-auto">
                         {renderContent()}
                     </div>
