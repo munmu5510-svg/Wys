@@ -599,12 +599,21 @@ const Studio: React.FC<{
      const handleGeneratePosts = async () => {
          if(!selectedScript) return;
          setIsGeneratingPosts(true);
-         const fullContent = selectedScript.sections.map(s => s.content).join(' ');
-         const posts = await geminiService.generateSocialPosts(selectedScript.title, fullContent, config.platforms);
-         if(posts && posts.length > 0) {
-             onUpdate({...selectedScript, socialPosts: posts});
+         
+         try {
+             const fullContent = selectedScript.sections.map(s => s.content).join(' ');
+             const posts = await geminiService.generateSocialPosts(selectedScript.title, fullContent, config.platforms);
+             if(posts && posts.length > 0) {
+                 onUpdate({...selectedScript, socialPosts: posts});
+             }
+         } catch(error: any) {
+             console.error("Social post generation failed", error);
+             let msg = "Failed to generate posts.";
+             if(error.message === "QUOTA_EXCEEDED") msg = "Quota limit reached. Please wait a moment.";
+             alert(msg);
+         } finally {
+             setIsGeneratingPosts(false);
          }
-         setIsGeneratingPosts(false);
      };
 
      const handleDownloadPDF = () => {
@@ -1051,43 +1060,56 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
         }
 
         setIsGenerating(true);
-        const scriptData = await geminiService.generateScript(
-            config.topic, 
-            config.tone, 
-            config.duration, 
-            user.youtubeUrl, 
-            config.goal, 
-            config.needs, 
-            config.cta, 
-            config.platforms,
-            user.styleDNA // Pass styleDNA to service
-        );
-        
-        if (scriptData) {
-            const updatedScript: Script = {
-                ...currentScript,
-                title: scriptData.title,
-                topic: config.topic,
-                tone: config.tone,
-                format: config.duration,
-                youtubeDescription: scriptData.youtubeDescription,
-                hashtags: scriptData.hashtags,
-                sections: scriptData.sections,
-                socialPosts: scriptData.socialPosts,
-                goal: config.goal,
-                needs: config.needs,
-                cta: config.cta
-            };
+
+        try {
+            const scriptData = await geminiService.generateScript(
+                config.topic, 
+                config.tone, 
+                config.duration, 
+                user.youtubeUrl, 
+                config.goal, 
+                config.needs, 
+                config.cta, 
+                config.platforms,
+                user.styleDNA // Pass styleDNA to service
+            );
             
-            const newScripts = scripts.map(s => s.id === currentScript.id ? updatedScript : s);
-            setScripts(newScripts);
-            setCurrentScript(updatedScript);
-            onUpdateUser({ ...user, generationsLeft: user.generationsLeft - 1 });
-            notify("Script Generated!", "Your script is ready.");
-        } else {
-            notify("Error", "AI failed to generate script.", "warning");
+            if (scriptData) {
+                const updatedScript: Script = {
+                    ...currentScript,
+                    title: scriptData.title,
+                    topic: config.topic,
+                    tone: config.tone,
+                    format: config.duration,
+                    youtubeDescription: scriptData.youtubeDescription,
+                    hashtags: scriptData.hashtags,
+                    sections: scriptData.sections,
+                    socialPosts: scriptData.socialPosts,
+                    goal: config.goal,
+                    needs: config.needs,
+                    cta: config.cta
+                };
+                
+                const newScripts = scripts.map(s => s.id === currentScript.id ? updatedScript : s);
+                setScripts(newScripts);
+                setCurrentScript(updatedScript);
+                onUpdateUser({ ...user, generationsLeft: user.generationsLeft - 1 });
+                notify("Script Generated!", "Your script is ready.", "success");
+            }
+        } catch (error: any) {
+            console.error("Gen Script failed:", error);
+            let msg = "AI failed to generate script.";
+            if (error.message === "QUOTA_EXCEEDED") {
+                msg = "Quota exceeded (Too many requests). Please wait 60s.";
+            } else if (error.message === "Request timed out") {
+                msg = "AI took too long. Try a simpler topic.";
+            } else if (error.message === "EMPTY_RESPONSE") {
+                 msg = "AI returned an empty response. Try again.";
+            }
+            notify("Error", msg, "warning");
+        } finally {
+            setIsGenerating(false);
         }
-        setIsGenerating(false);
     };
 
     // Chat Logic

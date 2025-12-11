@@ -68,16 +68,30 @@ const parseResponse = (text: string) => {
 
 export const checkServiceStatus = () => "Ready";
 
-// Retry helper
-async function withRetry<T>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> {
+// Helper for timeout
+const timeoutPromise = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), ms));
+
+// Retry helper with Timeout
+async function withRetry<T>(fn: () => Promise<T>, retries = 1, delay = 1000): Promise<T> {
     try {
-        return await fn();
+        // Race between the API call and a 45s timeout (prevent infinite spinner)
+        return await Promise.race([
+            fn(),
+            timeoutPromise(45000)
+        ]) as T;
     } catch (error: any) {
-        // Retry on 500, 503, or XHR errors
-        if (retries > 0 && (error.toString().includes('xhr') || error.toString().includes('500') || error.status === 503)) {
+        // Retry on 503 (Service Unavailable) or Network errors, NOT on 400 (Bad Request) or 401 (Unauthorized)
+        const isRetryable = error.toString().includes('xhr') || error.status === 503 || error.status === 500;
+        
+        if (retries > 0 && isRetryable) {
             console.warn(`Retrying operation... Attempts left: ${retries}. Error: ${error}`);
             await new Promise(res => setTimeout(res, delay));
             return withRetry(fn, retries - 1, delay * 2);
+        }
+        
+        // Throw specific error messages for better UI handling
+        if (error.status === 429 || error.toString().includes('429')) {
+             throw new Error("QUOTA_EXCEEDED");
         }
         throw error;
     }
@@ -111,10 +125,10 @@ export const generateScript = async (
   Ensure the response adheres to the JSON schema.
   `;
 
-  try {
-    const ai = getAi();
+  // Removed internal try/catch that swallowed errors. Now it propagates to Workspace.tsx
+  const ai = getAi();
     
-    const resultStream = await withRetry(async () => {
+  const resultStream = await withRetry(async () => {
         return await ai.models.generateContentStream({
             model: MODEL_NAME,
             contents: prompt,
@@ -173,7 +187,7 @@ export const generateScript = async (
         
         if (!data || typeof data !== 'object') {
             console.error("Invalid JSON data returned");
-            return null;
+            throw new Error("INVALID_JSON");
         }
 
         // Sanitize and Add IDs to sections
@@ -203,11 +217,7 @@ export const generateScript = async (
 
         return data;
     }
-    return null;
-  } catch (error) {
-    console.error("Error generating script:", error);
-    return null;
-  }
+    throw new Error("EMPTY_RESPONSE");
 };
 
 export const generateSeriesOutlines = async (
