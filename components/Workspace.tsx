@@ -55,7 +55,7 @@ const ChatOverlay: React.FC<{
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeSession?.messages]);
+    }, [activeSession?.messages, isProcessing]);
 
     const handleSend = () => {
         if(!input.trim()) return;
@@ -66,7 +66,7 @@ const ChatOverlay: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-50 flex flex-col">
+        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-gray-900 border-l border-gray-800 shadow-2xl transform transition-transform duration-300 z-[70] flex flex-col">
             <div className="h-16 border-b border-gray-800 flex items-center justify-between px-4 bg-gray-900">
                 <div className="flex items-center space-x-2">
                     <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-800 ${view === 'history' ? 'text-white' : 'text-gray-500'}`} title="History">
@@ -104,16 +104,16 @@ const ChatOverlay: React.FC<{
                     </div>
                 ) : (
                     <>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
                             {!activeSession && <div className="text-center text-gray-500 mt-10">Start a new chat.</div>}
                             {activeSession?.messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-800 text-gray-200 rounded-bl-none border border-gray-700'}`}>
                                         {msg.content}
                                     </div>
                                 </div>
                             ))}
-                            {isProcessing && (
+                            {isProcessing && activeSession?.messages[activeSession.messages.length - 1]?.role === 'user' && (
                                 <div className="flex justify-start">
                                     <div className="bg-gray-800 rounded-2xl rounded-bl-none px-4 py-2 text-sm text-gray-400 flex items-center space-x-2">
                                         <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
@@ -124,16 +124,16 @@ const ChatOverlay: React.FC<{
                             )}
                             <div ref={messagesEndRef} />
                         </div>
-                        <div className="p-4 bg-gray-900 border-t border-gray-800 pb-8 md:pb-4">
+                        <div className="p-4 bg-gray-900 border-t border-gray-800 pb-safe">
                             <div className="flex space-x-2">
                                 <input 
                                     value={input} 
                                     onChange={e => setInput(e.target.value)} 
                                     onKeyDown={e => e.key === 'Enter' && handleSend()}
                                     placeholder="Ask anything..." 
-                                    className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-2 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"
+                                    className="flex-1 bg-gray-800 border border-gray-700 rounded-full px-4 py-3 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-white"
                                 />
-                                <button onClick={handleSend} disabled={isProcessing} className="bg-brand-purple text-white p-2 rounded-full hover:bg-purple-600 disabled:opacity-50">
+                                <button onClick={handleSend} disabled={isProcessing} className="bg-brand-purple text-white p-2.5 rounded-full hover:bg-purple-600 disabled:opacity-50 flex-shrink-0">
                                     <PaperAirplaneIcon className="h-5 w-5"/>
                                 </button>
                             </div>
@@ -970,7 +970,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
         
         // Handle pending config from "Use Idea"
         if (pendingGenConfig) {
-             handleCreateScript();
+             // Fixed: Do not call handleCreateScript() here as it causes race condition
              const newScript: Script = {
                  id: `s_${Date.now()}`,
                  title: pendingGenConfig.topic,
@@ -984,7 +984,13 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
                  needs: pendingGenConfig.needs,
                  cta: pendingGenConfig.cta
              };
-             setScripts(prev => [newScript, ...prev]);
+             
+             // Use functional update to ensure state consistency
+             setScripts(prev => {
+                 const updated = [newScript, ...prev];
+                 localStorage.setItem('wyslider_scripts', JSON.stringify(updated)); // Immediate save
+                 return updated;
+             });
              setCurrentScript(newScript);
              setView('studio');
              if (clearPendingConfig) clearPendingConfig();
@@ -1104,6 +1110,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
     const handleSendMessage = async (content: string) => {
         if (!activeChatId) return;
         
+        // 1. Add User Message immediately
         const userMsg: ChatMessage = { id: `m_${Date.now()}`, role: 'user', content, timestamp: new Date().toISOString() };
         setChatSessions(sessions => sessions.map(s => {
             if (s.id === activeChatId) {
@@ -1122,16 +1129,42 @@ export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavi
             chatInstances.current.set(activeChatId, chat);
         }
 
-        const responseText = await geminiService.sendMessageToChat(chat, content);
+        // 2. Create placeholder for AI message
+        const aiMsgId = `m_${Date.now()}_ai`;
+        const initialAiMsg: ChatMessage = { id: aiMsgId, role: 'model', content: '', timestamp: new Date().toISOString() };
         
-        const modelMsg: ChatMessage = { id: `m_${Date.now()}_ai`, role: 'model', content: responseText, timestamp: new Date().toISOString() };
-         setChatSessions(sessions => sessions.map(s => {
+        setChatSessions(sessions => sessions.map(s => {
             if (s.id === activeChatId) {
-                return { ...s, messages: [...s.messages, modelMsg] };
+                return { ...s, messages: [...s.messages, initialAiMsg] };
             }
             return s;
         }));
-        setIsChatProcessing(false);
+
+        // 3. Stream response
+        try {
+            const stream = geminiService.sendMessageToChatStream(chat, content);
+            let fullText = "";
+
+            for await (const chunk of stream) {
+                fullText += chunk;
+                // Update the last message (the AI placeholder) with new chunk
+                setChatSessions(sessions => sessions.map(s => {
+                    if (s.id === activeChatId) {
+                        const newMessages = [...s.messages];
+                        const lastMsg = newMessages[newMessages.length - 1];
+                        if (lastMsg.id === aiMsgId) {
+                            lastMsg.content = fullText;
+                        }
+                        return { ...s, messages: newMessages };
+                    }
+                    return s;
+                }));
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsChatProcessing(false);
+        }
     };
 
     const handleTabChange = (tab: string) => {

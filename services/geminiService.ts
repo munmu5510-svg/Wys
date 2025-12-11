@@ -1,6 +1,6 @@
 
 
-import { GoogleGenAI, Type, Chat } from "@google/genai";
+import { GoogleGenAI, Type, Chat, GenerateContentResponse } from "@google/genai";
 
 // Lazy initialization of AI client
 let aiInstance: GoogleGenAI | null = null;
@@ -421,7 +421,23 @@ export const generateAdminInsights = async (metrics: string): Promise<string> =>
 const APP_KNOWLEDGE_BASE = `
 GLOBAL CONTEXT & ROLE:
 You are WYS AI, the official intelligent assistant for the WySlider App (Version 2). 
-Your role is to guide the user in creating professional YouTube content and navigating the app.
+Your role is to guide the user in creating professional YouTube content and navigating the app. You replace the static documentation. You must know everything about the app.
+
+APP FEATURES:
+1. Studio: Create single scripts from a topic.
+2. Serial Prod (Pro+): Create entire series of 3-20 episodes.
+3. Forge: Personalize the AI style by adding reference video URLs.
+4. Growth Engine: Generate viral video ideas.
+5. Pitch Mark: Generate brand sponsorship pitches.
+6. PDF Export: Export scripts with social posts.
+
+PRICING:
+- Starter ($25): 10 Scripts, Social Posts, Viral Ideas. Perfect for new creators.
+- Creator ($50): 30 Scripts, Social Posts, Viral Ideas, Serial Prod (5 Eps). Most Popular.
+- Pro Authority ($150): 50 Scripts, Serial Prod (20 Eps), Priority Support. For agencies.
+
+ADVICE STYLE:
+Be concise, helpful, and encouraging. If the user asks "How do I...", explain the steps in the app.
 `;
 
 export const startChatSession = (context: string): Chat => {
@@ -443,6 +459,21 @@ export const sendMessageToChat = async (chatSession: Chat, message: string): Pro
         return "Connection interrupted. Please check your API Key or try again.";
     }
 };
+
+export async function* sendMessageToChatStream(chatSession: Chat, message: string) {
+    try {
+        const resultStream = await chatSession.sendMessageStream({ message });
+        for await (const chunk of resultStream) {
+            const c = chunk as GenerateContentResponse;
+            if (c.text) {
+                yield c.text;
+            }
+        }
+    } catch (error) {
+        console.error("Stream Chat error:", error);
+        yield "Connection interrupted. Please check your API Key or try again.";
+    }
+}
 
 export const generatePitch = async (targetName: string, description: string, objective: string): Promise<string> => {
     try {
