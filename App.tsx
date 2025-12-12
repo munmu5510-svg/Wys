@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { AuthPage } from './components/AuthPage';
@@ -5,18 +6,30 @@ import { Workspace } from './components/Workspace';
 import { AccountPage } from './components/AccountPage';
 import { AdminPage } from './components/AdminPage';
 import { User, AppScreen, ViralIdea } from './types';
+import { LogoIcon } from './components/icons';
+
+const SplashScreen = () => (
+    <div className="fixed inset-0 bg-black z-[100] flex flex-col items-center justify-center animate-fade-in">
+        <div className="relative">
+            <div className="absolute inset-0 bg-brand-purple blur-3xl opacity-20 animate-pulse"></div>
+            <LogoIcon className="h-24 w-auto text-white relative z-10 animate-bounce" />
+        </div>
+        <h1 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-600 tracking-tighter">WySlider</h1>
+        <p className="text-gray-500 mt-2 text-sm tracking-widest uppercase">Professional AI Architecture</p>
+    </div>
+);
 
 export const App: React.FC = () => {
+  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('Dashboard');
-  const [workspaceView, setWorkspaceView] = useState<'dashboard' | 'studio' | 'serial'>('dashboard');
   const [isAuthFlow, setIsAuthFlow] = useState(false);
-  const [pendingGenConfig, setPendingGenConfig] = useState<any>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    console.log("WySlider App Mounted V3.2");
-    
+    // Simulate Splash Timer
+    const timer = setTimeout(() => setLoading(false), 2500);
+
     // Theme Init
     const savedTheme = localStorage.getItem('wyslider_theme');
     if (savedTheme) {
@@ -37,6 +50,7 @@ export const App: React.FC = () => {
         console.error("Failed to parse user session");
       }
     }
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleTheme = () => {
@@ -63,7 +77,6 @@ export const App: React.FC = () => {
       niche: 'Education',
       generationsLeft: 6,
       storagePreference: 'local',
-      lastSyncedAt: undefined,
       theme: isDarkMode ? 'dark' : 'light'
     };
     updateUserSession(mockUser);
@@ -113,18 +126,7 @@ export const App: React.FC = () => {
       setCurrentScreen('Admin');
   };
 
-  const handleUseIdea = (idea: ViralIdea) => {
-      setPendingGenConfig({
-          topic: idea.title,
-          tone: 'Energique',
-          duration: '8-15min',
-          goal: `Make a viral video about ${idea.title}`,
-          needs: 'High retention hook',
-          cta: 'Subscribe for more'
-      });
-      setCurrentScreen('Dashboard');
-      setWorkspaceView('studio');
-  };
+  if (loading) return <SplashScreen />;
 
   if (!user) {
     if (isAuthFlow) {
@@ -152,11 +154,6 @@ export const App: React.FC = () => {
             onUpdateUser={updateUserSession} 
             onBack={() => setCurrentScreen('Dashboard')}
             onNavigateToAdmin={() => setCurrentScreen('Admin')}
-            onNavigateToStudio={() => {
-                setWorkspaceView('studio');
-                setCurrentScreen('Dashboard');
-            }}
-            onUseIdea={handleUseIdea}
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
         />
@@ -166,13 +163,9 @@ export const App: React.FC = () => {
   return (
        <Workspace 
             user={user} 
-            view={workspaceView}
-            setView={setWorkspaceView}
             onUpdateUser={updateUserSession} 
             onNavigateAccount={() => setCurrentScreen('Account')}
             onLogout={handleLogout}
-            pendingGenConfig={pendingGenConfig}
-            clearPendingConfig={() => setPendingGenConfig(null)}
             isDarkMode={isDarkMode}
             toggleTheme={toggleTheme}
        />

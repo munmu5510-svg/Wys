@@ -15,16 +15,33 @@ export interface User {
   firebaseConfig?: string;
   lastSyncedAt?: string;
   theme?: 'dark' | 'light';
-  styleDNA?: string; // Added for Forge customization
-  customStrategies?: { id: string; name: string; instruction: string }[]; // Added for Forge Custom Strategies
+  styleDNA?: string; 
+  fusionStructures?: FusionStructure[]; // Formerly customStrategies
+}
+
+export interface FusionStructure {
+    id: string;
+    name: string;
+    description: string;
+    instruction: string;
+    sourceUrl?: string;
+}
+
+export interface SubTone {
+    tone: string;
+    color: string; // Hex code
 }
 
 export interface ScriptSection {
-  id: string;
+  number: number;
   title: string;
-  estimatedTime: string;
-  content: string;
-  visualNote?: string;
+  content: string; // HTML/Markdown allowed for colored text
+  rehook: string;
+}
+
+export interface VideoPrompt {
+    segment: string; // e.g. "Hook (0:00-0:30)"
+    description: string;
 }
 
 export interface SocialPost {
@@ -34,27 +51,52 @@ export interface SocialPost {
     visualNote?: string;
 }
 
+export interface ScriptPlanning {
+    topic: string;
+    mainTone: string;
+    subTones: SubTone[];
+    duration: string;
+    sectionCount: number;
+    socialCount: number;
+    videoPromptsCount: number;
+}
+
+export interface YouTubeScriptContent {
+    title: string;
+    description: string;
+    hashtags: string[];
+    hook: string;
+    intro: string;
+    sections: ScriptSection[];
+    conclusion: string;
+    cta: string;
+}
+
 export interface Script {
   id: string;
-  title: string;
-  topic: string;
-  tone: string;
-  format: string;
-  strategy?: string; 
-  sections: ScriptSection[];
+  // Metadata
+  title: string; // Display title
   createdAt: string;
-  youtubeDescription?: string;
-  hashtags?: string[];
-  srtFile?: string;
-  seriesId?: string;
-  seriesName?: string;
   isTemplate?: boolean;
+  
+  // Part 1: Planning
+  planning?: ScriptPlanning;
+  
+  // Part 2: YouTube Script
+  youtubeScript?: YouTubeScriptContent;
+  
+  // Part 3: Social Media
+  socialPosts?: SocialPost[];
+  
+  // Part 4: Video Prompts
+  videoPrompts?: VideoPrompt[];
+
+  // Legacy/Fallback fields for backward compatibility
+  topic?: string;
   niche?: string;
-  thumbnailUrl?: string;
   goal?: string;
   needs?: string;
-  cta?: string;
-  socialPosts?: SocialPost[];
+  strategy?: string;
 }
 
 export interface Series {
@@ -67,45 +109,14 @@ export interface Series {
   episodes: Script[];
 }
 
-export interface ForgeItem {
-    id: string;
-    type: 'url' | 'file';
-    value: string;
-    name: string;
-    styleDNA?: string;
-}
-
 // Changed from Enum to Union Type for stability
 export type AppScreen = 'Dashboard' | 'Studio' | 'Growth' | 'SerialProd' | 'Account' | 'Admin';
-
-export interface EpisodeSuggestion {
-  title: string;
-}
 
 export interface ViralIdea {
     id: string;
     title: string;
     hook: string;
     difficulty: 'Easy' | 'Medium' | 'Hard';
-}
-
-export interface SeriesGenerationProgress {
-  episodeIndex: number;
-  status: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: 'user' | 'model';
-  content: string;
-  timestamp: string;
-}
-
-export interface ChatSession {
-  id: string;
-  title: string;
-  messages: ChatMessage[];
-  createdAt: string;
 }
 
 export interface AppNotification {
@@ -117,21 +128,12 @@ export interface AppNotification {
     timestamp: string;
 }
 
-// Changed from Enum to Union Type
 export type AuthScreen = 'Login' | 'SignUp';
-
-export interface CalendarEvent {
-  id: string;
-  date: string;
-  title: string;
-  status: 'planned' | 'scripted' | 'filmed' | 'posted';
-  format: string;
-}
 
 export interface BrandPitch {
   id: string;
-  brandName: string;
-  brandUrl: string;
+  targetName: string;
+  description: string;
   objective: string;
   content: string;
   createdAt: string;

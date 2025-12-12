@@ -1,1369 +1,697 @@
 
-
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, Script, ChatSession, ChatMessage, AppNotification, CalendarEvent, BrandPitch, Series } from '../types';
+import React, { useState, useEffect } from 'react';
+import { User, Script, FusionStructure, BrandPitch, ScriptSection } from '../types';
 import { Button } from './Button';
-import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, PaperAirplaneIcon, ChatBubbleLeftRightIcon, Bars3Icon, CalendarIcon, TrendingUpIcon, ChartPieIcon, CurrencyDollarIcon, RobotIcon, ArrowDownTrayIcon, ArrowRightIcon, UserIcon, XMarkIcon, BellIcon, CloudIcon, ClockIcon, BoldIcon, ItalicIcon, ListBulletIcon, EyeIcon, PlayIcon, DocumentArrowDownIcon, Squares2x2Icon, CheckIcon, SparklesIcon } from './icons';
+import { PlusIcon, VideoIcon, TrashIcon, ShareIcon, PencilSquareIcon, Bars3Icon, TrendingUpIcon, BriefcaseIcon, BookOpenIcon, CheckIcon, SparklesIcon, DocumentArrowDownIcon, EyeIcon } from './icons';
 import { MainLayout } from './MainLayout';
 import * as geminiService from '../services/geminiService';
-import { Chat } from '@google/genai';
 // @ts-ignore
 import { jsPDF } from 'jspdf';
 
-// --- Helper Components ---
+// --- Types for internal views ---
+type ViewMode = 'dashboard' | 'studio' | 'pitches' | 'docs' | 'serial' | 'socials';
 
-const NotificationToast: React.FC<{ notification: AppNotification, onClose: (id: string) => void }> = ({ notification, onClose }) => {
-    useEffect(() => {
-        const timer = setTimeout(() => onClose(notification.id), 5000);
-        return () => clearTimeout(timer);
-    }, [notification.id, onClose]);
+// --- Sub-Components ---
 
-    return (
-        <div className={`fixed bottom-4 right-4 max-w-sm w-full bg-white dark:bg-gray-800 border-l-4 ${notification.type === 'success' ? 'border-green-500' : 'border-blue-500'} rounded shadow-2xl p-4 flex items-start animate-fade-in z-[60]`}>
-            <div className="flex-1">
-                <h4 className="font-bold text-sm text-gray-900 dark:text-gray-200">{notification.title}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{notification.message}</p>
-            </div>
-            <button onClick={() => onClose(notification.id)} className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-white ml-3"><XMarkIcon className="h-4 w-4"/></button>
-        </div>
-    );
-};
-
-// ... ChatOverlay ...
-const ChatOverlay: React.FC<{ 
-    isOpen: boolean; 
-    onClose: () => void;
-    sessions: ChatSession[];
-    activeSessionId: string | null;
-    onNewChat: () => void;
-    onSelectSession: (id: string) => void;
-    onDeleteSession: (id: string) => void;
-    onDeleteAllHistory: () => void;
-    onSendMessage: (msg: string) => void;
-    isProcessing: boolean;
-}> = ({ isOpen, onClose, sessions, activeSessionId, onNewChat, onSelectSession, onDeleteSession, onDeleteAllHistory, onSendMessage, isProcessing }) => {
-    const [input, setInput] = useState('');
-    const [view, setView] = useState<'history' | 'chat'>('chat');
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-
-    const activeSession = sessions.find(s => s.id === activeSessionId);
-
-    useEffect(() => {
-        if(activeSessionId) setView('chat');
-        else setView('history');
-    }, [activeSessionId]);
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeSession?.messages, isProcessing]);
-
-    const handleSend = () => {
-        if(!input.trim()) return;
-        onSendMessage(input);
-        setInput('');
-    };
-
-    if (!isOpen) return null;
+const FusionForgeSelector: React.FC<{ 
+    structures: FusionStructure[], 
+    selectedId: string, 
+    onSelect: (id: string) => void,
+    onImport: (url: string) => void,
+    isImporting: boolean
+}> = ({ structures, selectedId, onSelect, onImport, isImporting }) => {
+    const [url, setUrl] = useState('');
+    const [isAdding, setIsAdding] = useState(false);
 
     return (
-        <div className="fixed inset-0 md:inset-auto md:inset-y-0 md:right-0 md:w-96 max-w-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl transform transition-transform duration-300 z-[70] flex flex-col">
-            <div className="h-16 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between px-4 bg-white dark:bg-gray-900">
-                <div className="flex items-center space-x-2">
-                    <button onClick={() => setView('history')} className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${view === 'history' ? 'text-gray-900 dark:text-white' : 'text-gray-500'}`} title="History">
-                        <ClockIcon className="h-5 w-5"/>
-                    </button>
-                    <span className="font-bold text-lg text-gray-900 dark:text-white">AI Assistant</span>
-                </div>
-                <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:hover:text-white"><XMarkIcon className="h-6 w-6"/></button>
+        <div className="mb-4">
+            <label className="text-xs font-bold text-brand-purple uppercase flex items-center mb-2">
+                <SparklesIcon className="h-4 w-4 mr-1"/> Fusion Forge
+            </label>
+            <div className="flex space-x-2 mb-2">
+                <select 
+                    value={selectedId} 
+                    onChange={e => onSelect(e.target.value)} 
+                    className="flex-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg p-2 text-sm outline-none focus:border-brand-purple text-gray-900 dark:text-white"
+                >
+                    <option value="standard">Standard Structure</option>
+                    {structures.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <button 
+                    onClick={() => setIsAdding(!isAdding)} 
+                    className="bg-brand-purple/10 hover:bg-brand-purple/20 text-brand-purple p-2 rounded-lg"
+                    title="Import new structure"
+                >
+                    <PlusIcon className="h-5 w-5"/>
+                </button>
             </div>
-
-            <div className="flex-1 overflow-hidden flex flex-col relative">
-                {view === 'history' ? (
-                    <div className="absolute inset-0 overflow-y-auto p-4 space-y-4">
-                        <Button onClick={() => { onNewChat(); setView('chat'); }} className="w-full mb-4 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white">+ New Chat</Button>
-                        {sessions.length === 0 && <p className="text-center text-gray-500 mt-10">No history.</p>}
-                        {sessions.map(session => (
-                            <div key={session.id} className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-purple dark:hover:border-brand-purple group cursor-pointer" onClick={() => onSelectSession(session.id)}>
-                                <div className="flex justify-between items-start">
-                                    <h4 className="font-bold text-sm text-gray-900 dark:text-gray-200 truncate pr-2">{session.title}</h4>
-                                    <button 
-                                        onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }} 
-                                        className="text-gray-400 hover:text-red-500"
-                                    >
-                                        <TrashIcon className="h-4 w-4"/>
-                                    </button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">{new Date(session.createdAt).toLocaleDateString()}</p>
-                            </div>
-                        ))}
-                        {sessions.length > 0 && (
-                            <button onClick={() => { if(window.confirm("Delete all?")) onDeleteAllHistory(); }} className="w-full text-xs text-red-500 hover:text-red-400 mt-8 underline">
-                                Delete All History
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth">
-                            {!activeSession && <div className="text-center text-gray-500 mt-10">Start a new chat.</div>}
-                            {activeSession?.messages.map((msg) => (
-                                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-purple text-white rounded-br-none' : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-none border border-gray-200 dark:border-gray-700'}`}>
-                                        {msg.content}
-                                    </div>
-                                </div>
-                            ))}
-                            {isProcessing && activeSession?.messages[activeSession.messages.length - 1]?.role === 'user' && (
-                                <div className="flex justify-start">
-                                    <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl rounded-bl-none px-4 py-2 text-sm text-gray-400 flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce"></div>
-                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-100"></div>
-                                        <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce delay-200"></div>
-                                    </div>
-                                </div>
-                            )}
-                            <div ref={messagesEndRef} />
-                        </div>
-                        <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pb-safe">
-                            <div className="flex space-x-2">
-                                <input 
-                                    value={input} 
-                                    onChange={e => setInput(e.target.value)} 
-                                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                                    placeholder="Ask anything..." 
-                                    className="flex-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-full px-4 py-3 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-gray-900 dark:text-white placeholder-gray-500"
-                                />
-                                <button onClick={handleSend} disabled={isProcessing} className="bg-brand-purple text-white p-2.5 rounded-full hover:bg-purple-600 disabled:opacity-50 flex-shrink-0">
-                                    <PaperAirplaneIcon className="h-5 w-5"/>
-                                </button>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
-
-const ScriptPreview: React.FC<{ 
-    content: string, 
-    visualNote?: string, 
-    onEdit: (newContent: string) => void,
-    title: string, 
-    time: string 
-}> = ({ content, visualNote, onEdit, title, time }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [editValue, setEditValue] = useState(content);
-
-    const handleSave = () => {
-        onEdit(editValue);
-        setIsEditing(false);
-    };
-
-    // Format Markdown to cleaner HTML-like preview
-    const formattedContent = useMemo(() => {
-        return content
-            .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900 dark:text-white font-bold">$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em class="text-gray-600 dark:text-gray-300">$1</em>')
-            .replace(/\[Visual: (.*?)\]/g, '') // Remove inline visuals from speech text, handle separately if needed
-            .replace(/\[(.*?)\]/g, '<span class="text-green-600 dark:text-green-400 text-xs uppercase font-bold tracking-wider">[$1]</span>');
-    }, [content]);
-
-    if (isEditing) {
-        return (
-            <div className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl p-4 shadow-lg">
-                <div className="flex justify-between mb-2">
-                    <span className="text-gray-500 dark:text-gray-400 text-sm font-bold">Editing...</span>
-                </div>
-                <textarea 
-                    value={editValue} 
-                    onChange={e => setEditValue(e.target.value)}
-                    className="w-full h-40 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-3 rounded border border-gray-300 dark:border-gray-700 focus:border-brand-purple outline-none"
-                />
-                <div className="flex justify-end space-x-2 mt-3">
-                    <Button variant="secondary" onClick={() => setIsEditing(false)} className="text-xs py-1">Cancel</Button>
-                    <Button onClick={handleSave} className="text-xs py-1">Save</Button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="relative group mb-6">
-            <div className="absolute -left-3 top-6 bottom-6 w-0.5 bg-gray-300 dark:bg-gray-700"></div>
-            <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0 mt-1">
-                    <div className="bg-gray-100 dark:bg-gray-800 text-brand-purple text-xs font-bold px-2 py-1 rounded border border-gray-300 dark:border-gray-700 shadow-sm whitespace-nowrap">
-                        {time}
-                    </div>
-                </div>
-                
-                <div className="flex-1">
-                    <div className="bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700/50 rounded-xl p-5 shadow-sm hover:border-gray-400 dark:hover:border-gray-600 transition group-hover:shadow-md cursor-pointer" onClick={() => setIsEditing(true)}>
-                        <h4 className="text-brand-purple font-bold text-lg mb-3 tracking-tight">{title}</h4>
-                        
-                        <div className="text-gray-700 dark:text-gray-300 text-base leading-relaxed font-serif" dangerouslySetInnerHTML={{ __html: formattedContent }} />
-                        
-                        {visualNote && (
-                            <div className="mt-4 flex items-start p-3 bg-green-50 dark:bg-gray-900/50 border-l-2 border-green-500 rounded-r-lg">
-                                <EyeIcon className="h-4 w-4 text-green-600 dark:text-green-500 mt-1 mr-2 flex-shrink-0"/>
-                                <span className="text-sm text-gray-600 dark:text-gray-400 italic font-sans">{visualNote}</span>
-                            </div>
-                        )}
-                        
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition">
-                            <button className="p-2 bg-gray-100 dark:bg-gray-700 rounded-full text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"><PencilSquareIcon className="h-4 w-4"/></button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const Dashboard: React.FC<{ 
-    scripts: Script[], 
-    series: Series[], 
-    onSelect: (s: Script) => void, 
-    onDelete: (id: string) => void, 
-    onBulkDelete: (ids: string[]) => void,
-    onBulkShare: (ids: string[]) => void,
-    onOpenStudio: () => void, 
-    onOpenSerial: () => void 
-}> = ({ scripts, series, onSelect, onDelete, onBulkDelete, onBulkShare, onOpenStudio, onOpenSerial }) => {
-    const [selectionMode, setSelectionMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-
-    const toggleSelection = (id: string) => {
-        const newSet = new Set(selectedIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedIds(newSet);
-    };
-
-    const handleBulkAction = (action: 'delete' | 'share') => {
-        if (selectedIds.size === 0) return;
-        if (action === 'delete') onBulkDelete(Array.from(selectedIds));
-        if (action === 'share') onBulkShare(Array.from(selectedIds));
-        setSelectionMode(false);
-        setSelectedIds(new Set());
-    };
-
-    const soloScriptsCount = scripts.filter(s => !s.seriesId).length;
-
-    return (
-        <div className="h-full overflow-y-auto p-4 md:p-6 animate-fade-in scroll-smooth bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-             <div className="max-w-6xl mx-auto space-y-8 pb-20">
-                <div className="flex items-center space-x-4 bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 relative z-20">
-                    <div className="flex-1 relative">
-                        <input type="text" placeholder="Search..." className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg py-2 px-4 text-sm focus:ring-1 focus:ring-brand-purple outline-none text-gray-900 dark:text-white transition-colors duration-300"/>
-                    </div>
+            {isAdding && (
+                <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20 animate-fade-in">
+                    <p className="text-xs text-gray-500 mb-2">Import structure from a YouTube video URL.</p>
                     <div className="flex space-x-2">
-                        {selectionMode ? (
-                             <div className="flex space-x-2">
-                                <button onClick={() => handleBulkAction('delete')} className="p-2 bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900 border border-red-200 dark:border-red-800" title="Delete Selection"><TrashIcon className="h-5 w-5"/></button>
-                                <button onClick={() => { setSelectionMode(false); setSelectedIds(new Set()); }} className="p-2 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
-                             </div>
-                        ) : (
-                            <button onClick={() => setSelectionMode(true)} className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" title="Select...">
-                                <Bars3Icon className="h-5 w-5"/>
-                            </button>
-                        )}
+                        <input 
+                            value={url} 
+                            onChange={e => setUrl(e.target.value)} 
+                            placeholder="https://youtube.com/..." 
+                            className="flex-1 bg-white dark:bg-gray-900 border border-brand-purple/30 rounded px-2 text-xs text-gray-900 dark:text-white"
+                        />
+                        <Button 
+                            onClick={() => { onImport(url); setUrl(''); setIsAdding(false); }} 
+                            isLoading={isImporting} 
+                            className="text-xs py-1 px-3"
+                        >
+                            Import
+                        </Button>
                     </div>
                 </div>
-
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-gray-900 dark:text-white"><PencilSquareIcon className="h-5 w-5 text-brand-purple"/> <span>My Scripts</span></h2>
-                    <div className="flex items-center space-x-3">
-                         <span className="text-sm font-mono text-gray-500">{soloScriptsCount} Scripts</span>
-                         <button onClick={onOpenStudio} className="bg-brand-purple hover:bg-purple-600 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
-                            <PlusIcon className="h-6 w-6"/>
-                        </button>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {scripts.filter(s => !s.seriesId).map(script => (
-                         <div 
-                             key={script.id} 
-                             onClick={() => selectionMode ? toggleSelection(script.id) : onSelect(script)} 
-                             className={`group bg-white dark:bg-gray-800 rounded-xl overflow-hidden border cursor-pointer transition relative ${selectionMode && selectedIds.has(script.id) ? 'border-brand-purple ring-1 ring-brand-purple' : 'border-gray-200 dark:border-gray-700 hover:border-brand-purple dark:hover:border-brand-purple'}`}
-                         >
-                             <div className="h-32 bg-gray-100 dark:bg-gray-700 relative overflow-hidden">
-                                 <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-500 bg-gray-50 dark:bg-gray-900">
-                                     <span className="text-4xl font-black opacity-20">WYS</span>
-                                 </div>
-                                 {selectionMode && (
-                                     <div className="absolute top-2 right-2">
-                                         <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedIds.has(script.id) ? 'bg-brand-purple border-brand-purple' : 'border-gray-400 bg-white dark:bg-gray-800'}`}>
-                                             {selectedIds.has(script.id) && <CheckIcon className="h-4 w-4 text-white"/>}
-                                         </div>
-                                     </div>
-                                 )}
-                             </div>
-                             <div className="p-4">
-                                 <div className="flex justify-between items-start mb-2">
-                                     <h3 className="font-bold truncate pr-2 text-gray-900 dark:text-white">{script.title}</h3>
-                                     {script.isTemplate && <span className="text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded">TEMPLATE</span>}
-                                 </div>
-                                 <p className="text-xs text-gray-500 mb-2 truncate">{script.youtubeDescription || "No description"}</p>
-                                 <div className="flex justify-between items-center text-xs text-gray-400">
-                                     <span>{new Date(script.createdAt).toLocaleDateString()}</span>
-                                     <span className="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">{script.niche || "General"}</span>
-                                 </div>
-                             </div>
-                         </div>
-                    ))}
-                    {scripts.length === 0 && series.length === 0 && <div className="col-span-full text-center py-10 text-gray-500">No scripts yet.</div>}
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-800">
-                    <h2 className="text-xl font-bold flex items-center space-x-2 text-gray-900 dark:text-white"><VideoIcon className="h-5 w-5 text-blue-500"/> <span>My Series</span></h2>
-                     <div className="flex items-center space-x-3">
-                        <span className="hidden md:inline text-sm font-mono text-gray-500">{series.length} Series</span>
-                        <button onClick={onOpenSerial} className="bg-blue-600 hover:bg-blue-500 text-white rounded-full p-2 shadow-lg transition transform hover:scale-105">
-                            <PlusIcon className="h-6 w-6"/>
-                        </button>
-                     </div>
-                </div>
-
-                {series.length === 0 ? (
-                    <div className="bg-gray-100 dark:bg-gray-800/30 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-8 text-center text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800/50 transition cursor-pointer" onClick={onOpenSerial}>
-                        No series yet. Click to launch Serial Prod.
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        {series.map(s => (
-                            <div key={s.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 relative">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{s.title}</h3>
-                                        <span className="text-xs text-gray-500">{s.episodeCount} episodes | {new Date(s.createdAt).toLocaleDateString()}</span>
-                                    </div>
-                                    <button className={`text-red-500 hover:text-red-400 transition`} onClick={() => onDelete(s.id)}><TrashIcon className="h-5 w-5"/></button>
-                                </div>
-                                <div className="grid gap-2 pl-4 border-l-2 border-gray-200 dark:border-gray-700">
-                                    {s.episodes.map(ep => (
-                                        <div key={ep.id} onClick={() => onSelect(ep)} className="flex items-center justify-between p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer group">
-                                            <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">{ep.title}</span>
-                                            <ArrowRightIcon className="h-4 w-4 text-gray-400 dark:text-gray-500"/>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-             </div>
+            )}
         </div>
     );
 };
 
-const AVAILABLE_TONES = ["Personal brand", "Humour", "Energetic", "Professional", "Critical", "Angry", "Empathetic"];
-const AVAILABLE_DURATIONS = ["60s", "3-5min", "8-15min"];
-const STANDARD_STRATEGIES = ["Standard", "Retention Beast", "The Storyteller", "The Educator", "The Salesman"];
+const ScriptResultView: React.FC<{ script: Script }> = ({ script }) => {
+    const [activeTab, setActiveTab] = useState<'planning'|'script'|'social'|'prompts'>('planning');
 
-const SerialProd: React.FC<{
-    user: User;
-    onClose: () => void;
-    onSaveSeries: (series: Series) => void;
-    onNavigateAccount: () => void;
-    onNotify: (t: string, m: string) => void;
-}> = ({ user, onClose, onSaveSeries, onNavigateAccount, onNotify }) => {
-    const [step, setStep] = useState<'config' | 'preview' | 'generating'>('config');
-    const [theme, setTheme] = useState('');
-    const [config, setConfig] = useState({ 
-        niche: user.niche, 
-        tone: 'Professional', 
-        duration: '8-15min', 
-        platforms: 'YouTube, TikTok, Instagram',
-        goal: '',
-        needs: '',
-        cta: '',
-        count: 5
-    });
-    const [customTone, setCustomTone] = useState('');
-    const [isAddingTone, setIsAddingTone] = useState(false);
-    
-    const [proposedEpisodes, setProposedEpisodes] = useState<any[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    
-    const handlePropose = async () => {
-         if (!user.isPro) {
-             alert("WYS Pro+ required for Serial Prod.");
-             return;
-         }
-         if (!theme) return alert("Please enter a theme.");
-         setIsLoading(true);
-         const episodes = await geminiService.generateSeriesOutlines(theme, config.count, config.tone, config.niche, config.goal);
-         setProposedEpisodes(episodes);
-         setStep('preview');
-         setIsLoading(false);
-    }
+    if (!script.youtubeScript) return <div className="p-10 text-center text-gray-500">Script generation failed or incomplete.</div>;
 
-    const handleGenerateFinal = async () => {
-        setIsLoading(true);
-        setStep('generating');
-        
-        const generatedScripts: Script[] = [];
-        const seriesId = `series_${Date.now()}`;
-
-        for (let i = 0; i < proposedEpisodes.length; i++) {
-            const ep = proposedEpisodes[i];
-            const scriptData = await geminiService.generateScript(
-                ep.title, 
-                config.tone, 
-                config.duration, 
-                user.youtubeUrl, 
-                config.goal, 
-                config.needs, 
-                config.cta, 
-                config.platforms,
-                user.styleDNA // Pass styleDNA
-            );
-            if (scriptData) {
-                generatedScripts.push({
-                    id: `ep_${Date.now()}_${i}`,
-                    title: scriptData.title,
-                    topic: theme,
-                    tone: config.tone,
-                    format: config.duration,
-                    sections: scriptData.sections || [],
-                    createdAt: new Date().toISOString(),
-                    youtubeDescription: scriptData.youtubeDescription,
-                    hashtags: scriptData.hashtags,
-                    niche: config.niche,
-                    goal: config.goal,
-                    needs: config.needs,
-                    cta: config.cta,
-                    seriesId: seriesId,
-                    socialPosts: scriptData.socialPosts
-                });
-            }
-        }
-
-        const newSeries: Series = {
-            id: seriesId,
-            title: theme,
-            episodeCount: generatedScripts.length,
-            niche: config.niche,
-            createdAt: new Date().toISOString(),
-            episodes: generatedScripts
+    const handleDownloadPDF = () => {
+        const doc = new jsPDF();
+        let y = 20;
+        const addText = (text: string, size = 10, font = "normal", color = [0,0,0]) => {
+            doc.setFontSize(size);
+            doc.setFont("helvetica", font);
+            doc.setTextColor(color[0], color[1], color[2]);
+            const lines = doc.splitTextToSize(text, 180);
+            if (y + lines.length * 5 > 280) { doc.addPage(); y = 20; }
+            doc.text(lines, 15, y);
+            y += lines.length * 5 + 2;
         };
 
-        onSaveSeries(newSeries);
-        setIsLoading(false);
-        onNotify("Series Complete", "Your scripts are ready!");
-        onClose();
-    }
+        addText(script.title, 20, "bold", [139, 92, 246]); // Brand Purple
+        y += 5;
+        
+        // Part 1: Planning
+        addText("PLANNING", 14, "bold");
+        addText(`Tone: ${script.planning?.mainTone}`, 10);
+        script.planning?.subTones.forEach(st => addText(`- ${st.tone}`, 10));
+        y += 5;
+        
+        // Part 2: Script
+        addText("SCRIPT", 14, "bold");
+        addText(`Hook: ${script.youtubeScript?.hook}`);
+        script.youtubeScript?.sections.forEach(s => {
+            y += 5;
+            addText(`Section ${s.number}: ${s.title}`, 12, "bold");
+            // Simple regex strip for PDF
+            const cleanContent = s.content.replace(/<[^>]*>?/gm, '');
+            addText(cleanContent);
+            addText(`Re-hook: ${s.rehook}`, 10, "italic", [100,100,100]);
+        });
+
+        // Part 3: Social Posts
+        y += 10;
+        addText("SOCIAL MEDIA POSTS", 14, "bold", [59, 130, 246]); // Blue
+        if (script.socialPosts && script.socialPosts.length > 0) {
+            script.socialPosts.forEach(post => {
+                y += 5;
+                addText(`[${post.platform}]`, 12, "bold");
+                addText(post.content);
+                if (post.hashtags.length > 0) addText(`Hashtags: ${post.hashtags.join(' ')}`, 10, "italic", [100,100,100]);
+                if (post.visualNote) addText(`Visual: ${post.visualNote}`, 10, "italic", [100,100,100]);
+            });
+        } else {
+            addText("No social posts generated.");
+        }
+
+        // Part 4: Video Prompts
+        y += 10;
+        addText("VIDEO PROMPTS", 14, "bold", [168, 85, 247]); // Purple
+        if (script.videoPrompts && script.videoPrompts.length > 0) {
+            script.videoPrompts.forEach(vp => {
+                y += 5;
+                addText(`${vp.segment}:`, 11, "bold");
+                addText(vp.description);
+            });
+        } else {
+            addText("No video prompts generated.");
+        }
+
+        doc.save("wyslider_script.pdf");
+    };
 
     return (
-        <div className="absolute inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col p-6 animate-fade-in overflow-y-auto text-gray-900 dark:text-white transition-colors duration-300">
-             <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-2xl font-bold">Serial Prod <span className="text-sm bg-yellow-500 text-black px-2 py-0.5 rounded font-bold ml-2">PRO+</span></h2>
-                 <button onClick={onClose} className="text-gray-500 hover:text-gray-900 dark:hover:text-white"><XMarkIcon className="h-6 w-6"/></button>
-             </div>
-             
-             {step === 'config' && (
-                 <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Series Theme</label>
-                            <input value={theme} onChange={e => setTheme(e.target.value)} placeholder="Ex: Cooking for beginners" className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Episode Count</label>
-                            <select value={config.count} onChange={e => setConfig({...config, count: parseInt(e.target.value)})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
-                                {Array.from({length: 18}, (_, i) => i + 3).map(num => (
-                                    <option key={num} value={num}>{num} Episodes</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Niche</label>
-                            <input value={config.niche} onChange={e => setConfig({...config, niche: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Ex: Sell course..." className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Ex: Mention bio link..." className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="Ex: Subscribe!" className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Platforms</label>
-                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white focus:border-brand-purple outline-none transition"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Tone</label>
-                            <div className="flex space-x-2">
-                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
-                                    {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
-                                    {customTone && <option>{customTone}</option>}
-                                </select>
-                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-200 dark:bg-gray-700 p-3 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white"><PlusIcon className="h-6 w-6"/></button>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
+            <div className="flex border-b border-gray-200 dark:border-gray-700">
+                {['planning', 'script', 'social', 'prompts'].map(tab => (
+                    <button 
+                        key={tab}
+                        onClick={() => setActiveTab(tab as any)}
+                        className={`flex-1 py-3 text-sm font-bold uppercase tracking-wide transition ${activeTab === tab ? 'bg-brand-purple text-white' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 scroll-smooth">
+                {activeTab === 'planning' && script.planning && (
+                    <div className="space-y-6 animate-fade-in text-gray-900 dark:text-white">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase">Topic</h4>
+                                <p className="text-lg font-bold">{script.planning.topic}</p>
                             </div>
-                            {isAddingTone && (
-                                <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-2 rounded text-sm text-gray-900 dark:text-white"/>
-                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-3 rounded text-sm font-bold text-white">OK</button>
-                                </div>
-                            )}
+                            <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                                <h4 className="text-xs font-bold text-gray-500 uppercase">Duration</h4>
+                                <p className="text-lg font-bold">{script.planning.duration}</p>
+                            </div>
                         </div>
+                        
                         <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase mb-1 block">Duration</label>
-                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-3 text-gray-900 dark:text-white outline-none">
-                                {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
-                            </select>
+                            <h3 className="font-bold mb-3">Tonal Palette</h3>
+                            <div className="flex space-x-3">
+                                {script.planning.subTones.map((st, i) => (
+                                    <div key={i} className="px-4 py-2 rounded-full border flex items-center space-x-2" style={{ borderColor: st.color, backgroundColor: `${st.color}10` }}>
+                                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: st.color }}></div>
+                                        <span className="font-bold text-sm" style={{ color: st.color }}>{st.tone}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <span className="block text-2xl font-bold text-blue-600">{script.planning.sectionCount}</span>
+                                <span className="text-xs text-blue-500">Sections</span>
+                            </div>
+                            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                <span className="block text-2xl font-bold text-green-600">{script.planning.socialCount}</span>
+                                <span className="text-xs text-green-500">Social Posts</span>
+                            </div>
+                            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                                <span className="block text-2xl font-bold text-purple-600">{script.planning.videoPromptsCount}</span>
+                                <span className="text-xs text-purple-500">Prompts</span>
+                            </div>
                         </div>
                     </div>
-                    <Button onClick={handlePropose} isLoading={isLoading} className="py-4 text-lg">Propose Episodes</Button>
-                 </>
-             )}
+                )}
 
-             {step === 'preview' && (
-                 <div className="space-y-4">
-                     <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">AI Proposal ({proposedEpisodes.length} episodes)</h3>
-                     <div className="grid gap-3 mb-6">
-                         {proposedEpisodes.map((ep, i) => (
-                             <div key={i} className="bg-gray-100 dark:bg-gray-800 p-4 rounded border border-gray-300 dark:border-gray-700">
-                                 <span className="font-bold text-brand-purple mr-2">Ep {i+1}:</span>
-                                 <span className="font-bold text-gray-900 dark:text-white">{ep.title}</span>
-                                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{ep.summary}</p>
-                             </div>
-                         ))}
-                     </div>
-                     <div className="flex space-x-4">
-                         <Button onClick={handleGenerateFinal} isLoading={isLoading} className="flex-1 py-3 text-lg">Generate Scripts</Button>
-                         <Button onClick={() => setStep('config')} variant="secondary">Edit</Button>
-                     </div>
-                 </div>
-             )}
+                {activeTab === 'script' && script.youtubeScript && (
+                    <div className="space-y-8 animate-fade-in font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-200">
+                        <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg font-sans text-sm mb-6 text-gray-900 dark:text-white">
+                            <p><strong>Title:</strong> {script.youtubeScript.title}</p>
+                            <p className="mt-2 text-gray-500">{script.youtubeScript.description}</p>
+                            <div className="mt-2 text-blue-500">{script.youtubeScript.hashtags.join(' ')}</div>
+                        </div>
 
-             {step === 'generating' && (
-                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                     <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-brand-purple mb-4"></div>
-                     <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">Generating Series...</h3>
-                     <p className="text-gray-500 dark:text-gray-400">The AI is writing full scripts for each episode. This may take a minute.</p>
-                 </div>
-             )}
+                        <div className="border-l-4 border-red-500 pl-4 py-2 bg-red-50 dark:bg-red-900/10">
+                            <h4 className="font-sans text-xs font-bold text-red-600 uppercase mb-1">Hook</h4>
+                            <p>{script.youtubeScript.hook}</p>
+                        </div>
+
+                        <div className="pl-4">
+                            <h4 className="font-sans text-xs font-bold text-gray-500 uppercase mb-1">Intro</h4>
+                            <p>{script.youtubeScript.intro}</p>
+                        </div>
+
+                        {script.youtubeScript.sections.map((sec, i) => (
+                            <div key={i} className="relative">
+                                <div className="absolute -left-6 top-0 bottom-0 w-0.5 bg-gray-200 dark:bg-gray-700"></div>
+                                <div className="absolute -left-8 top-0 w-5 h-5 rounded-full bg-brand-purple text-white flex items-center justify-center text-xs font-bold font-sans">{sec.number}</div>
+                                
+                                <h3 className="font-sans font-bold text-xl mb-3 text-brand-purple">{sec.title}</h3>
+                                {/* Dangerously Set HTML for colored spans from AI */}
+                                <div dangerouslySetInnerHTML={{ __html: sec.content }} />
+                                
+                                <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                                    <span className="font-sans text-xs font-bold text-yellow-600 uppercase block mb-1">Retention Re-hook</span>
+                                    <p className="italic text-sm text-yellow-800 dark:text-yellow-200">{sec.rehook}</p>
+                                </div>
+                            </div>
+                        ))}
+
+                        <div className="border-t pt-6">
+                            <h4 className="font-sans text-xs font-bold text-gray-500 uppercase mb-1">CTA</h4>
+                            <p className="font-bold">{script.youtubeScript.cta}</p>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'social' && script.socialPosts && (
+                    <div className="grid gap-6 animate-fade-in text-gray-900 dark:text-white">
+                        {script.socialPosts.map((post, i) => (
+                            <div key={i} className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
+                                <div className="flex justify-between mb-3">
+                                    <span className="font-bold text-brand-blue uppercase text-sm">{post.platform}</span>
+                                    <button className="text-xs text-gray-400 hover:text-white" onClick={() => navigator.clipboard.writeText(post.content)}>Copy</button>
+                                </div>
+                                <p className="whitespace-pre-wrap text-sm mb-4">{post.content}</p>
+                                {post.visualNote && <p className="text-xs italic text-gray-500 border-l-2 border-gray-300 pl-2">Visual: {post.visualNote}</p>}
+                                <div className="mt-3 text-xs text-blue-500">{post.hashtags.join(' ')}</div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {activeTab === 'prompts' && script.videoPrompts && (
+                    <div className="space-y-4 animate-fade-in text-gray-900 dark:text-white">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold">AI Video Generation Prompts</h3>
+                            <Button className="text-xs py-1 px-3" onClick={() => {
+                                const all = script.videoPrompts?.map(p => `${p.segment}: ${p.description}`).join('\n\n');
+                                navigator.clipboard.writeText(all || "");
+                                alert("All prompts copied!");
+                            }}>Copy All</Button>
+                        </div>
+                        {script.videoPrompts.map((vp, i) => (
+                            <div key={i} className="flex space-x-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+                                <div className="w-32 flex-shrink-0 text-xs font-mono text-gray-500 font-bold pt-1">{vp.segment}</div>
+                                <div className="flex-1 text-sm font-mono text-green-600 dark:text-green-400">{vp.description}</div>
+                                <button className="text-gray-400 hover:text-brand-purple" onClick={() => navigator.clipboard.writeText(vp.description)}>
+                                    <ShareIcon className="h-4 w-4"/>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex justify-end">
+                <Button onClick={handleDownloadPDF} variant="secondary" className="flex items-center">
+                    <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Export PDF
+                </Button>
+            </div>
         </div>
-    )
-}
+    );
+};
 
-const Studio: React.FC<{ 
-    scripts: Script[], 
-    selectedScript: Script | null, 
-    onUpdate: (s: Script) => void, 
-    onBack: () => void,
-    onGenerate: (config: any) => Promise<void>, 
-    isGenerating: boolean,
-    user: User
-}> = ({ scripts, selectedScript, onUpdate, onBack, onGenerate, isGenerating, user }) => {
-     const [config, setConfig] = useState({ 
-         topic: '', 
-         niche: user.niche, 
-         tone: 'Professional', 
-         duration: '8-15min', 
-         platforms: 'YouTube, TikTok, Instagram',
-         goal: '',
-         needs: '',
-         cta: '',
-         strategy: 'Standard'
-     });
-     const [customTone, setCustomTone] = useState('');
-     const [isAddingTone, setIsAddingTone] = useState(false);
-     
-     // Layout state for Mobile Sidebar Toggle
-     const [isConfigOpen, setIsConfigOpen] = useState(false);
-     const [isGeneratingPosts, setIsGeneratingPosts] = useState(false);
+export const Workspace: React.FC<{
+    user: User;
+    onUpdateUser: (u: User) => void;
+    onNavigateAccount: () => void;
+    onLogout: () => void;
+    view?: any;
+    setView?: any;
+    pendingGenConfig?: any;
+    clearPendingConfig?: any;
+    isDarkMode?: boolean;
+    toggleTheme?: () => void;
+}> = ({ user, onUpdateUser, onNavigateAccount, onLogout, isDarkMode, toggleTheme }) => {
+    const [view, setView] = useState<ViewMode>('dashboard');
+    const [scripts, setScripts] = useState<Script[]>([]);
+    const [pitches, setPitches] = useState<BrandPitch[]>([]);
+    const [currentScript, setCurrentScript] = useState<Script | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    
+    // Studio State
+    const [config, setConfig] = useState({ topic: '', tone: 'Professional', duration: '8-15min', niche: user.niche, goal: 'Growth', needs: 'Retention', cta: 'Subscribe', platforms: 'YouTube, TikTok' });
+    const [fusionId, setFusionId] = useState('standard');
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [isImporting, setIsImporting] = useState(false);
 
-     useEffect(() => {
-         // Initialize config from existing script if available
-         if (selectedScript && !selectedScript.sections.length && selectedScript.topic && !isGenerating) {
-             setConfig(prev => ({
-                 ...prev,
-                 topic: selectedScript.topic,
-                 goal: selectedScript.goal || prev.goal,
-                 needs: selectedScript.needs || prev.needs,
-                 cta: selectedScript.cta || prev.cta,
-                 strategy: selectedScript.strategy || prev.strategy || 'Standard'
-             }));
-             // On mobile, auto-open config if script is empty
-             if (window.innerWidth < 768) setIsConfigOpen(true);
-         }
-     }, [selectedScript, isGenerating]);
+    // Pitch State
+    const [pitchForm, setPitchForm] = useState({ target: '', desc: '', obj: '' });
+    const [pitchResult, setPitchResult] = useState('');
+    const [isPitching, setIsPitching] = useState(false);
 
-     const handleGeneratePosts = async () => {
-         if(!selectedScript) return;
-         setIsGeneratingPosts(true);
-         
-         try {
-             const fullContent = selectedScript.sections.map(s => s.content).join(' ');
-             const posts = await geminiService.generateSocialPosts(selectedScript.title, fullContent, config.platforms);
-             if(posts && posts.length > 0) {
-                 onUpdate({...selectedScript, socialPosts: posts});
-             }
-         } catch(error: any) {
-             console.error("Social post generation failed", error);
-             let msg = "Failed to generate posts.";
-             if(error.message === "QUOTA_EXCEEDED") msg = "Quota limit reached. Please wait a moment.";
-             alert(msg);
-         } finally {
-             setIsGeneratingPosts(false);
-         }
-     };
-
-     const handleDownloadPDF = () => {
-        if (!selectedScript) return;
+    useEffect(() => {
+        try {
+            const s = localStorage.getItem('wyslider_scripts');
+            if(s) setScripts(JSON.parse(s));
+        } catch(e) { console.error("Failed to load scripts", e); }
         
         try {
-            const doc = new jsPDF();
-            
-            // PDF Styling Colors
-            const primaryColor = [79, 70, 229]; // Indigo-600
-            const secondaryColor = [107, 114, 128]; // Gray-500
-            const blackColor = [0, 0, 0];
-            
-            let yPos = 20;
-
-            // Title
-            doc.setFontSize(22);
-            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-            doc.setFont("helvetica", "bold");
-            const titleSplit = doc.splitTextToSize(selectedScript.title, 180);
-            doc.text(titleSplit, 15, yPos);
-            yPos += (10 * titleSplit.length) + 10;
-
-            // Metadata
-            doc.setFontSize(10);
-            doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Format: ${selectedScript.format} | Tone: ${selectedScript.tone}`, 15, yPos);
-            yPos += 15;
-
-            // Divider
-            doc.setDrawColor(200, 200, 200);
-            doc.line(15, yPos, 195, yPos);
-            yPos += 10;
-
-            // Sections
-            selectedScript.sections.forEach((section) => {
-                // Check page break
-                if (yPos > 270) {
-                    doc.addPage();
-                    yPos = 20;
-                }
-
-                // Section Header
-                doc.setFontSize(14);
-                doc.setTextColor(blackColor[0], blackColor[1], blackColor[2]);
-                doc.setFont("helvetica", "bold");
-                doc.text(`${section.title} (${section.estimatedTime})`, 15, yPos);
-                yPos += 8;
-
-                // Section Content
-                doc.setFontSize(11);
-                doc.setFont("helvetica", "normal");
-                const contentText = section.content.replace(/\*\*/g, '').replace(/\[(.*?)\]/g, 'Visual: $1');
-                const splitContent = doc.splitTextToSize(contentText, 180);
-                doc.text(splitContent, 15, yPos);
-                yPos += (6 * splitContent.length) + 5;
-
-                // Visual Note
-                if (section.visualNote) {
-                    doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-                    doc.setFont("helvetica", "italic");
-                    const visNote = `Note: ${section.visualNote}`;
-                    const splitVis = doc.splitTextToSize(visNote, 180);
-                    doc.text(splitVis, 15, yPos);
-                    yPos += (6 * splitVis.length) + 5;
-                }
-                
-                yPos += 5; // Extra spacing between sections
-            });
-
-            // --- ADD SOCIAL POSTS LOGIC HERE ---
-            if (selectedScript.socialPosts && selectedScript.socialPosts.length > 0) {
-                 // Check page break for header
-                 if (yPos > 250) {
-                    doc.addPage();
-                    yPos = 20;
-                } else {
-                    yPos += 10;
-                    doc.setDrawColor(200, 200, 200);
-                    doc.line(15, yPos, 195, yPos);
-                    yPos += 15;
-                }
-
-                doc.setFontSize(18);
-                doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                doc.setFont("helvetica", "bold");
-                doc.text("Social Media Posts", 15, yPos);
-                yPos += 15;
-
-                selectedScript.socialPosts.forEach(post => {
-                     // Check page break
-                    if (yPos > 260) {
-                        doc.addPage();
-                        yPos = 20;
-                    }
-
-                    // Platform
-                    doc.setFontSize(12);
-                    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(post.platform.toUpperCase(), 15, yPos);
-                    yPos += 6;
-
-                    // Content
-                    doc.setFontSize(10);
-                    doc.setTextColor(blackColor[0], blackColor[1], blackColor[2]);
-                    doc.setFont("helvetica", "normal");
-                    const splitPost = doc.splitTextToSize(post.content, 180);
-                    doc.text(splitPost, 15, yPos);
-                    yPos += (5 * splitPost.length) + 4;
-
-                    // Hashtags
-                    if (post.hashtags && post.hashtags.length > 0) {
-                        doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-                        const tags = post.hashtags.join(' ');
-                        const splitTags = doc.splitTextToSize(tags, 180);
-                        doc.text(splitTags, 15, yPos);
-                        yPos += (5 * splitTags.length) + 4;
-                    }
-
-                    // Visual Note for post
-                    if (post.visualNote) {
-                         doc.setFont("helvetica", "italic");
-                         doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
-                         const vNote = `Asset: ${post.visualNote}`;
-                         const splitV = doc.splitTextToSize(vNote, 180);
-                         doc.text(splitV, 15, yPos);
-                         yPos += (5 * splitV.length) + 4;
-                    }
-
-                    yPos += 8; // Spacing between posts
-                });
-            }
-
-            doc.save(`${selectedScript.title.substring(0, 20)}_script.pdf`);
-        } catch (e) {
-            console.error("PDF Error", e);
-            alert("Error generating PDF. Please ensure content is loaded.");
-        }
-     }
-     
-     // Resolve available strategies (Standard + Custom)
-     const customStrategies = useMemo(() => {
-         return (user.customStrategies || []).map(s => ({
-             name: s.name,
-             instruction: s.instruction,
-             type: 'Custom'
-         }));
-     }, [user.customStrategies]);
-     
-     const allStrategies = useMemo(() => {
-         return [
-             ...STANDARD_STRATEGIES,
-             ...customStrategies.map(s => s.name)
-         ];
-     }, [customStrategies]);
-     
-     const handleGenerateClick = () => {
-         // Resolve instruction
-         const customStrat = customStrategies.find(s => s.name === config.strategy);
-         let instruction = '';
-         
-         if (customStrat) {
-             instruction = customStrat.instruction;
-         } else {
-             instruction = geminiService.STRATEGIES[config.strategy] || geminiService.STRATEGIES['Standard'];
-         }
-         
-         onGenerate({ ...config, strategyInstruction: instruction });
-     }
-
-     if (!selectedScript) {
-         return (
-             <div className="h-full flex overflow-hidden animate-fade-in bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-                  <div className="w-full md:w-80 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col p-6 space-y-6 overflow-y-auto">
-                     <h2 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Studio Config</h2>
-                     <div className="space-y-4">
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Video topic..."/>
-                        </div>
-                        
-                        {/* STRATEGY SELECTOR */}
-                        <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20">
-                            <label className="text-xs text-brand-purple font-bold uppercase flex items-center mb-1">
-                                <SparklesIcon className="h-3 w-3 mr-1"/> Narrative Strategy
-                            </label>
-                            <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
-                                {allStrategies.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                            <p className="text-[10px] text-gray-500 mt-1 italic">
-                                {config.strategy === 'Retention Beast' && "Fast pacing, rapid cuts, immediate hook (MrBeast style)."}
-                                {config.strategy === 'The Storyteller' && "Emotional arc, hero's journey, conflict (Casey Neistat style)."}
-                                {config.strategy === 'The Educator' && "Curiosity gap, investigation, twist (Veritasium style)."}
-                                {config.strategy === 'The Salesman' && "High value, authority, strong CTA (Hormozi style)."}
-                                {config.strategy === 'Standard' && "Balanced professional structure."}
-                                {customStrategies.find(s => s.name === config.strategy) && "Your custom forged strategy."}
-                            </p>
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Tone</label>
-                            <div className="flex space-x-1 mt-1">
-                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="flex-1 bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
-                                    {AVAILABLE_TONES.map(t => <option key={t}>{t}</option>)}
-                                    {customTone && <option>{customTone}</option>}
-                                </select>
-                                <button onClick={() => setIsAddingTone(!isAddingTone)} className="bg-gray-200 dark:bg-gray-700 px-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white"><PlusIcon className="h-4 w-4"/></button>
-                            </div>
-                            {isAddingTone && (
-                                <div className="mt-2 flex space-x-2">
-                                    <input value={customTone} onChange={e => setCustomTone(e.target.value)} placeholder="New tone..." className="flex-1 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 p-1 rounded text-xs text-gray-900 dark:text-white"/>
-                                    <button onClick={() => { setConfig({...config, tone: customTone}); setIsAddingTone(false); }} className="bg-brand-purple px-2 rounded text-xs font-bold text-white">OK</button>
-                                </div>
-                            )}
-                        </div>
-
-                         <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Duration</label>
-                            <select value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white outline-none">
-                                {AVAILABLE_DURATIONS.map(d => <option key={d}>{d}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Platforms</label>
-                            <input value={config.platforms} onChange={e => setConfig({...config, platforms: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                     </div>
-
-                     <Button onClick={handleGenerateClick} isLoading={isGenerating}>Generate Script</Button>
-                     <Button variant="secondary" onClick={onBack}>Cancel</Button>
-                  </div>
-                  <div className="hidden md:flex flex-1 bg-gray-100 dark:bg-gray-800 items-center justify-center text-gray-500 dark:text-gray-500">
-                      <div className="text-center">
-                          <PencilSquareIcon className="h-16 w-16 mx-auto mb-4 opacity-20"/>
-                          <p>Configure your script on the left to start.</p>
-                      </div>
-                  </div>
-             </div>
-         )
-     }
-
-     return (
-         <div className="h-full flex overflow-hidden animate-fade-in relative bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-             {/* Sidebar: Fixed on Desktop, Toggleable Overlay on Mobile */}
-             <div className={`
-                fixed inset-0 z-30 bg-white dark:bg-gray-900 md:static md:inset-auto md:w-80 md:border-r border-gray-200 dark:border-gray-800 md:block transition-transform duration-300
-                ${isConfigOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-             `}>
-                 <div className="h-full overflow-y-auto p-6 text-gray-900 dark:text-white">
-                     <div className="flex justify-between items-center mb-4">
-                        <button onClick={onBack} className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">&larr; Back</button>
-                        <button onClick={() => setIsConfigOpen(false)} className="md:hidden text-gray-500 dark:text-gray-400"><XMarkIcon className="h-6 w-6"/></button>
-                     </div>
-                     
-                     <div className="space-y-4 mb-6">
-                        <h3 className="font-bold text-lg">Edit Config</h3>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Topic</label>
-                            <textarea value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 h-20 text-gray-900 dark:text-white focus:border-brand-purple outline-none" placeholder="Topic..."/>
-                        </div>
-                        
-                        {/* STRATEGY SELECTOR MOBILE/EDIT */}
-                        <div className="bg-brand-purple/5 p-3 rounded-lg border border-brand-purple/20">
-                            <label className="text-xs text-brand-purple font-bold uppercase flex items-center mb-1">
-                                <SparklesIcon className="h-3 w-3 mr-1"/> Strategy
-                            </label>
-                            <select value={config.strategy} onChange={e => setConfig({...config, strategy: e.target.value})} className="w-full bg-white dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm text-gray-900 dark:text-white outline-none">
-                                {allStrategies.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Goal</label>
-                            <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Needs</label>
-                            <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">CTA</label>
-                            <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} className="w-full bg-gray-50 dark:bg-gray-800 rounded border border-gray-300 dark:border-gray-700 p-2 text-sm mt-1 text-gray-900 dark:text-white focus:border-brand-purple outline-none"/>
-                        </div>
-                        <Button onClick={() => { handleGenerateClick(); setIsConfigOpen(false); }} isLoading={isGenerating}>Regenerate</Button>
-                     </div>
-
-                     <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
-                         <Button onClick={handleDownloadPDF} variant="secondary" className="w-full flex items-center justify-center">
-                             <DocumentArrowDownIcon className="h-5 w-5 mr-2"/> Export PDF
-                         </Button>
-                     </div>
-                 </div>
-             </div>
-             
-             {/* Main Content Area - SCRIPT PREVIEW MODE */}
-             <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto p-4 md:p-8 scroll-smooth text-gray-900 dark:text-white transition-colors duration-300">
-                 <div className="max-w-4xl mx-auto pb-20">
-                     <div className="flex justify-between items-start mb-6">
-                        <div className="flex-1 mr-4">
-                            <input value={selectedScript.title} onChange={e => onUpdate({...selectedScript, title: e.target.value})} className="text-2xl md:text-3xl font-bold bg-transparent w-full outline-none placeholder-gray-400 dark:placeholder-gray-600 text-gray-900 dark:text-white"/>
-                            <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 flex space-x-3">
-                                {selectedScript.strategy && <span className="bg-brand-purple/10 text-brand-purple px-2 py-1 rounded font-bold border border-brand-purple/20">{selectedScript.strategy}</span>}
-                                <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.format}</span>
-                                <span className="bg-gray-200 dark:bg-gray-800 px-2 py-1 rounded">{selectedScript.tone}</span>
-                            </div>
-                        </div>
-                        <div className="flex space-x-2">
-                            <button onClick={() => setIsConfigOpen(true)} className="md:hidden p-2 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm flex items-center text-gray-700 dark:text-gray-300">
-                                <PencilSquareIcon className="h-5 w-5 mr-1"/> <span className="hidden sm:inline">Config</span>
-                            </button>
-                        </div>
-                     </div>
-                     
-                     <div className="space-y-1">
-                         {selectedScript.sections.length === 0 && (
-                            <div className="text-gray-500 dark:text-gray-400 p-8 border border-dashed border-gray-300 dark:border-gray-600 rounded text-center">
-                                <p className="mb-4">Empty content.</p>
-                                <Button onClick={() => setIsConfigOpen(true)}>Open Config</Button>
-                            </div>
-                         )}
-                         
-                         {/* Render Script Preview Sections */}
-                         {selectedScript.sections.map((section, idx) => (
-                             <ScriptPreview 
-                                key={idx}
-                                title={section.title}
-                                time={section.estimatedTime}
-                                content={section.content}
-                                visualNote={section.visualNote}
-                                onEdit={(newContent) => {
-                                    const newSections = [...selectedScript.sections];
-                                    newSections[idx] = {...section, content: newContent};
-                                    onUpdate({...selectedScript, sections: newSections});
-                                }}
-                             />
-                         ))}
-
-                         {/* Social Posts Section */}
-                         <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800">
-                             <div className="flex justify-between items-center mb-6">
-                                 <h3 className="text-xl font-bold flex items-center text-gray-900 dark:text-white"><ShareIcon className="h-5 w-5 mr-2 text-green-500"/> Social Posts</h3>
-                                 <Button onClick={handleGeneratePosts} isLoading={isGeneratingPosts} className="text-sm py-1 px-3">Generate Posts</Button>
-                             </div>
-                             {!selectedScript.socialPosts && <p className="text-gray-500 italic text-sm">No posts generated yet.</p>}
-                             <div className="grid gap-4 md:grid-cols-2">
-                                 {selectedScript.socialPosts?.map((post, i) => (
-                                     <div key={i} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 rounded-xl">
-                                         <span className="text-xs font-bold uppercase text-brand-blue mb-2 block">{post.platform}</span>
-                                         <p className="text-sm text-gray-700 dark:text-gray-300 mb-3 whitespace-pre-wrap">{post.content}</p>
-                                         {post.visualNote && <p className="text-xs text-blue-500 dark:text-blue-300 italic mb-2">[Asset: {post.visualNote}]</p>}
-                                         <div className="text-xs text-blue-500 dark:text-blue-400">{post.hashtags?.join(' ')}</div>
-                                     </div>
-                                 ))}
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     )
-}
-
-interface WorkspaceProps {
-  user: User;
-  onUpdateUser: (user: User) => void;
-  onNavigateAccount: () => void;
-  onLogout: () => void;
-  pendingGenConfig?: any;
-  clearPendingConfig?: () => void;
-  isDarkMode?: boolean;
-  toggleTheme?: () => void;
-  view?: 'dashboard' | 'studio' | 'serial';
-  setView?: (view: 'dashboard' | 'studio' | 'serial') => void;
-}
-
-export const Workspace: React.FC<WorkspaceProps> = ({ user, onUpdateUser, onNavigateAccount, onLogout, pendingGenConfig, clearPendingConfig, isDarkMode, toggleTheme, view: propView, setView: propSetView }) => {
-    // State initialization - use props if available, otherwise internal state (fallback)
-    const [internalView, setInternalView] = useState<'dashboard' | 'studio' | 'serial'>('dashboard');
-    const view = propView || internalView;
-    const setView = propSetView || setInternalView;
-
-    const [scripts, setScripts] = useState<Script[]>([]);
-    const [series, setSeries] = useState<Series[]>([]);
-    const [currentScript, setCurrentScript] = useState<Script | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
-    
-    // Chat state
-    const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
-    const [activeChatId, setActiveChatId] = useState<string | null>(null);
-    const [isChatProcessing, setIsChatProcessing] = useState(false);
-    
-    // Notifications
-    const [notifications, setNotifications] = useState<AppNotification[]>([]);
-    
-    // Refs for chat instances
-    const chatInstances = useRef<Map<string, Chat>>(new Map());
-
-    // ... Load data from localStorage ...
-    useEffect(() => {
-        const savedScripts = localStorage.getItem('wyslider_scripts');
-        if (savedScripts) setScripts(JSON.parse(savedScripts));
-        
-        const savedSeries = localStorage.getItem('wyslider_series');
-        if (savedSeries) setSeries(JSON.parse(savedSeries));
-
-        const savedChats = localStorage.getItem('wyslider_chats');
-        if (savedChats) setChatSessions(JSON.parse(savedChats));
-        
-        // Handle pending config from "Use Idea"
-        if (pendingGenConfig) {
-             // Fixed: Do not call handleCreateScript() here as it causes race condition
-             const newScript: Script = {
-                 id: `s_${Date.now()}`,
-                 title: pendingGenConfig.topic,
-                 topic: pendingGenConfig.topic,
-                 tone: pendingGenConfig.tone || 'Professional',
-                 format: pendingGenConfig.duration || '8-15min',
-                 createdAt: new Date().toISOString(),
-                 sections: [],
-                 niche: user.niche,
-                 goal: pendingGenConfig.goal,
-                 needs: pendingGenConfig.needs,
-                 cta: pendingGenConfig.cta
-             };
-             
-             // Use functional update to ensure state consistency
-             setScripts(prev => {
-                 const updated = [newScript, ...prev];
-                 localStorage.setItem('wyslider_scripts', JSON.stringify(updated)); // Immediate save
-                 return updated;
-             });
-             setCurrentScript(newScript);
-             setView('studio');
-             if (clearPendingConfig) clearPendingConfig();
-        }
-    }, [pendingGenConfig]);
+            const p = localStorage.getItem('wyslider_pitches');
+            if(p) setPitches(JSON.parse(p));
+        } catch(e) { console.error("Failed to load pitches", e); }
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('wyslider_scripts', JSON.stringify(scripts));
     }, [scripts]);
 
     useEffect(() => {
-        localStorage.setItem('wyslider_series', JSON.stringify(series));
-    }, [series]);
-    
-    useEffect(() => {
-        localStorage.setItem('wyslider_chats', JSON.stringify(chatSessions));
-    }, [chatSessions]);
+        localStorage.setItem('wyslider_pitches', JSON.stringify(pitches));
+    }, [pitches]);
 
-    // Check for admin broadcast
-    useEffect(() => {
-        const broadcast = localStorage.getItem('wyslider_admin_broadcast');
-        if (broadcast) {
-            const data = JSON.parse(broadcast);
-            const lastSeen = localStorage.getItem('wyslider_last_broadcast');
-            if (data.timestamp !== lastSeen) {
-                notify(data.message, "Admin Broadcast");
-                localStorage.setItem('wyslider_last_broadcast', data.timestamp);
-            }
-        }
-    }, []);
-
-    const notify = (title: string, message: string, type: 'info'|'success'|'warning' = 'info') => {
-        const id = Date.now().toString();
-        setNotifications(prev => [...prev, { id, title, message, type, read: false, timestamp: new Date().toISOString() }]);
-    };
-
-    const handleCreateScript = () => {
-        const newScript: Script = {
-            id: `s_${Date.now()}`,
-            title: 'New Script',
-            topic: '',
-            tone: 'Professional',
-            format: '8-15min',
-            createdAt: new Date().toISOString(),
-            sections: [],
-            niche: user.niche
+    const handleImportFusion = async (url: string) => {
+        setIsImporting(true);
+        const structure = await geminiService.analyzeFusionStructure(url);
+        const newFusion: FusionStructure = {
+            id: `fs_${Date.now()}`,
+            name: structure.name,
+            description: structure.description,
+            instruction: structure.instruction,
+            sourceUrl: url
         };
-        setScripts([newScript, ...scripts]);
-        setCurrentScript(newScript);
-        setView('studio');
+        const updatedUser = { 
+            ...user, 
+            fusionStructures: [...(user.fusionStructures || []), newFusion] 
+        };
+        onUpdateUser(updatedUser);
+        setFusionId(newFusion.id);
+        setIsImporting(false);
+        alert(`Fusion Structure "${structure.name}" added!`);
     };
 
-    const handleGenerateScript = async (config: any) => {
-        if (!currentScript) return;
-        if (user.generationsLeft <= 0) {
-            alert("No more credits! Upgrade to Pro.");
-            return;
-        }
-
+    const handleGenerateScript = async () => {
         setIsGenerating(true);
+        const structure = user.fusionStructures?.find(fs => fs.id === fusionId);
+        const instruction = structure ? structure.instruction : geminiService.STRATEGIES['Standard']; // Fallback
 
         try {
-            const scriptData = await geminiService.generateScript(
-                config.topic, 
-                config.tone, 
-                config.duration, 
-                user.youtubeUrl, 
-                config.goal, 
-                config.needs, 
-                config.cta, 
-                config.platforms,
-                user.styleDNA, // Pass styleDNA to service
-                config.strategyInstruction // Pass Raw Strategy Instruction
+            const result = await geminiService.generateScript(
+                config.topic, config.tone, config.duration, instruction, 
+                { niche: config.niche, goal: config.goal, needs: config.needs, cta: config.cta, platforms: config.platforms }
             );
-            
-            if (scriptData) {
-                const updatedScript: Script = {
-                    ...currentScript,
-                    title: scriptData.title,
-                    topic: config.topic,
-                    tone: config.tone,
-                    format: config.duration,
-                    strategy: config.strategy,
-                    youtubeDescription: scriptData.youtubeDescription,
-                    hashtags: scriptData.hashtags,
-                    sections: scriptData.sections,
-                    socialPosts: scriptData.socialPosts,
-                    goal: config.goal,
-                    needs: config.needs,
-                    cta: config.cta
+
+            if (result) {
+                const newScript: Script = {
+                    id: `s_${Date.now()}`,
+                    title: result.youtubeScript?.title || config.topic,
+                    createdAt: new Date().toISOString(),
+                    planning: result.planning,
+                    youtubeScript: result.youtubeScript,
+                    socialPosts: result.socialPosts,
+                    videoPrompts: result.videoPrompts
                 };
-                
-                const newScripts = scripts.map(s => s.id === currentScript.id ? updatedScript : s);
-                setScripts(newScripts);
-                setCurrentScript(updatedScript);
-                onUpdateUser({ ...user, generationsLeft: user.generationsLeft - 1 });
-                notify("Script Generated!", "Your script is ready.", "success");
+                setScripts([newScript, ...scripts]);
+                setCurrentScript(newScript);
+                onUpdateUser({...user, generationsLeft: user.generationsLeft - 1});
             }
-        } catch (error: any) {
-            console.error("Gen Script failed:", error);
-            let msg = "AI failed to generate script.";
-            if (error.message === "QUOTA_EXCEEDED") {
-                msg = "Quota exceeded (Too many requests). Please wait 60s.";
-            } else if (error.message === "Request timed out") {
-                msg = "AI took too long. Try a simpler topic.";
-            } else if (error.message === "EMPTY_RESPONSE") {
-                 msg = "AI returned an empty response. Try again.";
-            }
-            notify("Error", msg, "warning");
+        } catch (e) {
+            console.error(e);
+            alert("Generation failed. Please try again.");
         } finally {
             setIsGenerating(false);
         }
     };
 
-    // Chat Logic
-    const handleNewChat = () => {
-        const newSession: ChatSession = {
-            id: `chat_${Date.now()}`,
-            title: 'New Chat',
-            messages: [],
+    const handleGeneratePitch = async () => {
+        setIsPitching(true);
+        const res = await geminiService.generatePitch(pitchForm.target, pitchForm.desc, pitchForm.obj);
+        setPitchResult(res);
+        const newPitch: BrandPitch = {
+            id: `p_${Date.now()}`,
+            targetName: pitchForm.target,
+            description: pitchForm.desc,
+            objective: pitchForm.obj,
+            content: res,
             createdAt: new Date().toISOString()
         };
-        setChatSessions([newSession, ...chatSessions]);
-        setActiveChatId(newSession.id);
-        
-        const chat = geminiService.startChatSession(
-             currentScript ? `Current Script Context: ${JSON.stringify(currentScript)}` : "No specific script selected."
-        );
-        chatInstances.current.set(newSession.id, chat);
+        setPitches([newPitch, ...pitches]);
+        setIsPitching(false);
     };
 
-    const handleSendMessage = async (content: string) => {
-        if (!activeChatId) return;
-        
-        // 1. Add User Message immediately
-        const userMsg: ChatMessage = { id: `m_${Date.now()}`, role: 'user', content, timestamp: new Date().toISOString() };
-        setChatSessions(sessions => sessions.map(s => {
-            if (s.id === activeChatId) {
-                return { ...s, messages: [...s.messages, userMsg], title: s.messages.length === 0 ? content.substring(0, 30) + '...' : s.title };
-            }
-            return s;
-        }));
-
-        setIsChatProcessing(true);
-        
-        let chat = chatInstances.current.get(activeChatId);
-        if (!chat) {
-             chat = geminiService.startChatSession(
-                 currentScript ? `Current Script Context: ${JSON.stringify(currentScript)}` : "No specific script selected."
-            );
-            chatInstances.current.set(activeChatId, chat);
-        }
-
-        // 2. Create placeholder for AI message
-        const aiMsgId = `m_${Date.now()}_ai`;
-        const initialAiMsg: ChatMessage = { id: aiMsgId, role: 'model', content: '', timestamp: new Date().toISOString() };
-        
-        setChatSessions(sessions => sessions.map(s => {
-            if (s.id === activeChatId) {
-                return { ...s, messages: [...s.messages, initialAiMsg] };
-            }
-            return s;
-        }));
-
-        // 3. Stream response
-        try {
-            const stream = geminiService.sendMessageToChatStream(chat, content);
-            let fullText = "";
-
-            for await (const chunk of stream) {
-                fullText += chunk;
-                // Update the last message (the AI placeholder) with new chunk
-                setChatSessions(sessions => sessions.map(s => {
-                    if (s.id === activeChatId) {
-                        const newMessages = [...s.messages];
-                        const lastMsg = newMessages[newMessages.length - 1];
-                        if (lastMsg.id === aiMsgId) {
-                            lastMsg.content = fullText;
-                        }
-                        return { ...s, messages: newMessages };
-                    }
-                    return s;
-                }));
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsChatProcessing(false);
-        }
-    };
-
-    const handleTabChange = (tab: string) => {
-        if (tab === 'dashboard') setView('dashboard');
-        else if (tab === 'studio') {
-            if (!currentScript) handleCreateScript();
-            setView('studio');
-        } else if (tab === 'account') {
-            onNavigateAccount();
-        }
-    }
+    const filteredScripts = scripts.filter(s => s.title?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <MainLayout 
-            user={user} 
-            onLogout={onLogout} 
-            onNavigateToAccount={onNavigateAccount}
-            isDarkMode={isDarkMode}
-            toggleTheme={toggleTheme}
-            activeTab={view}
-            onTabChange={handleTabChange}
+            user={user} onLogout={onLogout} onNavigateToAccount={onNavigateAccount} 
+            isDarkMode={isDarkMode} toggleTheme={toggleTheme}
         >
-            {/* Notification Toasts */}
-            <div className="fixed bottom-4 right-4 z-[60] flex flex-col space-y-2 pointer-events-none">
-                 {notifications.map(n => (
-                     <div className="pointer-events-auto" key={n.id}>
-                        <NotificationToast notification={n} onClose={id => setNotifications(prev => prev.filter(x => x.id !== id))} />
-                     </div>
-                 ))}
-            </div>
-
-            {/* Chat Overlay */}
-            <ChatOverlay 
-                isOpen={isChatOpen} 
-                onClose={() => setIsChatOpen(false)}
-                sessions={chatSessions}
-                activeSessionId={activeChatId}
-                onNewChat={handleNewChat}
-                onSelectSession={setActiveChatId}
-                onDeleteSession={(id) => {
-                    setChatSessions(prev => prev.filter(s => s.id !== id));
-                    if(activeChatId === id) setActiveChatId(null);
-                    chatInstances.current.delete(id);
-                }}
-                onDeleteAllHistory={() => {
-                    setChatSessions([]);
-                    setActiveChatId(null);
-                    chatInstances.current.clear();
-                }}
-                onSendMessage={handleSendMessage}
-                isProcessing={isChatProcessing}
-            />
-
-             {/* Floating Chat Button */}
-             <button 
-                onClick={() => setIsChatOpen(true)}
-                className="fixed bottom-6 right-6 bg-brand-purple hover:bg-purple-600 text-white p-4 rounded-full shadow-2xl z-40 transition-transform transform hover:scale-110 flex items-center justify-center"
-            >
-                <ChatBubbleLeftRightIcon className="h-8 w-8" />
-                {isChatProcessing && <span className="absolute top-0 right-0 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-pink-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-pink-500"></span></span>}
-            </button>
-
+            {/* --- DASHBOARD --- */}
             {view === 'dashboard' && (
-                <Dashboard 
-                    scripts={scripts} 
-                    series={series}
-                    onSelect={(s) => { setCurrentScript(s); setView('studio'); }} 
-                    onDelete={(id) => {
-                         if(window.confirm("Delete this script/series?")) {
-                             setScripts(prev => prev.filter(s => s.id !== id));
-                             setSeries(prev => prev.filter(s => s.id !== id));
-                         }
-                    }}
-                    onBulkDelete={(ids) => {
-                         if(window.confirm(`Delete ${ids.length} items?`)) {
-                             setScripts(prev => prev.filter(s => !ids.includes(s.id)));
-                         }
-                    }}
-                    onBulkShare={() => alert("Bulk share coming soon.")}
-                    onOpenStudio={() => { setCurrentScript(null); handleCreateScript(); }}
-                    onOpenSerial={() => setView('serial')}
-                />
+                <div className="h-full overflow-y-auto">
+                    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 animate-fade-in text-gray-900 dark:text-white">
+                        {/* Search Bar */}
+                        <div className="flex space-x-4">
+                            <input 
+                                type="text" 
+                                placeholder="Search projects..." 
+                                className="flex-1 bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 outline-none focus:ring-2 focus:ring-brand-purple text-gray-900 dark:text-white"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                            <button className="bg-gray-200 dark:bg-gray-800 p-4 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-700">
+                                <Bars3Icon className="h-6 w-6 text-gray-600 dark:text-gray-300"/>
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* 1. Scripts History */}
+                            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition transform group-hover:scale-110">
+                                    <PencilSquareIcon className="h-24 w-24"/>
+                                </div>
+                                <h3 className="font-bold text-xl mb-1">Scripts & Series</h3>
+                                <p className="text-purple-100 text-sm mb-6">{scripts.length} Projects</p>
+                                <div className="flex space-x-2">
+                                    <button onClick={() => setView('studio')} className="bg-white text-purple-600 p-2 rounded-full hover:bg-purple-50 transition shadow-md">
+                                        <PlusIcon className="h-6 w-6"/>
+                                    </button>
+                                    <button onClick={() => { setSearchTerm(''); }} className="text-xs bg-purple-700/50 hover:bg-purple-700 px-3 py-1 rounded-full backdrop-blur-sm transition">View All</button>
+                                </div>
+                            </div>
+
+                            {/* 2. Social Posts History */}
+                            <div 
+                                onClick={() => setView('socials')}
+                                className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group hover:border-green-500 transition cursor-pointer"
+                            >
+                                <div className="absolute top-0 right-0 p-4 text-green-500 opacity-10 group-hover:opacity-20 transition">
+                                    <ShareIcon className="h-24 w-24"/>
+                                </div>
+                                <h3 className="font-bold text-xl mb-1 text-gray-900 dark:text-white">Social Posts</h3>
+                                <p className="text-gray-500 text-sm mb-6">Generated content history</p>
+                                <button onClick={(e) => { e.stopPropagation(); setView('socials'); }} className="text-xs bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition">Open Library</button>
+                            </div>
+
+                            {/* 3. Marketing Pitch */}
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group hover:border-blue-500 transition">
+                                <div className="absolute top-0 right-0 p-4 text-blue-500 opacity-10 group-hover:opacity-20 transition">
+                                    <BriefcaseIcon className="h-24 w-24"/>
+                                </div>
+                                <h3 className="font-bold text-xl mb-1 text-gray-900 dark:text-white">Marketing Pitch</h3>
+                                <p className="text-gray-500 text-sm mb-6">{pitches.length} Drafts</p>
+                                <div className="flex space-x-2">
+                                    <button onClick={() => setView('pitches')} className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 p-2 rounded-full hover:bg-blue-200 dark:hover:bg-blue-900/50 transition">
+                                        <PlusIcon className="h-6 w-6"/>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 4. Docs */}
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm relative overflow-hidden group hover:border-yellow-500 transition cursor-pointer" onClick={() => setView('docs')}>
+                                <div className="absolute top-0 right-0 p-4 text-yellow-500 opacity-10 group-hover:opacity-20 transition">
+                                    <BookOpenIcon className="h-24 w-24"/>
+                                </div>
+                                <h3 className="font-bold text-xl mb-1 text-gray-900 dark:text-white">Documentation</h3>
+                                <p className="text-gray-500 text-sm mb-6">Learn how to use WySlider</p>
+                                <span className="text-xs text-yellow-600 dark:text-yellow-400 font-bold uppercase">Read Docs &rarr;</span>
+                            </div>
+                        </div>
+
+                        {/* Quick Access List */}
+                        <div className="mt-8">
+                            <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">Recent Scripts</h3>
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
+                                {filteredScripts.slice(0, 5).map(s => (
+                                    <div key={s.id} onClick={() => { setCurrentScript(s); setView('studio'); }} className="p-4 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition first:rounded-t-2xl last:rounded-b-2xl">
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 dark:text-white">{s.title}</h4>
+                                            <p className="text-xs text-gray-500">{new Date(s.createdAt).toLocaleDateString()} • {s.planning?.mainTone || 'Professional'}</p>
+                                        </div>
+                                        <span className="text-brand-purple">Open &rarr;</span>
+                                    </div>
+                                ))}
+                                {filteredScripts.length === 0 && <div className="p-6 text-center text-gray-500">No scripts found.</div>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
+            {/* --- SOCIALS LIBRARY --- */}
+            {view === 'socials' && (
+                <div className="p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in text-gray-900 dark:text-white overflow-y-auto">
+                    <div className="flex items-center justify-between mb-8">
+                         <h2 className="text-2xl font-bold flex items-center"><ShareIcon className="h-6 w-6 mr-2 text-green-500"/> Social Media Library</h2>
+                         <Button variant="secondary" onClick={() => setView('dashboard')}>Back</Button>
+                    </div>
+                    
+                    <div className="space-y-8">
+                        {scripts.filter(s => s.socialPosts && s.socialPosts.length > 0).length === 0 && (
+                            <div className="text-center text-gray-500 p-10 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">No social posts generated yet. Generate a script to see posts here.</div>
+                        )}
+                        {scripts.filter(s => s.socialPosts && s.socialPosts.length > 0).map(script => (
+                            <div key={script.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                                <div className="bg-gray-50 dark:bg-gray-900 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                                    <h3 className="font-bold text-lg text-brand-purple">{script.title}</h3>
+                                    <span className="text-xs text-gray-500">{new Date(script.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="p-4 grid gap-4 md:grid-cols-2">
+                                    {script.socialPosts?.map((post, idx) => (
+                                        <div key={idx} className="bg-gray-50 dark:bg-gray-950 p-4 rounded border border-gray-100 dark:border-gray-800 relative group">
+                                            <div className="flex justify-between mb-2">
+                                                <span className="text-xs font-bold uppercase text-brand-blue tracking-wide">{post.platform}</span>
+                                                <button onClick={() => {navigator.clipboard.writeText(post.content); alert('Copied!')}} className="text-xs text-gray-400 hover:text-brand-purple transition">Copy</button>
+                                            </div>
+                                            <p className="text-sm whitespace-pre-wrap mb-3 text-gray-700 dark:text-gray-300 leading-relaxed">{post.content}</p>
+                                            {post.visualNote && <p className="text-xs italic text-gray-500 border-l-2 border-gray-300 pl-2 mb-2">Visual: {post.visualNote}</p>}
+                                            <p className="text-xs text-blue-500">{post.hashtags.join(' ')}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* --- STUDIO --- */}
             {view === 'studio' && (
-                 <Studio 
-                    scripts={scripts}
-                    selectedScript={currentScript}
-                    onUpdate={(updated) => {
-                        setCurrentScript(updated);
-                        setScripts(prev => prev.map(s => s.id === updated.id ? updated : s));
-                    }}
-                    onBack={() => setView('dashboard')}
-                    onGenerate={handleGenerateScript}
-                    isGenerating={isGenerating}
-                    user={user}
-                 />
+                <div className="h-full flex flex-col md:flex-row animate-fade-in text-gray-900 dark:text-white overflow-y-auto md:overflow-hidden">
+                    {/* Config Sidebar */}
+                    <div className="w-full md:w-96 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 p-6 md:overflow-y-auto flex-shrink-0">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold">Studio</h2>
+                            <Button variant="secondary" onClick={() => setView('dashboard')} className="text-xs py-1">Exit</Button>
+                        </div>
+
+                        {!currentScript && (
+                            <div className="space-y-4">
+                                <FusionForgeSelector 
+                                    structures={user.fusionStructures || []} 
+                                    selectedId={fusionId} 
+                                    onSelect={setFusionId}
+                                    onImport={handleImportFusion}
+                                    isImporting={isImporting}
+                                />
+                                
+                                <input value={config.topic} onChange={e => setConfig({...config, topic: e.target.value})} placeholder="Video Topic..." className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <select value={config.tone} onChange={e => setConfig({...config, tone: e.target.value})} className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white">
+                                    <option>Professional</option><option>Energetic</option><option>Humorous</option><option>Serious</option>
+                                </select>
+                                <input value={config.duration} onChange={e => setConfig({...config, duration: e.target.value})} placeholder="Duration (e.g. 10min)" className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <input value={config.niche} onChange={e => setConfig({...config, niche: e.target.value})} placeholder="Niche" className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <input value={config.goal} onChange={e => setConfig({...config, goal: e.target.value})} placeholder="Goal" className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <input value={config.needs} onChange={e => setConfig({...config, needs: e.target.value})} placeholder="Key points needed" className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <input value={config.cta} onChange={e => setConfig({...config, cta: e.target.value})} placeholder="CTA" className="w-full p-3 rounded-lg border dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                
+                                <Button onClick={handleGenerateScript} isLoading={isGenerating} className="w-full py-4 text-lg shadow-lg shadow-brand-purple/20">Generate</Button>
+                            </div>
+                        )}
+                        {currentScript && (
+                            <div className="text-center">
+                                <CheckIcon className="h-16 w-16 text-green-500 mx-auto mb-4"/>
+                                <h3 className="font-bold text-lg mb-2">Script Ready</h3>
+                                <p className="text-gray-500 text-sm mb-6">Your 4-part package has been generated.</p>
+                                <Button onClick={() => setCurrentScript(null)} variant="secondary">New Script</Button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Result View */}
+                    <div className="flex-1 bg-gray-100 dark:bg-gray-950 p-4 md:p-8 md:overflow-hidden h-full flex flex-col">
+                        {currentScript ? (
+                            <ScriptResultView script={currentScript} />
+                        ) : (
+                            <div className="h-64 md:h-full flex items-center justify-center text-gray-400">
+                                <div className="text-center">
+                                    <SparklesIcon className="h-20 w-20 mx-auto mb-4 opacity-20"/>
+                                    <p>Configure Fusion Forge settings on the left.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
             )}
 
-            {view === 'serial' && (
-                <SerialProd 
-                    user={user}
-                    onClose={() => setView('dashboard')}
-                    onSaveSeries={(newSeries) => {
-                        setSeries([newSeries, ...series]);
-                        setScripts([...newSeries.episodes, ...scripts]);
-                        onUpdateUser({...user, generationsLeft: user.generationsLeft - newSeries.episodes.length});
-                    }}
-                    onNavigateAccount={onNavigateAccount}
-                    onNotify={(t, m) => notify(t, m, 'success')}
-                />
+            {/* --- PITCHES --- */}
+            {view === 'pitches' && (
+                <div className="p-8 max-w-4xl mx-auto h-full flex flex-col animate-fade-in text-gray-900 dark:text-white overflow-y-auto">
+                    <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-2xl font-bold flex items-center"><BriefcaseIcon className="h-6 w-6 mr-2 text-blue-500"/> Marketing Pitches</h2>
+                        <Button variant="secondary" onClick={() => setView('dashboard')}>Back</Button>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-8 flex-1 overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 h-fit">
+                            <h3 className="font-bold mb-4">Create New Pitch</h3>
+                            <div className="space-y-4">
+                                <input value={pitchForm.target} onChange={e => setPitchForm({...pitchForm, target: e.target.value})} placeholder="Target Name" className="w-full p-3 rounded border dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <textarea value={pitchForm.desc} onChange={e => setPitchForm({...pitchForm, desc: e.target.value})} placeholder="Description of Target" className="w-full p-3 rounded border dark:bg-gray-900 dark:border-gray-700 h-24 text-gray-900 dark:text-white"/>
+                                <input value={pitchForm.obj} onChange={e => setPitchForm({...pitchForm, obj: e.target.value})} placeholder="Your Objective" className="w-full p-3 rounded border dark:bg-gray-900 dark:border-gray-700 text-gray-900 dark:text-white"/>
+                                <Button onClick={handleGeneratePitch} isLoading={isPitching} className="w-full">Generate Pitch</Button>
+                            </div>
+                            {pitchResult && (
+                                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-100 dark:border-blue-900">
+                                    <p className="whitespace-pre-wrap text-sm">{pitchResult}</p>
+                                    <Button variant="secondary" className="mt-2 w-full text-xs" onClick={() => navigator.clipboard.writeText(pitchResult)}>Copy</Button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="overflow-y-auto space-y-4 pr-2">
+                            <h3 className="font-bold sticky top-0 bg-gray-50 dark:bg-gray-900 py-2">History</h3>
+                            {pitches.length === 0 && <p className="text-gray-500">No pitches yet.</p>}
+                            {pitches.map(p => (
+                                <div key={p.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-bold">{p.targetName}</h4>
+                                        <span className="text-xs text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-2 truncate">{p.objective}</p>
+                                    <div className="text-sm bg-gray-50 dark:bg-gray-900 p-2 rounded text-gray-600 dark:text-gray-300 line-clamp-3">
+                                        {p.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- DOCS --- */}
+            {view === 'docs' && (
+                <div className="p-8 max-w-4xl mx-auto animate-fade-in text-gray-900 dark:text-white h-full overflow-y-auto">
+                    <Button variant="secondary" onClick={() => setView('dashboard')} className="mb-6">← Back to Dashboard</Button>
+                    <div className="bg-white dark:bg-gray-800 p-10 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 prose dark:prose-invert max-w-none">
+                        <h1 className="text-3xl font-bold mb-6">WySlider Guide</h1>
+                        <p className="text-lg text-gray-500 dark:text-gray-400 mb-8 leading-relaxed">
+                            Welcome to WySlider, your AI-powered production partner. This platform is designed to streamline the entire creative process for YouTube creators, from ideation to promotion.
+                        </p>
+                        
+                        <div className="space-y-8">
+                            <section>
+                                <h3 className="text-xl font-bold mb-3 text-brand-purple">1. The Studio & 4-Part System</h3>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                    The Studio is where the magic happens. WySlider generates a comprehensive production package divided into 4 key parts:
+                                </p>
+                                <ul className="list-disc pl-6 mt-3 space-y-2 text-gray-700 dark:text-gray-300">
+                                    <li><strong>Planning:</strong> Establishes the tonal palette, pacing, and structural overview.</li>
+                                    <li><strong>Script:</strong> A full script optimized for retention, featuring strategic hooks and re-hooks to maintain viewer attention.</li>
+                                    <li><strong>Social Media:</strong> Ready-to-use posts for Twitter, LinkedIn, Instagram, etc., to promote your video.</li>
+                                    <li><strong>Video Prompts:</strong> Visual descriptions tailored for AI video generators (like Runway, Sora, Pika) or for guiding your editor.</li>
+                                </ul>
+                            </section>
+
+                            <section>
+                                <h3 className="text-xl font-bold mb-3 text-brand-purple">2. Fusion Forge</h3>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                    Fusion Forge allows you to "steal" the narrative DNA of successful videos. 
+                                    Simply paste a YouTube URL into the Fusion Forge importer in the Studio. 
+                                    The AI analyzes the video's structure (pacing, hook style, content blocks) and saves it as a reusable template for your own content.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h3 className="text-xl font-bold mb-3 text-brand-purple">3. Marketing Pitches</h3>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                    Need to reach out to brands or collaborators? Use the Marketing Pitch tool to generate professional, persuasive cold emails and messages tailored to specific targets and objectives.
+                                </p>
+                            </section>
+
+                            <section>
+                                <h3 className="text-xl font-bold mb-3 text-brand-purple">4. Social Library</h3>
+                                <p className="text-gray-700 dark:text-gray-300">
+                                    Access all your historically generated social media posts in one place via the Social Library on the dashboard. Quickly copy content and hashtags for your distribution workflow.
+                                </p>
+                            </section>
+                        </div>
+                    </div>
+                </div>
             )}
         </MainLayout>
     );

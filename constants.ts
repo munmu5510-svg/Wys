@@ -1,5 +1,4 @@
 
-
 export const APP_NAME = "WySlider";
 
 export const PRICING = {
@@ -15,7 +14,7 @@ export const TESTIMONIALS = [
 ];
 
 export const FEEDBACK_EMAIL = "support@wyslider.com";
-export const COMMUNITY_PHONE = "+240 555 320 354";
+export const COMMUNITY_CONTACT = "munmu5510@gmail.com";
 export const CORP_USE_REWARD = 10;
 export const POST_USE_REWARD = 5;
 export const PAYMENT_LINK = "https://example.com/checkout";

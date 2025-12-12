@@ -1,9 +1,8 @@
 
-
 import React, { useState } from 'react';
 import { LogoIcon, CheckIcon, RocketLaunchIcon, SparklesIcon, ChartBarIcon, Squares2x2Icon, FacebookIcon, WhatsappIcon, BoltIcon, FireIcon } from './icons';
 import { Button } from './Button';
-import { PRICING, COMMUNITY_PHONE } from '../constants';
+import { PRICING, COMMUNITY_CONTACT } from '../constants';
 
 interface LandingPageProps {
     onNavigateToAuth: () => void;
@@ -215,7 +214,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onNavigateToAuth }) =>
                 <div className="mb-8 max-w-2xl mx-auto">
                     <h4 className="text-lg md:text-xl font-bold mb-4">{text.footerTitle}</h4>
                     <p className="text-gray-400 mb-6">{text.footerDesc}</p>
-                    <p className="text-gray-500 mb-6 text-sm">Community Support: {COMMUNITY_PHONE}</p>
+                    <p className="text-gray-500 mb-6 text-sm">Community Support: {COMMUNITY_CONTACT}</p>
                     <div className="flex justify-center space-x-6">
                         <a href="https://facebook.com/WySlider" target="_blank" className="text-gray-400 hover:text-indigo-500 transition">
                             <FacebookIcon className="h-6 w-6" />
