@@ -5,7 +5,8 @@ import { AuthPage } from './components/AuthPage';
 import { Workspace } from './components/Workspace';
 import { AccountPage } from './components/AccountPage';
 import { AdminPage } from './components/AdminPage';
-import { User, AppScreen, ViralIdea } from './types';
+import { OnboardingPage } from './components/OnboardingPage';
+import { User, AppScreen } from './types';
 import { LogoIcon } from './components/icons';
 
 const SplashScreen = () => (
@@ -15,7 +16,7 @@ const SplashScreen = () => (
             <LogoIcon className="h-24 w-auto text-white relative z-10 animate-bounce" />
         </div>
         <h1 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-600 tracking-tighter">WySlider</h1>
-        <p className="text-gray-500 mt-2 text-sm tracking-widest uppercase">Professional AI Architecture</p>
+        <p className="text-gray-500 mt-2 text-sm tracking-widest uppercase font-bold">AI YouTube Architecture</p>
     </div>
 );
 
@@ -27,147 +28,71 @@ export const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    // Simulate Splash Timer
-    const timer = setTimeout(() => setLoading(false), 2500);
-
-    // Theme Init
+    const timer = setTimeout(() => setLoading(false), 2000);
     const savedTheme = localStorage.getItem('wyslider_theme');
     if (savedTheme) {
-        const isDark = savedTheme === 'dark';
-        setIsDarkMode(isDark);
-        if(isDark) document.documentElement.classList.add('dark');
-        else document.documentElement.classList.remove('dark');
-    } else {
-        document.documentElement.classList.add('dark');
+        setIsDarkMode(savedTheme === 'dark');
+        document.documentElement.classList.toggle('dark', savedTheme === 'dark');
     }
-
     const savedUser = localStorage.getItem('wyslider_user');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-      } catch (e) {
-        console.error("Failed to parse user session");
-      }
-    }
+    if (savedUser) { try { setUser(JSON.parse(savedUser)); } catch(e) {} }
     return () => clearTimeout(timer);
   }, []);
 
   const toggleTheme = () => {
-      const newMode = !isDarkMode;
-      setIsDarkMode(newMode);
-      if(newMode) {
-          document.documentElement.classList.add('dark');
-          localStorage.setItem('wyslider_theme', 'dark');
-      } else {
-          document.documentElement.classList.remove('dark');
-          localStorage.setItem('wyslider_theme', 'light');
-      }
-      if (user) {
-          updateUserSession({...user, theme: newMode ? 'dark' : 'light'});
-      }
+      const mode = !isDarkMode;
+      setIsDarkMode(mode);
+      document.documentElement.classList.toggle('dark', mode);
+      localStorage.setItem('wyslider_theme', mode ? 'dark' : 'light');
   }
 
   const handleLogin = async (email: string, _pass: string) => {
-    const mockUser: User = {
-      id: 'u_' + Date.now(),
-      email,
-      channelName: 'Creator Channel',
-      youtubeUrl: 'https://youtube.com/@creator',
-      niche: 'Education',
-      generationsLeft: 6,
-      storagePreference: 'local',
-      theme: isDarkMode ? 'dark' : 'light'
-    };
-    updateUserSession(mockUser);
-    setIsAuthFlow(false);
-  };
+    const saved = localStorage.getItem('wyslider_user');
+    let existing: User | null = null;
+    if (saved) { try { existing = JSON.parse(saved); } catch(e) {} }
 
-  const handleSignUp = async (email: string, channelName: string, youtubeUrl: string, niche: string, _pass: string) => {
-     const mockUser: User = {
-      id: 'u_' + Date.now(),
-      email,
-      channelName,
-      youtubeUrl,
-      niche,
-      generationsLeft: 6,
-      storagePreference: 'local',
-      theme: isDarkMode ? 'dark' : 'light'
-    };
-    updateUserSession(mockUser);
-    setIsAuthFlow(false);
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-    localStorage.removeItem('wyslider_user');
-    setCurrentScreen('Dashboard');
-    setIsAuthFlow(false);
-  };
-
-  const updateUserSession = (updatedUser: User) => {
-      setUser(updatedUser);
-      localStorage.setItem('wyslider_user', JSON.stringify(updatedUser));
-  };
-
-  const handleAdminBypass = () => {
-      const adminUser: User = {
-          id: 'admin_root',
-          email: 'admin@wyslider.com',
-          channelName: 'WYS Admin',
+    // If existing and same email, restore session including onboarding state
+    if (existing && existing.email === email) {
+        updateUserSession(existing);
+    } else {
+        const mockUser: User = {
+          id: 'u_' + Date.now(),
+          name: 'Utilisateur',
+          email,
+          channelName: '',
           youtubeUrl: '',
-          niche: 'System',
-          generationsLeft: 9999,
-          isPro: true,
-          theme: 'dark'
-      };
-      updateUserSession(adminUser);
-      setIsAuthFlow(false);
-      setCurrentScreen('Admin');
+          niche: '',
+          status: 'Just Me',
+          generationsLeft: 10,
+          onboardingCompleted: true // Regular login (not Signup) assumes returning user
+        };
+        updateUserSession(mockUser);
+    }
+    setIsAuthFlow(false);
   };
+
+  const handleSignUp = async (name: string, email: string, _pass: string) => {
+     const mockUser: User = { id: 'u_' + Date.now(), name, email, channelName: '', youtubeUrl: '', niche: '', status: 'Just Me', generationsLeft: 10, onboardingCompleted: false };
+    updateUserSession(mockUser);
+    setIsAuthFlow(false);
+  };
+
+  const handleLogout = () => { setUser(null); localStorage.removeItem('wyslider_user'); setIsAuthFlow(false); setCurrentScreen('Dashboard'); };
+  const updateUserSession = (u: User) => { setUser(u); localStorage.setItem('wyslider_user', JSON.stringify(u)); };
 
   if (loading) return <SplashScreen />;
 
   if (!user) {
-    if (isAuthFlow) {
-        return (
-            <AuthPage 
-                onLogin={handleLogin} 
-                onSignUp={handleSignUp} 
-                onGoogleLogin={async () => alert("Google Login coming soon.")} 
-                onBack={() => setIsAuthFlow(false)}
-                onBypassLogin={handleAdminBypass}
-            />
-        );
-    }
+    if (isAuthFlow) return <AuthPage onLogin={handleLogin} onSignUp={handleSignUp} onGoogleLogin={async()=>alert("Bientôt disponible")} onBack={()=>setIsAuthFlow(false)} />;
     return <LandingPage onNavigateToAuth={() => setIsAuthFlow(true)} />;
   }
 
-  if (currentScreen === 'Admin') {
-      return <AdminPage onBack={() => setCurrentScreen('Dashboard')} />;
+  if (!user.onboardingCompleted) {
+      return <OnboardingPage user={user} onComplete={(data) => updateUserSession({ ...user, ...data })} />;
   }
 
-  if (currentScreen === 'Account') {
-      return (
-        <AccountPage 
-            user={user} 
-            onUpdateUser={updateUserSession} 
-            onBack={() => setCurrentScreen('Dashboard')}
-            onNavigateToAdmin={() => setCurrentScreen('Admin')}
-            isDarkMode={isDarkMode}
-            toggleTheme={toggleTheme}
-        />
-      );
-  }
+  if (currentScreen === 'Admin') return <AdminPage onBack={() => setCurrentScreen('Dashboard')} />;
+  if (currentScreen === 'Account') return <AccountPage user={user} onUpdateUser={updateUserSession} onBack={() => setCurrentScreen('Dashboard')} onNavigateToAdmin={() => setCurrentScreen('Admin')} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
 
-  return (
-       <Workspace 
-            user={user} 
-            onUpdateUser={updateUserSession} 
-            onNavigateAccount={() => setCurrentScreen('Account')}
-            onLogout={handleLogout}
-            isDarkMode={isDarkMode}
-            toggleTheme={toggleTheme}
-       />
-  );
+  return <Workspace user={user} onUpdateUser={updateUserSession} onNavigateAccount={() => setCurrentScreen('Account')} onLogout={handleLogout} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />;
 };

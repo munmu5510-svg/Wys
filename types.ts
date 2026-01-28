@@ -1,22 +1,20 @@
 
-export interface Placeholder {}
-
 export interface User {
   id: string;
+  name: string;
   email: string;
   channelName: string;
   youtubeUrl: string;
   niche: string;
+  status: 'Just Me' | 'Community' | 'Enterprise';
   generationsLeft: number;
   profilePicture?: string;
   isPro?: boolean;
   apiKey?: string;
   storagePreference?: 'local';
-  firebaseConfig?: string;
-  lastSyncedAt?: string;
   theme?: 'dark' | 'light';
-  styleDNA?: string; 
-  fusionStructures?: FusionStructure[]; // Formerly customStrategies
+  fusionStructures?: FusionStructure[];
+  onboardingCompleted?: boolean;
 }
 
 export interface FusionStructure {
@@ -29,18 +27,19 @@ export interface FusionStructure {
 
 export interface SubTone {
     tone: string;
-    color: string; // Hex code
+    color: string;
 }
 
 export interface ScriptSection {
   number: number;
   title: string;
-  content: string; // HTML/Markdown allowed for colored text
+  content: string;
   rehook: string;
+  timestamp?: string;
 }
 
 export interface VideoPrompt {
-    segment: string; // e.g. "Hook (0:00-0:30)"
+    segment: 'Introduction' | 'Content' | 'Conclusion' | 'Outro';
     description: string;
 }
 
@@ -59,6 +58,8 @@ export interface ScriptPlanning {
     sectionCount: number;
     socialCount: number;
     videoPromptsCount: number;
+    channelName?: string;
+    niche?: string;
 }
 
 export interface YouTubeScriptContent {
@@ -70,63 +71,29 @@ export interface YouTubeScriptContent {
     sections: ScriptSection[];
     conclusion: string;
     cta: string;
+    blogArticle?: string;
 }
 
 export interface Script {
   id: string;
-  // Metadata
-  title: string; // Display title
+  title: string;
   createdAt: string;
-  isTemplate?: boolean;
-  
-  // Part 1: Planning
+  isPublic?: boolean;
+  authorName?: string;
   planning?: ScriptPlanning;
-  
-  // Part 2: YouTube Script
   youtubeScript?: YouTubeScriptContent;
-  
-  // Part 3: Social Media
   socialPosts?: SocialPost[];
-  
-  // Part 4: Video Prompts
   videoPrompts?: VideoPrompt[];
-
-  // Legacy/Fallback fields for backward compatibility
-  topic?: string;
-  niche?: string;
-  goal?: string;
-  needs?: string;
-  strategy?: string;
 }
 
 export interface Series {
   id: string;
   title: string;
-  episodeCount: number;
-  niche: string;
-  createdAt: string;
-  isTemplate?: boolean;
   episodes: Script[];
+  createdAt: string;
 }
 
-// Changed from Enum to Union Type for stability
-export type AppScreen = 'Dashboard' | 'Studio' | 'Growth' | 'SerialProd' | 'Account' | 'Admin';
-
-export interface ViralIdea {
-    id: string;
-    title: string;
-    hook: string;
-    difficulty: 'Easy' | 'Medium' | 'Hard';
-}
-
-export interface AppNotification {
-    id: string;
-    title: string;
-    message: string;
-    type: 'info' | 'success' | 'warning';
-    read: boolean;
-    timestamp: string;
-}
+export type AppScreen = 'Dashboard' | 'Studio' | 'Growth' | 'SerialProd' | 'Account' | 'Admin' | 'Onboarding';
 
 export type AuthScreen = 'Login' | 'SignUp';
 

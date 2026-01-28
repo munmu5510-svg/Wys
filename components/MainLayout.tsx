@@ -1,5 +1,4 @@
 
-
 import * as React from 'react';
 import { LogoIcon, UserIcon, LogoutIcon, SunIcon, MoonIcon, HomeIcon, PencilSquareIcon, Squares2x2Icon } from './icons';
 import { User } from '../types';
@@ -32,9 +31,6 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, onNaviga
                       PRO+
                    </div>
                 )}
-                <div className="hidden md:flex px-3 py-1 bg-brand-purple/10 rounded-full text-brand-purple text-sm font-semibold border border-brand-purple/20">
-                    {user?.generationsLeft} credits
-                </div>
                 
                 {toggleTheme && (
                     <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 dark:text-gray-400 dark:hover:text-white">
@@ -53,14 +49,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ user, onLogout, onNaviga
         </div>
       </header>
       
-      {/* Main Content Area */}
       <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 relative flex flex-col transition-colors duration-300">
         <div className="flex-1 overflow-hidden relative">
             {children}
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation Removed per request */}
     </div>
   );
 };

@@ -1,27 +1,14 @@
 
-
 import React from 'react';
 
 type IconProps = { className?: string };
 
 export const LogoIcon = ({ className = 'h-8 w-auto' }: IconProps) => (
-  <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="logoG" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#6366f1" />
-        <stop offset="100%" stopColor="#a855f7" />
-      </linearGradient>
-      <filter id="glow">
-        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-        <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-        </feMerge>
-      </filter>
-    </defs>
-    <path d="M15 25 L30 80 L50 45 L70 80 L85 25" stroke="url(#logoG)" strokeWidth="8" fill="none" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)" />
-    <circle cx="50" cy="45" r="6" fill="#a855f7" filter="url(#glow)" />
-  </svg>
+  <img 
+    src="https://scontent.fssg1-1.fna.fbcdn.net/v/t39.30808-1/612321354_122119663701127994_5424502117853546415_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=105&ccb=1-7&_nc_sid=2d3e12&_nc_ohc=WMRFhxQYdXQQ7kNvwEWmO3u&_nc_oc=AdmrrJlUVJxe8qcZ3ffxTssbn0jJ1tntye3OaLZ7TAFnK2U2mDW0TMHZRG0CMK301gI&_nc_zt=24&_nc_ht=scontent.fssg1-1.fna&_nc_gid=-bXHaLPHovPL3iPRg0xxyA&oh=00_AfowO4L-5OudjrjzF0UsuSNOELMeQx-dH-L2EhLgTOFgCQ&oe=697FF490" 
+    alt="WySlider Logo" 
+    className={`${className} object-contain rounded-lg`} 
+  />
 );
 
 export const SparklesIcon = ({ className = 'h-6 w-6' }: IconProps) => (
@@ -83,4 +70,11 @@ export const FacebookIcon = ({ className = 'h-6 w-6' }: IconProps) => (
 
 export const WhatsappIcon = ({ className = 'h-6 w-6' }: IconProps) => (
   <svg fill="currentColor" viewBox="0 0 24 24" className={className}><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.654-.698c1.09.596 2.006.88 2.806.88 3.181 0 5.767-2.587 5.768-5.766.001-3.181-2.585-5.767-5.768-5.767zm0 13.891c-1.29 0-2.613-.39-3.72-1.077l-4.135 1.085 1.103-4.037c-1.242-2.165-1.236-4.796.02-6.969 1.635-2.83 5.304-3.793 8.13-2.152 2.827 1.638 3.784 5.312 2.14 8.14-1.01 1.74-2.502 2.86-4.538 3.011zm3.228-4.25c-.172-.086-1.018-.502-1.176-.56-.158-.057-.272-.086-.387.086-.115.172-.444.56-.545.675-.1.115-.2.129-.372.043-.172-.086-.725-.268-1.382-.852-.514-.457-.862-1.022-.962-1.194-.101-.172-.011-.266.075-.351.078-.078.172-.2.258-.3.087-.1.115-.172.172-.287.057-.115.029-.215-.014-.3-.043-.086-.387-.932-.53-1.276-.141-.34-.286-.293-.387-.298-.092-.005-.196-.006-.301-.006-.105 0-.275.039-.419.197-.143.158-.545.532-.545 1.296 0 .764.556 1.502.633 1.604.078.101 1.096 1.673 2.656 2.347.37.16.66.256.885.327.373.118.712.101.984.062.302-.043.928-.38 1.06-.746.13-.367.13-.68.091-.746-.039-.067-.144-.108-.316-.194z" /></svg>
+);
+
+// Added missing MagnifyingGlassIcon
+export const MagnifyingGlassIcon = ({ className = 'h-6 w-6' }: IconProps) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+  </svg>
 );
